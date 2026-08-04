@@ -523,6 +523,19 @@
     cursor: pointer;
   }
   .modal-details ol { margin-top: 8px; }
+  .sync-token {
+    width: 100%;
+    font-family: Menlo, Consolas, monospace;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 11px 12px;
+    outline: none;
+    margin-top: 4px;
+  }
+  .modal a { color: var(--blue); }
 
   /* Phones (iPhone 16 Pro & co.): keep the two lists side by side, just compact.
      NOTE: must stay AFTER the base rules — equal specificity, cascade order decides.
@@ -592,6 +605,7 @@
   <div class="toolbar">
     <h1>My Lists</h1>
     <span class="status-msg" id="status-msg"></span>
+    <button class="toolbar-btn" id="sync-btn">Sync</button>
     <button class="toolbar-btn" id="export-btn">Export backup</button>
     <button class="toolbar-btn" id="import-btn">Import backup</button>
   </div>
@@ -612,6 +626,31 @@
 </div>
 
 <input type="file" id="import-file" accept="application/json,.json" style="display:none">
+
+<div class="modal-overlay" id="sync-modal">
+  <div class="modal">
+    <h2>Sync across devices</h2>
+    <div id="sync-off-view">
+      <p>Keep your iPhone and Mac showing the same lists, live. Your tasks are stored in a <b>secret Gist</b> on your own GitHub account — nothing new to sign up for.</p>
+      <ol>
+        <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=My+To+Do+List+sync" target="_blank" rel="noopener">Open GitHub's token page</a> (the <b>gist</b> permission is pre-ticked), scroll down, tap <b>Generate token</b>, and copy it.</li>
+        <li>Paste it below and tap <b>Enable sync</b>.</li>
+        <li>Do the same on your other device with the <b>same token</b> — it finds the same data automatically.</li>
+      </ol>
+      <p class="modal-hint">Enable it first on the device whose lists are most up to date — other devices adopt that data when they join. The token is saved only on this device.</p>
+      <input type="password" class="sync-token" id="sync-token-input" placeholder="Paste your GitHub token (ghp_…)" autocomplete="off">
+      <button class="modal-btn primary" id="sync-enable-btn">Enable sync</button>
+    </div>
+    <div id="sync-on-view" style="display:none">
+      <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
+      <p class="modal-hint" id="sync-status-line"></p>
+      <button class="modal-btn" id="sync-disable-btn">Turn off sync on this device</button>
+    </div>
+    <div class="modal-actions">
+      <button class="toolbar-btn" id="sync-modal-close">Close</button>
+    </div>
+  </div>
+</div>
 
 <div class="ptr-indicator" id="ptr-indicator"><span class="ptr-arrow">↻</span></div>
 
@@ -931,6 +970,7 @@
 
     function persist() {
       saveTasks(config.storageKey, tasks);
+      scheduleSyncPush();
     }
 
     function addTask() {
@@ -1167,10 +1207,17 @@
     setInterval(checkDue, 30000);
     checkDue();
 
+    // Lets the sync engine refresh this panel after remote data arrives
+    panelReloaders.push(function () {
+      tasks = loadTasks(config.storageKey);
+      render();
+    });
+
     render();
     return panel;
   }
 
+  var panelReloaders = [];
   var panelsRoot = document.getElementById("panels");
   PANELS.forEach(function (config) {
     panelsRoot.appendChild(createPanel(config));
@@ -1286,6 +1333,8 @@
 
     localStorage.setItem("dia_todo_personal_v1", JSON.stringify(personal));
     localStorage.setItem("dia_todo_business_v1", JSON.stringify(business));
+    // if sync is on, the imported data must win over the remote copy after reload
+    localStorage.setItem("dia_todo_import_pending", "1");
     location.reload();
   }
 
@@ -1308,6 +1357,207 @@
       if (text) applyImport(text);
     }
   });
+
+  // ── Cross-device sync via a secret GitHub Gist ───────────
+
+  var SYNC_CFG_KEY = "dia_todo_sync_v1";
+  var GIST_FILE = "dia-todo.json";
+  var syncState = { pushTimer: null, dirty: false, lastApplied: 0, loopStarted: false };
+
+  function getSyncCfg() {
+    try {
+      var cfg = JSON.parse(localStorage.getItem(SYNC_CFG_KEY));
+      return (cfg && cfg.token && cfg.gistId) ? cfg : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function ghFetch(token, path, opts) {
+    opts = opts || {};
+    opts.headers = {
+      "Authorization": "Bearer " + token,
+      "Accept": "application/vnd.github+json"
+    };
+    return fetch("https://api.github.com" + path, opts);
+  }
+
+  function buildSyncDoc() {
+    return {
+      app: "dia-todo",
+      updatedAt: Date.now(),
+      lists: {
+        personal: loadTasks("dia_todo_personal_v1"),
+        business: loadTasks("dia_todo_business_v1")
+      }
+    };
+  }
+
+  function applySyncDoc(doc) {
+    localStorage.setItem("dia_todo_personal_v1", JSON.stringify(doc.lists.personal || []));
+    localStorage.setItem("dia_todo_business_v1", JSON.stringify(doc.lists.business || []));
+    panelReloaders.forEach(function (r) { r(); });
+  }
+
+  function setSyncStatusLine() {
+    var line = document.getElementById("sync-status-line");
+    line.textContent = syncState.lastApplied
+      ? "Last synced " + formatDateTime(syncState.lastApplied)
+      : "Waiting for first sync…";
+  }
+
+  function scheduleSyncPush() {
+    if (!getSyncCfg()) return;
+    syncState.dirty = true;
+    clearTimeout(syncState.pushTimer);
+    syncState.pushTimer = setTimeout(pushSync, 1500);
+  }
+
+  function pushSync() {
+    var cfg = getSyncCfg();
+    if (!cfg) return;
+    var doc = buildSyncDoc();
+    var files = {};
+    files[GIST_FILE] = { content: JSON.stringify(doc) };
+    ghFetch(cfg.token, "/gists/" + cfg.gistId, {
+      method: "PATCH",
+      body: JSON.stringify({ files: files })
+    }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      syncState.dirty = false;
+      syncState.lastApplied = doc.updatedAt;
+    }).catch(function () {
+      // stays dirty; the next mutation or pull tick retries
+      flashStatus("Sync upload failed — will retry.");
+    });
+  }
+
+  function pullSync() {
+    var cfg = getSyncCfg();
+    if (!cfg) return;
+    if (syncState.dirty) { pushSync(); return; }
+    // don't clobber an edit in progress
+    if (document.querySelector(".task-edit, .due-edit-row")) return;
+    ghFetch(cfg.token, "/gists/" + cfg.gistId).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (gist) {
+      var file = gist.files && gist.files[GIST_FILE];
+      if (!file || !file.content) return;
+      var doc = JSON.parse(file.content);
+      if (doc && doc.lists && doc.updatedAt > syncState.lastApplied) {
+        applySyncDoc(doc);
+        syncState.lastApplied = doc.updatedAt;
+      }
+    }).catch(function () { /* offline or transient — retry next tick */ });
+  }
+
+  function startSyncLoop() {
+    if (syncState.loopStarted) return;
+    syncState.loopStarted = true;
+    setInterval(pullSync, 20000);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) pullSync();
+    });
+    window.addEventListener("focus", pullSync);
+  }
+
+  function enableSync(token, done) {
+    ghFetch(token, "/gists?per_page=100").then(function (res) {
+      if (res.status === 401) throw new Error("GitHub rejected the token — check it was copied fully.");
+      if (!res.ok) throw new Error("GitHub error (HTTP " + res.status + ")");
+      return res.json();
+    }).then(function (gists) {
+      var existing = null;
+      for (var i = 0; i < gists.length; i++) {
+        if (gists[i].files && gists[i].files[GIST_FILE]) { existing = gists[i]; break; }
+      }
+      if (existing) {
+        // joining an existing sync — the remote data wins
+        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ token: token, gistId: existing.id }));
+        return ghFetch(token, "/gists/" + existing.id).then(function (r) { return r.json(); }).then(function (gist) {
+          var doc = JSON.parse(gist.files[GIST_FILE].content);
+          if (doc && doc.lists) {
+            applySyncDoc(doc);
+            syncState.lastApplied = doc.updatedAt || Date.now();
+          }
+        });
+      }
+      // first device — create the gist from this device's data
+      var doc = buildSyncDoc();
+      var files = {};
+      files[GIST_FILE] = { content: JSON.stringify(doc) };
+      return ghFetch(token, "/gists", {
+        method: "POST",
+        body: JSON.stringify({ description: "My To Do List sync", public: false, files: files })
+      }).then(function (res) {
+        if (!res.ok) throw new Error("Couldn't create the gist (HTTP " + res.status + ")");
+        return res.json();
+      }).then(function (gist) {
+        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ token: token, gistId: gist.id }));
+        syncState.lastApplied = doc.updatedAt;
+      });
+    }).then(function () {
+      startSyncLoop();
+      done(null);
+    }).catch(function (err) {
+      done(err);
+    });
+  }
+
+  function refreshSyncModal() {
+    var on = !!getSyncCfg();
+    document.getElementById("sync-off-view").style.display = on ? "none" : "";
+    document.getElementById("sync-on-view").style.display = on ? "" : "none";
+    if (on) setSyncStatusLine();
+  }
+
+  document.getElementById("sync-btn").addEventListener("click", function () {
+    refreshSyncModal();
+    document.getElementById("sync-modal").classList.add("show");
+  });
+
+  document.getElementById("sync-modal-close").addEventListener("click", function () {
+    document.getElementById("sync-modal").classList.remove("show");
+  });
+
+  document.getElementById("sync-enable-btn").addEventListener("click", function () {
+    var input = document.getElementById("sync-token-input");
+    var token = input.value.trim();
+    if (!token) { input.focus(); return; }
+    var btn = document.getElementById("sync-enable-btn");
+    btn.disabled = true;
+    btn.textContent = "Connecting…";
+    enableSync(token, function (err) {
+      btn.disabled = false;
+      btn.textContent = "Enable sync";
+      if (err) {
+        alert("Couldn't enable sync: " + err.message);
+        return;
+      }
+      input.value = "";
+      refreshSyncModal();
+      flashStatus("Sync enabled.");
+    });
+  });
+
+  document.getElementById("sync-disable-btn").addEventListener("click", function () {
+    localStorage.removeItem(SYNC_CFG_KEY);
+    refreshSyncModal();
+    flashStatus("Sync turned off on this device. Your tasks stay put.");
+  });
+
+  if (getSyncCfg()) {
+    startSyncLoop();
+    if (localStorage.getItem("dia_todo_import_pending")) {
+      localStorage.removeItem("dia_todo_import_pending");
+      scheduleSyncPush();
+    } else {
+      pullSync();
+    }
+  } else {
+    localStorage.removeItem("dia_todo_import_pending");
+  }
 
   // ── Pull-to-refresh (touch devices) ──────────────────────
 
