@@ -691,6 +691,9 @@
     <div id="sync-on-view" style="display:none">
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <p class="modal-hint" id="sync-status-line"></p>
+      <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
+      <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
+      <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. New and changed dates flow in on Apple's refresh cycle (typically within the hour; open the Calendar app to nudge it).</p>
       <button class="modal-btn" id="sync-disable-btn">Turn off sync on this device</button>
     </div>
     <div class="modal-actions">
@@ -704,8 +707,10 @@
 <div class="modal-overlay" id="ics-modal">
   <div class="modal">
     <h2>Add to Apple Calendar</h2>
-    <button class="modal-btn primary" id="ics-shortcut-btn">⚡ Instant add — straight into Calendar</button>
-    <p class="modal-hint">Runs a Shortcut, no extra taps. First time? Do the one-time setup below — after that it's automatic.</p>
+    <button class="modal-btn primary" id="ics-auto-btn">🗓 Fully automatic — set up once, covers every task</button>
+    <p class="modal-hint">Best option: turn on Sync, then subscribe to your task calendar. All dated tasks reach Apple Calendar by themselves after that.</p>
+    <button class="modal-btn" id="ics-shortcut-btn">⚡ Instant add via Shortcut</button>
+    <p class="modal-hint">Needs the one-time Shortcut setup below.</p>
     <button class="modal-btn" id="ics-file-btn">Download .ics file instead</button>
     <details class="modal-details">
       <summary>One-time Shortcut setup (about a minute)</summary>
@@ -857,18 +862,57 @@
     }
   }
 
+  function icsEscape(s) {
+    return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  }
+  function icsLocal(ts) {
+    return toLocalInputValue(ts).replace(/[-:]/g, "");
+  }
+  function textHash(s) {
+    return Math.abs(s.split("").reduce(function (h, c) {
+      return (h * 31 + c.charCodeAt(0)) | 0;
+    }, 0));
+  }
+
+  // Live feed of every dated task — synced to the gist so Apple Calendar
+  // can subscribe to it and pick up new reminders automatically.
+  function buildRemindersICS() {
+    var lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//dia-todo//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "X-WR-CALNAME:My To Do List"
+    ];
+    [{ key: "dia_todo_personal_v1", name: "Personal" }, { key: "dia_todo_business_v1", name: "Business" }].forEach(function (list) {
+      loadTasks(list.key).forEach(function (task) {
+        if (task.done || !task.due) return;
+        lines.push(
+          "BEGIN:VEVENT",
+          "UID:todo-" + task.due + "-" + textHash(task.text) + "@dia-todo",
+          "DTSTAMP:" + icsLocal(Date.now()) + "00",
+          "DTSTART:" + icsLocal(task.due) + "00",
+          "DTEND:" + icsLocal(task.due + 30 * 60 * 1000) + "00",
+          "SUMMARY:" + icsEscape("To do: " + task.text),
+          "DESCRIPTION:" + icsEscape("From My To Do List (" + list.name + ")"),
+          "BEGIN:VALARM",
+          "ACTION:DISPLAY",
+          "DESCRIPTION:" + icsEscape(task.text),
+          "TRIGGER:-PT0M",
+          "END:VALARM",
+          "END:VEVENT"
+        );
+      });
+    });
+    lines.push("END:VCALENDAR");
+    return lines.join("\r\n");
+  }
+
   // .ics calendar event with an alert — the reliable way to get a real
   // notification on an iPhone from a serverless page.
   function downloadReminderICS(task, listTitle) {
-    function icsEscape(s) {
-      return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
-    }
-    function icsLocal(ts) {
-      return toLocalInputValue(ts).replace(/[-:]/g, "");
-    }
-    var uid = "task-" + task.due + "-" + Math.abs(task.text.split("").reduce(function (h, c) {
-      return (h * 31 + c.charCodeAt(0)) | 0;
-    }, 0)) + "@dia-todo";
+    var uid = "task-" + task.due + "-" + textHash(task.text) + "@dia-todo";
     var lines = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
@@ -1334,6 +1378,12 @@
     document.getElementById("ics-modal").classList.remove("show");
   });
 
+  document.getElementById("ics-auto-btn").addEventListener("click", function () {
+    document.getElementById("ics-modal").classList.remove("show");
+    refreshSyncModal();
+    document.getElementById("sync-modal").classList.add("show");
+  });
+
   document.getElementById("ics-shortcut-btn").addEventListener("click", function () {
     if (!pendingReminder) return;
     document.getElementById("ics-modal").classList.remove("show");
@@ -1482,6 +1532,7 @@
     var doc = buildSyncDoc();
     var files = {};
     files[GIST_FILE] = { content: JSON.stringify(doc) };
+    files["reminders.ics"] = { content: buildRemindersICS() };
     ghFetch(cfg.token, "/gists/" + cfg.gistId, {
       method: "PATCH",
       body: JSON.stringify({ files: files })
@@ -1537,7 +1588,10 @@
       }
       if (existing) {
         // joining an existing sync — the remote data wins
-        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ token: token, gistId: existing.id }));
+        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({
+          token: token, gistId: existing.id,
+          owner: existing.owner && existing.owner.login
+        }));
         return ghFetch(token, "/gists/" + existing.id).then(function (r) { return r.json(); }).then(function (gist) {
           var doc = JSON.parse(gist.files[GIST_FILE].content);
           if (doc && doc.lists) {
@@ -1550,6 +1604,7 @@
       var doc = buildSyncDoc();
       var files = {};
       files[GIST_FILE] = { content: JSON.stringify(doc) };
+      files["reminders.ics"] = { content: buildRemindersICS() };
       return ghFetch(token, "/gists", {
         method: "POST",
         body: JSON.stringify({ description: "My To Do List sync", public: false, files: files })
@@ -1557,7 +1612,10 @@
         if (!res.ok) throw new Error("Couldn't create the gist (HTTP " + res.status + ")");
         return res.json();
       }).then(function (gist) {
-        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ token: token, gistId: gist.id }));
+        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({
+          token: token, gistId: gist.id,
+          owner: gist.owner && gist.owner.login
+        }));
         syncState.lastApplied = doc.updatedAt;
       });
     }).then(function () {
@@ -1569,10 +1627,19 @@
   }
 
   function refreshSyncModal() {
-    var on = !!getSyncCfg();
-    document.getElementById("sync-off-view").style.display = on ? "none" : "";
-    document.getElementById("sync-on-view").style.display = on ? "" : "none";
-    if (on) setSyncStatusLine();
+    var cfg = getSyncCfg();
+    document.getElementById("sync-off-view").style.display = cfg ? "none" : "";
+    document.getElementById("sync-on-view").style.display = cfg ? "" : "none";
+    if (cfg) {
+      setSyncStatusLine();
+      var link = document.getElementById("sync-subscribe-link");
+      if (cfg.owner) {
+        link.style.display = "";
+        link.href = "webcal://gist.githubusercontent.com/" + cfg.owner + "/" + cfg.gistId + "/raw/reminders.ics";
+      } else {
+        link.style.display = "none";
+      }
+    }
   }
 
   document.getElementById("sync-btn").addEventListener("click", function () {
@@ -1609,6 +1676,18 @@
     refreshSyncModal();
     flashStatus("Sync turned off on this device. Your tasks stay put.");
   });
+
+  // configs saved before the subscribe feature lack the owner login — backfill it
+  (function ensureOwner() {
+    var cfg = getSyncCfg();
+    if (!cfg || cfg.owner) return;
+    ghFetch(cfg.token, "/gists/" + cfg.gistId).then(function (r) { return r.json(); }).then(function (gist) {
+      if (gist.owner && gist.owner.login) {
+        cfg.owner = gist.owner.login;
+        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(cfg));
+      }
+    }).catch(function () { /* retry next visit */ });
+  })();
 
   if (getSyncCfg()) {
     startSyncLoop();
