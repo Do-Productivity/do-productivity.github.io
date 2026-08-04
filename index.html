@@ -444,6 +444,20 @@
   }
   .completed-list .task-circle:hover { background: var(--card); }
 
+  /* Recently deleted drawer */
+  .completed-section.trash .completed-toggle { color: var(--ink-faint); }
+  .completed-section.trash .count-badge { background: #d9d2c2; }
+  .completed-section.trash .task-text {
+    text-decoration: none;
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+  .completed-section.trash .task-circle {
+    border-color: var(--ink-faint);
+    background: transparent;
+  }
+  .completed-section.trash .task-circle:hover { background: #eae4d7; }
+
   /* ── Panel footer ────────────────────────── */
   .panel-footer {
     display: flex;
@@ -634,7 +648,7 @@
   /* ── Print ───────────────────────────────── */
   @media print {
     html, body { background: #fff; }
-    .toolbar-btn, .add-row, .due-row, .task-delete, .task-datebtn, .due-bell, .clear-completed, .status-msg, .modal-overlay, .ptr-indicator, .mobile-tabs { display: none !important; }
+    .toolbar-btn, .add-row, .due-row, .task-delete, .task-datebtn, .due-bell, .clear-completed, .status-msg, .modal-overlay, .ptr-indicator, .mobile-tabs, .completed-section.trash { display: none !important; }
     .panels .panel { display: block !important; } /* print both lists even from the tab view */
     .panel { box-shadow: none; border: 1px solid var(--rule); break-inside: avoid; }
     .panels { gap: 16px; }
@@ -799,21 +813,36 @@
 
   // ── Storage ──────────────────────────────────────────────
 
+  // Shared normalizer for tasks from localStorage or the sync gist.
+  // Backfills stable ids (deterministic, so every device derives the same id
+  // for the same legacy task) and purges trash older than 30 days.
+  function normalizeTasks(parsed) {
+    if (!Array.isArray(parsed)) return [];
+    var purgeBefore = Date.now() - 30 * 24 * 3600 * 1000;
+    return parsed.filter(function (t) {
+      return t && typeof t.text === "string";
+    }).map(function (t) {
+      var task = { text: t.text, done: !!t.done };
+      if (t.done && typeof t.completedAt === "number") task.completedAt = t.completedAt;
+      if (typeof t.due === "number") task.due = t.due;
+      if (t.notified) task.notified = true;
+      if (t.deleted) {
+        task.deleted = true;
+        if (typeof t.deletedAt === "number") task.deletedAt = t.deletedAt;
+      }
+      task.id = (typeof t.id === "string" && t.id) ? t.id : "h" + textHash(t.text);
+      if (typeof t.mt === "number") task.mt = t.mt;
+      return task;
+    }).filter(function (t) {
+      return !(t.deleted && t.deletedAt && t.deletedAt < purgeBefore);
+    });
+  }
+
   function loadTasks(key) {
     try {
       var raw = localStorage.getItem(key);
       if (!raw) return [];
-      var parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter(function (t) {
-        return t && typeof t.text === "string";
-      }).map(function (t) {
-        var task = { text: t.text, done: !!t.done };
-        if (t.done && typeof t.completedAt === "number") task.completedAt = t.completedAt;
-        if (typeof t.due === "number") task.due = t.due;
-        if (t.notified) task.notified = true;
-        return task;
-      });
+      return normalizeTasks(JSON.parse(raw));
     } catch (e) {
       return [];
     }
@@ -887,7 +916,7 @@
     ];
     [{ key: "dia_todo_personal_v1", name: "Personal" }, { key: "dia_todo_business_v1", name: "Business" }].forEach(function (list) {
       loadTasks(list.key).forEach(function (task) {
-        if (task.done || !task.due) return;
+        if (task.done || task.deleted || !task.due) return;
         lines.push(
           "BEGIN:VEVENT",
           "UID:todo-" + task.due + "-" + textHash(task.text) + "@dia-todo",
@@ -1051,6 +1080,21 @@
     completedSection.appendChild(completedList);
     panel.appendChild(completedSection);
 
+    // Recently deleted (trash) drawer — × sends tasks here, kept for 30 days
+    var trashOpen = false;
+    var trashSection = el("div", "completed-section trash");
+    var trashToggle = el("button", "completed-toggle");
+    trashToggle.appendChild(el("span", "arrow", "▶"));
+    trashToggle.appendChild(el("span", null, "Recently deleted"));
+    var trashBadge = el("span", "count-badge", "0");
+    trashToggle.appendChild(trashBadge);
+    trashSection.appendChild(trashToggle);
+    var trashEmpty = el("div", "empty-state", "Nothing deleted recently.");
+    var trashList = el("ul", "completed-list");
+    trashSection.appendChild(trashEmpty);
+    trashSection.appendChild(trashList);
+    panel.appendChild(trashSection);
+
     // Footer
     var footer = el("div", "panel-footer");
     var countLabel = el("span", null, "0 to do");
@@ -1067,7 +1111,12 @@
     function addTask() {
       var text = addInput.value.trim();
       if (!text) return;
-      var task = { text: text, done: false };
+      var task = {
+        text: text,
+        done: false,
+        id: "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        mt: Date.now()
+      };
       if (dueInput.value) {
         var ts = new Date(dueInput.value).getTime();
         if (!isNaN(ts)) task.due = ts;
@@ -1092,7 +1141,10 @@
         if (finished) return;
         finished = true;
         var value = input.value.trim();
-        if (value) task.text = value;
+        if (value && value !== task.text) {
+          task.text = value;
+          task.mt = Date.now();
+        }
         persist();
         render();
       }
@@ -1136,6 +1188,7 @@
           delete task.due;
           delete task.notified;
         }
+        task.mt = Date.now();
         persist();
         render();
         // On iPhone, saving a date immediately offers the Calendar add
@@ -1165,15 +1218,19 @@
       var row = el("li", "task-row");
 
       var circle = el("button", "task-circle");
-      circle.title = task.done ? "Retrieve task" : "Complete task";
+      circle.title = task.deleted ? "Restore task" : (task.done ? "Retrieve task" : "Complete task");
       circle.addEventListener("click", function () {
-        if (task.done) {
+        if (task.deleted) {
+          delete task.deleted;
+          delete task.deletedAt;
+        } else if (task.done) {
           task.done = false;
           delete task.completedAt;
         } else {
           task.done = true;
           task.completedAt = Date.now();
         }
+        task.mt = Date.now();
         persist();
         render();
       });
@@ -1182,10 +1239,13 @@
       var body = el("div", "task-body");
       var textNode = el("div", "task-text", task.text);
       body.appendChild(textNode);
-      if (task.done && task.completedAt) {
+      if (task.deleted) {
+        body.appendChild(el("div", "task-meta",
+          task.deletedAt ? "Deleted " + formatDateTime(task.deletedAt) : "Deleted"));
+      } else if (task.done && task.completedAt) {
         body.appendChild(el("div", "task-meta", formatCompletedAt(task.completedAt)));
       }
-      if (!task.done && task.due) {
+      if (!task.done && !task.deleted && task.due) {
         var now = Date.now();
         var dueClass = "task-meta task-due";
         if (task.due < now) dueClass += " overdue";
@@ -1202,13 +1262,13 @@
         dueMeta.appendChild(bell);
         body.appendChild(dueMeta);
       }
-      if (!task.done) {
+      if (!task.done && !task.deleted) {
         textNode.addEventListener("click", function () { startEdit(task, textNode); });
       }
       row.appendChild(body);
 
       var actions = el("div", "task-actions");
-      if (!task.done) {
+      if (!task.done && !task.deleted) {
         var dateBtn = el("button", "task-datebtn", "📅");
         dateBtn.title = task.due ? "Change due date" : "Set due date & reminder";
         dateBtn.addEventListener("click", function () { startDueEdit(task, body); });
@@ -1216,9 +1276,16 @@
       }
 
       var del = el("button", "task-delete", "×");
-      del.title = "Delete task";
+      del.title = task.deleted ? "Delete forever" : "Move to Recently deleted";
       del.addEventListener("click", function () {
-        tasks.splice(tasks.indexOf(task), 1);
+        if (task.deleted) {
+          if (!confirm("Delete forever? This cannot be undone.")) return;
+          tasks.splice(tasks.indexOf(task), 1);
+        } else {
+          task.deleted = true;
+          task.deletedAt = Date.now();
+          task.mt = Date.now();
+        }
         persist();
         render();
       });
@@ -1229,8 +1296,9 @@
     }
 
     function render() {
-      var active = tasks.filter(function (t) { return !t.done; });
-      var completed = tasks.filter(function (t) { return t.done; });
+      var active = tasks.filter(function (t) { return !t.done && !t.deleted; });
+      var completed = tasks.filter(function (t) { return t.done && !t.deleted; });
+      var deleted = tasks.filter(function (t) { return t.deleted; });
 
       // Tasks with a due date float to the top, soonest first;
       // undated tasks keep their original order below them.
@@ -1252,6 +1320,13 @@
       completed.forEach(function (task) { completedList.appendChild(buildRow(task)); });
       completedEmpty.classList.toggle("visible", completed.length === 0);
 
+      trashList.textContent = "";
+      deleted.forEach(function (task) { trashList.appendChild(buildRow(task)); });
+      trashEmpty.classList.toggle("visible", deleted.length === 0);
+      trashBadge.textContent = String(deleted.length);
+      trashSection.classList.toggle("open", trashOpen);
+      trashSection.style.display = deleted.length === 0 && !trashOpen ? "none" : "";
+
       countBadge.textContent = String(completed.length);
       countLabel.textContent = active.length + " to do";
       completedSection.classList.toggle("open", completedOpen);
@@ -1268,8 +1343,20 @@
       completedOpen = !completedOpen;
       render();
     });
+    trashToggle.addEventListener("click", function () {
+      trashOpen = !trashOpen;
+      render();
+    });
     clearBtn.addEventListener("click", function () {
-      tasks = tasks.filter(function (t) { return !t.done; });
+      // safety net: cleared tasks go to Recently deleted, not oblivion
+      var now = Date.now();
+      tasks.forEach(function (t) {
+        if (t.done && !t.deleted) {
+          t.deleted = true;
+          t.deletedAt = now;
+          t.mt = now;
+        }
+      });
       persist();
       render();
     });
@@ -1280,7 +1367,7 @@
       var now = Date.now();
       var changed = false;
       tasks.forEach(function (t) {
-        if (t.done || !t.due || t.due > now || t.notified) return;
+        if (t.done || t.deleted || !t.due || t.due > now || t.notified) return;
         t.notified = true;
         changed = true;
         if ("Notification" in window && Notification.permission === "granted") {
@@ -1530,20 +1617,58 @@
     syncState.pushTimer = setTimeout(pushSync, 1500);
   }
 
+  // Task-level merge: union by id, and where both sides have a task the copy
+  // with the newer modification time (mt) wins. Prevents two devices pushing
+  // near-simultaneously from erasing each other's changes.
+  function mergeTaskLists(localArr, remoteArr) {
+    var localById = {};
+    localArr.forEach(function (t) { localById[t.id] = t; });
+    var merged = remoteArr.map(function (rt) {
+      var lt = localById[rt.id];
+      if (!lt) return rt;
+      delete localById[rt.id];
+      return (lt.mt || 0) >= (rt.mt || 0) ? lt : rt;
+    });
+    localArr.forEach(function (lt) {
+      if (localById[lt.id]) merged.push(lt);
+    });
+    return merged;
+  }
+
   function pushSync() {
     var cfg = getSyncCfg();
     if (!cfg) return;
-    var doc = buildSyncDoc();
-    var files = {};
-    files[GIST_FILE] = { content: JSON.stringify(doc) };
-    files["reminders.ics"] = { content: buildRemindersICS() };
-    ghFetch(cfg.token, "/gists/" + cfg.gistId, {
-      method: "PATCH",
-      body: JSON.stringify({ files: files })
-    }).then(function (res) {
+    // read remote first — if someone pushed since we last looked, merge
+    ghFetch(cfg.token, "/gists/" + cfg.gistId).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
-      syncState.dirty = false;
-      syncState.lastApplied = doc.updatedAt;
+      return res.json();
+    }).then(function (gist) {
+      var remoteDoc = null;
+      try {
+        var file = gist.files && gist.files[GIST_FILE];
+        if (file && file.content) remoteDoc = JSON.parse(file.content);
+      } catch (e) { /* unreadable remote — push ours as-is */ }
+      if (remoteDoc && remoteDoc.lists && remoteDoc.updatedAt > syncState.lastApplied) {
+        var mergedDoc = {
+          lists: {
+            personal: mergeTaskLists(loadTasks("dia_todo_personal_v1"), normalizeTasks(remoteDoc.lists.personal || [])),
+            business: mergeTaskLists(loadTasks("dia_todo_business_v1"), normalizeTasks(remoteDoc.lists.business || []))
+          }
+        };
+        applySyncDoc(mergedDoc);
+      }
+      var doc = buildSyncDoc();
+      var files = {};
+      files[GIST_FILE] = { content: JSON.stringify(doc) };
+      files["reminders.ics"] = { content: buildRemindersICS() };
+      return ghFetch(cfg.token, "/gists/" + cfg.gistId, {
+        method: "PATCH",
+        body: JSON.stringify({ files: files })
+      }).then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        syncState.dirty = false;
+        syncState.lastApplied = doc.updatedAt;
+      });
     }).catch(function () {
       // stays dirty; the next mutation or pull tick retries
       flashStatus("Sync upload failed — will retry.");
