@@ -731,12 +731,18 @@
 
 <div class="modal-overlay" id="ics-modal">
   <div class="modal">
-    <h2>Add to Apple Calendar</h2>
-    <button class="modal-btn primary" id="ics-auto-btn">🗓 Fully automatic — set up once, covers every task</button>
-    <p class="modal-hint">Best option: turn on Sync, then subscribe to your task calendar. All dated tasks reach Apple Calendar by themselves after that.</p>
+    <h2>Reminder for this task</h2>
+    <button class="modal-btn primary" id="ics-file-btn">⏰ Put it in Calendar now — rings exactly on time</button>
+    <ol id="ics-steps">
+      <li>Tap the <b>⬇</b> in Safari's address bar (or <b>Files</b> app → <b>Downloads</b>).</li>
+      <li>Tap <b>reminder.ics</b>.</li>
+      <li>Tap <b>Add All</b>. Done — it will ring at the exact minute, phone locked.</li>
+    </ol>
+    <p class="modal-hint">Use this for anything you can't miss. Apple rings its own alarm locally, so it is never late.</p>
+    <button class="modal-btn" id="ics-auto-btn">Automatic for future tasks (subscription)</button>
+    <p class="modal-hint">Set up once; tasks dated an hour or more ahead arrive by themselves and also ring exactly on time.</p>
     <button class="modal-btn" id="ics-shortcut-btn">⚡ Instant add via Shortcut</button>
     <p class="modal-hint">Needs the one-time Shortcut setup below.</p>
-    <button class="modal-btn" id="ics-file-btn">Download .ics file instead</button>
     <details class="modal-details">
       <summary>One-time Shortcut setup (about a minute)</summary>
       <ol>
