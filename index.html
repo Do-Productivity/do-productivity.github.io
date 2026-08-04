@@ -475,6 +475,15 @@
     justify-content: flex-end;
     margin-top: 14px;
   }
+  .modal ol {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.8;
+    padding-left: 22px;
+    margin-bottom: 4px;
+  }
+  .modal ol b { color: var(--ink); }
 
   /* Phones (iPhone 16 Pro & co.): keep the two lists side by side, just compact.
      NOTE: must stay AFTER the base rules — equal specificity, cascade order decides.
@@ -566,6 +575,22 @@
 <input type="file" id="import-file" accept="application/json,.json" style="display:none">
 
 <div class="ptr-indicator" id="ptr-indicator"><span class="ptr-arrow">↻</span></div>
+
+<div class="modal-overlay" id="ics-modal">
+  <div class="modal">
+    <h2>One more step — add it to Calendar</h2>
+    <p>The reminder file was downloaded, but iPhone doesn't add it automatically. To finish:</p>
+    <ol>
+      <li>Tap the <b>⬇ Downloads</b> icon in Safari's address bar (or open the <b>Files</b> app → <b>Downloads</b>).</li>
+      <li>Tap <b>reminder.ics</b>.</li>
+      <li>When the event preview opens, tap <b>Add All</b> and choose your calendar.</li>
+    </ol>
+    <p>After that, your iPhone will notify you at the due time.</p>
+    <div class="modal-actions">
+      <button class="toolbar-btn" id="ics-modal-close">Got it</button>
+    </div>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -705,6 +730,8 @@
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
       "PRODID:-//dia-todo//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
       "BEGIN:VEVENT",
       "UID:" + uid,
       "DTSTAMP:" + icsLocal(Date.now()) + "00",
@@ -729,6 +756,12 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      document.getElementById("ics-modal").classList.add("show");
+    } else {
+      flashStatus("Reminder downloaded — open the .ics file to add it to your calendar.");
+    }
   }
 
   function el(tag, className, text) {
@@ -1092,6 +1125,10 @@
 
   document.getElementById("export-modal-close").addEventListener("click", function () {
     document.getElementById("export-modal").classList.remove("show");
+  });
+
+  document.getElementById("ics-modal-close").addEventListener("click", function () {
+    document.getElementById("ics-modal").classList.remove("show");
   });
 
   document.getElementById("export-btn").addEventListener("click", function () {
