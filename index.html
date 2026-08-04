@@ -324,6 +324,13 @@
     cursor: pointer;
   }
 
+  .task-actions {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
   .task-delete {
     flex: none;
     font-family: var(--sans);
@@ -501,7 +508,8 @@
     .due-row { gap: 5px; margin-bottom: 4px; }
     .due-label { font-size: 8px; letter-spacing: 0.5px; }
     .due-input { font-size: 16px; padding: 4px 6px; border-radius: 7px; }
-    .task-row { gap: 9px; padding: 12px 0; }
+    .task-row { gap: 7px; padding: 12px 0; }
+    .task-actions { flex-direction: column; gap: 0; align-self: flex-start; }
     .task-circle { width: 19px; height: 19px; border-width: 1.5px; margin-top: 0; }
     .task-text { font-family: var(--sans); font-size: 13px; line-height: 1.45; }
     .task-edit { font-family: var(--sans); font-size: 16px; }
@@ -942,11 +950,12 @@
       }
       row.appendChild(body);
 
+      var actions = el("div", "task-actions");
       if (!task.done) {
         var dateBtn = el("button", "task-datebtn", "📅");
         dateBtn.title = task.due ? "Change due date" : "Set due date & reminder";
         dateBtn.addEventListener("click", function () { startDueEdit(task, body); });
-        row.appendChild(dateBtn);
+        actions.appendChild(dateBtn);
       }
 
       var del = el("button", "task-delete", "×");
@@ -956,7 +965,8 @@
         persist();
         render();
       });
-      row.appendChild(del);
+      actions.appendChild(del);
+      row.appendChild(actions);
 
       return row;
     }
