@@ -250,6 +250,75 @@
     margin-top: 4px;
   }
 
+  /* ── Due dates ───────────────────────────── */
+  .due-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .due-label {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+  .due-input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 6px 8px;
+    outline: none;
+  }
+  .task-due { cursor: pointer; }
+  .task-due.today { color: #b3701f; font-weight: 700; }
+  .task-due.overdue { color: var(--red); font-weight: 700; }
+  .due-bell {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 4px;
+    vertical-align: baseline;
+  }
+  .task-datebtn {
+    flex: none;
+    font-size: 14px;
+    line-height: 1;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .task-row:hover .task-datebtn { opacity: 1; }
+  .due-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+  }
+  .due-edit-row .due-input { flex: 1; }
+  .due-clear {
+    font-family: var(--sans);
+    font-size: 10px;
+    color: var(--ink-soft);
+    background: none;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+
   .task-delete {
     flex: none;
     font-family: var(--sans);
@@ -419,17 +488,23 @@
     .completed-toggle { font-size: 9px; letter-spacing: 1.5px; gap: 5px; }
     .completed-toggle .count-badge { font-size: 9px; padding: 2px 7px; }
     .panel-footer, .clear-completed { font-size: 10px; }
+    .due-row { gap: 5px; margin-bottom: 6px; }
+    .due-label { font-size: 8px; letter-spacing: 0.5px; }
+    .due-input { font-size: 10px; padding: 4px 5px; }
+    .due-bell { font-size: 10px; padding: 0 2px; }
+    .task-datebtn { font-size: 12px; padding: 2px 3px; }
+    .due-clear { font-size: 9px; padding: 4px 6px; }
   }
 
-  /* Touch screens: no hover, so keep delete buttons visible */
+  /* Touch screens: no hover, so keep row buttons visible */
   @media (hover: none) {
-    .task-delete { opacity: 1; }
+    .task-delete, .task-datebtn { opacity: 1; }
   }
 
   /* ── Print ───────────────────────────────── */
   @media print {
     html, body { background: #fff; }
-    .toolbar-btn, .add-row, .task-delete, .clear-completed, .status-msg, .modal-overlay { display: none !important; }
+    .toolbar-btn, .add-row, .due-row, .task-delete, .task-datebtn, .due-bell, .clear-completed, .status-msg, .modal-overlay, .ptr-indicator { display: none !important; }
     .panel { box-shadow: none; border: 1px solid var(--rule); break-inside: avoid; }
     .panels { gap: 16px; }
   }
@@ -534,6 +609,8 @@
       }).map(function (t) {
         var task = { text: t.text, done: !!t.done };
         if (t.done && typeof t.completedAt === "number") task.completedAt = t.completedAt;
+        if (typeof t.due === "number") task.due = t.due;
+        if (t.notified) task.notified = true;
         return task;
       });
     } catch (e) {
@@ -547,14 +624,83 @@
 
   // ── Helpers ──────────────────────────────────────────────
 
-  function formatCompletedAt(ts) {
+  function formatDateTime(ts) {
     var d = new Date(ts);
     var hours = d.getHours();
     var ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12;
     if (hours === 0) hours = 12;
     var minutes = String(d.getMinutes()).padStart(2, "0");
-    return "Completed " + MONTHS[d.getMonth()] + " " + d.getDate() + " at " + hours + ":" + minutes + " " + ampm;
+    return MONTHS[d.getMonth()] + " " + d.getDate() + " at " + hours + ":" + minutes + " " + ampm;
+  }
+
+  function formatCompletedAt(ts) {
+    return "Completed " + formatDateTime(ts);
+  }
+
+  // Local "YYYY-MM-DDTHH:MM" for <input type="datetime-local">
+  function toLocalInputValue(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0") + "T" +
+      String(d.getHours()).padStart(2, "0") + ":" +
+      String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function isSameDay(a, b) {
+    var da = new Date(a), db = new Date(b);
+    return da.getFullYear() === db.getFullYear() &&
+      da.getMonth() === db.getMonth() &&
+      da.getDate() === db.getDate();
+  }
+
+  function ensureNotifyPermission() {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+
+  // .ics calendar event with an alert — the reliable way to get a real
+  // notification on an iPhone from a serverless page.
+  function downloadReminderICS(task, listTitle) {
+    function icsEscape(s) {
+      return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+    }
+    function icsLocal(ts) {
+      return toLocalInputValue(ts).replace(/[-:]/g, "");
+    }
+    var uid = "task-" + task.due + "-" + Math.abs(task.text.split("").reduce(function (h, c) {
+      return (h * 31 + c.charCodeAt(0)) | 0;
+    }, 0)) + "@dia-todo";
+    var lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//dia-todo//EN",
+      "BEGIN:VEVENT",
+      "UID:" + uid,
+      "DTSTAMP:" + icsLocal(Date.now()) + "00",
+      "DTSTART:" + icsLocal(task.due) + "00",
+      "DTEND:" + icsLocal(task.due + 30 * 60 * 1000) + "00",
+      "SUMMARY:" + icsEscape("To do: " + task.text),
+      "DESCRIPTION:" + icsEscape("From My To Do List (" + listTitle + ")"),
+      "BEGIN:VALARM",
+      "ACTION:DISPLAY",
+      "DESCRIPTION:" + icsEscape(task.text),
+      "TRIGGER:-PT0M",
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ];
+    var blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "reminder.ics";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   function el(tag, className, text) {
@@ -600,6 +746,15 @@
     addRow.appendChild(addBtn);
     panel.appendChild(addRow);
 
+    // Optional due date & time for the next task added
+    var dueRow = el("div", "due-row");
+    dueRow.appendChild(el("label", "due-label", "Due / remind"));
+    var dueInput = el("input", "due-input");
+    dueInput.type = "datetime-local";
+    dueInput.addEventListener("change", ensureNotifyPermission);
+    dueRow.appendChild(dueInput);
+    panel.appendChild(dueRow);
+
     // Active list
     var activeList = el("ul", "task-list");
     panel.appendChild(activeList);
@@ -633,8 +788,14 @@
     function addTask() {
       var text = addInput.value.trim();
       if (!text) return;
-      tasks.push({ text: text, done: false });
+      var task = { text: text, done: false };
+      if (dueInput.value) {
+        var ts = new Date(dueInput.value).getTime();
+        if (!isNaN(ts)) task.due = ts;
+      }
+      tasks.push(task);
       addInput.value = "";
+      dueInput.value = "";
       persist();
       render();
       addInput.focus();
@@ -671,6 +832,50 @@
       input.setSelectionRange(input.value.length, input.value.length);
     }
 
+    function startDueEdit(task, body) {
+      var existing = body.querySelector(".due-edit-row");
+      if (existing) { existing.remove(); return; }
+
+      var editRow = el("div", "due-edit-row");
+      var input = el("input", "due-input");
+      input.type = "datetime-local";
+      if (task.due) input.value = toLocalInputValue(task.due);
+      var clearBtn = el("button", "due-clear", task.due ? "Clear" : "Cancel");
+
+      function commit() {
+        if (input.value) {
+          var ts = new Date(input.value).getTime();
+          if (!isNaN(ts)) {
+            task.due = ts;
+            delete task.notified;
+          }
+        } else {
+          delete task.due;
+          delete task.notified;
+        }
+        persist();
+        render();
+      }
+
+      input.addEventListener("change", ensureNotifyPermission);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") commit();
+        else if (e.key === "Escape") render();
+      });
+      var saveBtn = el("button", "due-clear", "Save");
+      saveBtn.addEventListener("click", commit);
+      clearBtn.addEventListener("click", function () {
+        input.value = "";
+        commit();
+      });
+
+      editRow.appendChild(input);
+      editRow.appendChild(saveBtn);
+      editRow.appendChild(clearBtn);
+      body.appendChild(editRow);
+      input.focus();
+    }
+
     function buildRow(task) {
       var row = el("li", "task-row");
 
@@ -695,10 +900,34 @@
       if (task.done && task.completedAt) {
         body.appendChild(el("div", "task-meta", formatCompletedAt(task.completedAt)));
       }
+      if (!task.done && task.due) {
+        var now = Date.now();
+        var dueClass = "task-meta task-due";
+        if (task.due < now) dueClass += " overdue";
+        else if (isSameDay(task.due, now)) dueClass += " today";
+        var dueMeta = el("div", dueClass);
+        var dueText = el("span", null,
+          (task.due < now ? "Overdue — was due " : "Due ") + formatDateTime(task.due));
+        dueText.title = "Change date";
+        dueText.addEventListener("click", function () { startDueEdit(task, body); });
+        dueMeta.appendChild(dueText);
+        var bell = el("button", "due-bell", "🔔");
+        bell.title = "Add reminder to your Calendar (fires a real iPhone notification)";
+        bell.addEventListener("click", function () { downloadReminderICS(task, config.title); });
+        dueMeta.appendChild(bell);
+        body.appendChild(dueMeta);
+      }
       if (!task.done) {
         textNode.addEventListener("click", function () { startEdit(task, textNode); });
       }
       row.appendChild(body);
+
+      if (!task.done) {
+        var dateBtn = el("button", "task-datebtn", "📅");
+        dateBtn.title = task.due ? "Change due date" : "Set due date & reminder";
+        dateBtn.addEventListener("click", function () { startDueEdit(task, body); });
+        row.appendChild(dateBtn);
+      }
 
       var del = el("button", "task-delete", "×");
       del.title = "Delete task";
@@ -715,6 +944,15 @@
     function render() {
       var active = tasks.filter(function (t) { return !t.done; });
       var completed = tasks.filter(function (t) { return t.done; });
+
+      // Tasks with a due date float to the top, soonest first;
+      // undated tasks keep their original order below them.
+      active.sort(function (a, b) {
+        if (a.due && b.due) return a.due - b.due;
+        if (a.due) return -1;
+        if (b.due) return 1;
+        return 0;
+      });
 
       activeList.textContent = "";
       if (active.length === 0) {
@@ -745,6 +983,33 @@
       persist();
       render();
     });
+
+    // While the page is open: fire a notification (where supported) the
+    // moment a task's due time passes, and keep overdue styling fresh.
+    function checkDue() {
+      var now = Date.now();
+      var changed = false;
+      tasks.forEach(function (t) {
+        if (t.done || !t.due || t.due > now || t.notified) return;
+        t.notified = true;
+        changed = true;
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(config.title + ": " + t.text, {
+              body: "Was due " + formatDateTime(t.due)
+            });
+          } catch (e) { /* some platforms only allow notifications via service workers */ }
+        }
+        flashStatus("Due now: " + t.text);
+      });
+      if (changed) {
+        persist();
+        // Don't re-render over an open inline editor
+        if (!panel.querySelector(".task-edit, .due-edit-row")) render();
+      }
+    }
+    setInterval(checkDue, 30000);
+    checkDue();
 
     render();
     return panel;
