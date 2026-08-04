@@ -933,7 +933,8 @@
           "UID:todo-" + task.due + "-" + textHash(task.text) + "@dia-todo",
           "DTSTAMP:" + icsLocal(Date.now()) + "00",
           "DTSTART:" + icsLocal(task.due) + "00",
-          "DTEND:" + icsLocal(task.due + 30 * 60 * 1000) + "00",
+          // zero duration — shows as a point-in-time marker, not a 30-min block
+          "DTEND:" + icsLocal(task.due) + "00",
           "SUMMARY:" + icsEscape("To do: " + task.text),
           "DESCRIPTION:" + icsEscape("From My To Do List (" + list.name + ")"),
           "BEGIN:VALARM",
@@ -963,7 +964,7 @@
       "UID:" + uid,
       "DTSTAMP:" + icsLocal(Date.now()) + "00",
       "DTSTART:" + icsLocal(task.due) + "00",
-      "DTEND:" + icsLocal(task.due + 30 * 60 * 1000) + "00",
+      "DTEND:" + icsLocal(task.due) + "00",
       "SUMMARY:" + icsEscape("To do: " + task.text),
       "DESCRIPTION:" + icsEscape("From My To Do List (" + listTitle + ")"),
       "BEGIN:VALARM",
