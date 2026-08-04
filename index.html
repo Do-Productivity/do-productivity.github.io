@@ -417,6 +417,52 @@
 
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+  // ── Seed data (loaded once, only if a list has never been saved) ──
+
+  var SEED_DONE_AT = new Date(2026, 6, 28, 19, 0).getTime();   // Jul 28 at 7:00 PM
+  var SEED = {
+    dia_todo_personal_v1: [
+      { text: "Example task 28", done: false },
+      { text: "Example task 27", done: false },
+      { text: "Example task 30", done: false },
+      { text: "Example task 26", done: true, completedAt: new Date(2026, 6, 28, 18, 57).getTime() }
+    ],
+    dia_todo_business_v1: [
+      { text: "Example task 3", done: false },
+      { text: "Example task 22", done: false },
+      { text: "Example task 19", done: false },
+      { text: "Example task 21", done: false },
+      { text: "Example task 1", done: false },
+      { text: "Example task 25", done: false },
+      { text: "Example task 17", done: false },
+      { text: "Example task 15", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 18", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 2", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 6", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 16", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 14", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 20", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 7", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 24", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 8", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 23", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 9", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 10", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 5", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 11", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 4", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 29", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 13", done: true, completedAt: SEED_DONE_AT },
+      { text: "Example task 12", done: true, completedAt: SEED_DONE_AT }
+    ]
+  };
+
+  Object.keys(SEED).forEach(function (key) {
+    if (localStorage.getItem(key) === null) {
+      localStorage.setItem(key, JSON.stringify(SEED[key]));
+    }
+  });
+
   // ── Storage ──────────────────────────────────────────────
 
   function loadTasks(key) {
