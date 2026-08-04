@@ -562,7 +562,7 @@
     .task-text { font-family: var(--sans); font-size: 13px; line-height: 1.45; }
     .task-edit { font-family: var(--sans); font-size: 16px; }
     .task-meta { font-size: 10px; margin-top: 3px; }
-    .due-bell { font-size: 11px; }
+    .due-bell { font-size: 14px; padding: 2px 6px; }
     .task-datebtn { font-size: 13px; padding: 4px; }
     .task-delete { font-size: 15px; padding: 4px 5px; }
     .due-clear { font-size: 10px; padding: 5px 7px; }
@@ -946,7 +946,9 @@
       dueInput.value = "";
       persist();
       render();
-      addInput.focus();
+      // On iPhone, offer the Calendar add right away — the wee bell is easy to miss
+      if (task.due && isIOS()) onBellTap(task, config.title);
+      else addInput.focus();
     }
 
     function startEdit(task, textNode) {
@@ -991,9 +993,11 @@
       var clearBtn = el("button", "due-clear", task.due ? "Clear" : "Cancel");
 
       function commit() {
+        var dateWasSet = false;
         if (input.value) {
           var ts = new Date(input.value).getTime();
           if (!isNaN(ts)) {
+            dateWasSet = task.due !== ts;
             task.due = ts;
             delete task.notified;
           }
@@ -1003,6 +1007,8 @@
         }
         persist();
         render();
+        // On iPhone, saving a date immediately offers the Calendar add
+        if (dateWasSet && isIOS()) onBellTap(task, config.title);
       }
 
       input.addEventListener("change", ensureNotifyPermission);
