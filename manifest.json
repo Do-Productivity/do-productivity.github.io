@@ -1,0 +1,16 @@
+{
+  "name": "My To Do List",
+  "short_name": "To Do",
+  "display": "standalone",
+  "start_url": ".",
+  "scope": ".",
+  "background_color": "#f7f3e9",
+  "theme_color": "#f7f3e9",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
