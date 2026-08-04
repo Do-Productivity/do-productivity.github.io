@@ -87,36 +87,6 @@
     gap: 28px;
     align-items: start;
   }
-  /* Phones (iPhone 16 Pro & co.): keep the two lists side by side, just compact */
-  @media (max-width: 720px) {
-    .layout { padding: 14px 10px 52px; }
-    .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .toolbar-btn { padding: 8px 10px; font-size: 9px; letter-spacing: 1px; }
-    .panels { gap: 10px; }
-    .panel { padding: 16px 12px 10px; min-height: 300px; }
-    .panel-header .panel-title { font-size: 21px; }
-    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 2px; margin-top: 4px; }
-    .panel-header .divider { margin: 10px 0 12px; }
-    .add-row { gap: 6px; }
-    .add-input { font-size: 13px; padding: 8px 9px; min-width: 0; }
-    .add-btn { padding: 0 10px; font-size: 10px; letter-spacing: 1px; }
-    .task-row { gap: 8px; padding: 11px 0; }
-    .task-circle { width: 17px; height: 17px; border-width: 1.5px; }
-    .task-text { font-size: 13px; line-height: 1.4; }
-    .task-edit { font-size: 13px; }
-    .task-meta { font-size: 9px; }
-    .task-delete { padding: 2px 4px; font-size: 14px; }
-    .empty-state { font-size: 12px; padding: 18px 0; }
-    .completed-toggle { font-size: 9px; letter-spacing: 1.5px; gap: 5px; }
-    .completed-toggle .count-badge { font-size: 9px; padding: 2px 7px; }
-    .panel-footer, .clear-completed { font-size: 10px; }
-  }
-
-  /* Touch screens: no hover, so keep delete buttons visible */
-  @media (hover: none) {
-    .task-delete { opacity: 1; }
-  }
-
   /* ── Pull-to-refresh indicator ───────────── */
   .ptr-indicator {
     position: fixed;
@@ -423,6 +393,37 @@
     display: flex;
     justify-content: flex-end;
     margin-top: 14px;
+  }
+
+  /* Phones (iPhone 16 Pro & co.): keep the two lists side by side, just compact.
+     NOTE: must stay AFTER the base rules — equal specificity, cascade order decides. */
+  @media (max-width: 720px) {
+    .layout { padding: 14px 10px 52px; }
+    .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .toolbar-btn { padding: 8px 10px; font-size: 9px; letter-spacing: 1px; }
+    .panels { gap: 10px; }
+    .panel { padding: 16px 12px 10px; min-height: 300px; min-width: 0; }
+    .panel-header .panel-title { font-size: 21px; }
+    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 2px; margin-top: 4px; }
+    .panel-header .divider { margin: 10px 0 12px; }
+    .add-row { gap: 6px; }
+    .add-input { font-size: 13px; padding: 8px 9px; min-width: 0; }
+    .add-btn { padding: 0 10px; font-size: 10px; letter-spacing: 1px; }
+    .task-row { gap: 8px; padding: 11px 0; }
+    .task-circle { width: 17px; height: 17px; border-width: 1.5px; }
+    .task-text { font-size: 13px; line-height: 1.4; }
+    .task-edit { font-size: 13px; }
+    .task-meta { font-size: 9px; }
+    .task-delete { padding: 2px 4px; font-size: 14px; }
+    .empty-state { font-size: 12px; padding: 18px 0; }
+    .completed-toggle { font-size: 9px; letter-spacing: 1.5px; gap: 5px; }
+    .completed-toggle .count-badge { font-size: 9px; padding: 2px 7px; }
+    .panel-footer, .clear-completed { font-size: 10px; }
+  }
+
+  /* Touch screens: no hover, so keep delete buttons visible */
+  @media (hover: none) {
+    .task-delete { opacity: 1; }
   }
 
   /* ── Print ───────────────────────────────── */
