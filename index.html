@@ -1285,8 +1285,12 @@
         changed = true;
         if ("Notification" in window && Notification.permission === "granted") {
           try {
-            new Notification(config.title + ": " + t.text, {
-              body: "Was due " + formatDateTime(t.due)
+            // short title (iOS truncates it to one line); the full task text
+            // goes in the body, which wraps
+            new Notification("⏰ " + config.title + " — due now", {
+              body: t.text + "\nDue " + formatDateTime(t.due),
+              tag: "todo-" + t.due + "-" + textHash(t.text),
+              icon: "apple-touch-icon.png"
             });
           } catch (e) { /* some platforms only allow notifications via service workers */ }
         }
