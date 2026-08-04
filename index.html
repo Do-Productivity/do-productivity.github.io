@@ -85,6 +85,44 @@
   }
   .toolbar-btn:hover { color: var(--ink); border-color: var(--ink-faint); }
 
+  /* ── Mobile list switcher (hidden on desktop) ── */
+  .mobile-tabs {
+    display: none;
+    background: var(--card);
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(43, 38, 32, 0.1);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .mobile-tab {
+    flex: 1;
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink-faint);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 12px 8px 10px;
+    cursor: pointer;
+  }
+  .mobile-tab.personal .dot { color: var(--red); }
+  .mobile-tab.business .dot { color: var(--blue); }
+  .mobile-tab.active { color: var(--ink); }
+  .mobile-tab.personal.active { border-bottom-color: var(--red); }
+  .mobile-tab.business.active { border-bottom-color: var(--blue); }
+  .tab-count {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--paper);
+    border-radius: 10px;
+    padding: 2px 7px;
+    margin-left: 5px;
+    vertical-align: 2px;
+  }
+
   /* ── Panels ──────────────────────────────── */
   .panels {
     display: grid;
@@ -552,37 +590,40 @@
     .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .toolbar h1 { font-size: 11px; letter-spacing: 2.5px; }
     .toolbar-btn { padding: 9px 11px; font-size: 9px; letter-spacing: 1px; border-radius: 7px; }
-    .panels { gap: 8px; }
+
+    /* One full-width list at a time, picked from the tabs */
+    .mobile-tabs { display: flex; }
+    .panels { grid-template-columns: 1fr; }
+    .panels.show-personal .panel.business { display: none; }
+    .panels.show-business .panel.personal { display: none; }
     .panel {
-      padding: 15px 12px 8px;
+      padding: 18px 16px 10px;
       min-height: 0;
       min-width: 0;
-      border-radius: 10px;
+      border-radius: 12px;
       border-top-width: 3px;
     }
-    .panel-header .panel-title { font-size: 22px; letter-spacing: 0.2px; }
-    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 1.6px; margin-top: 3px; }
-    .panel-header .divider { margin: 10px 0 12px; }
-    .add-row { gap: 6px; margin-bottom: 6px; }
-    .add-input { font-size: 16px; padding: 8px 10px; border-radius: 8px; min-width: 0; }
-    .add-btn { flex: none; padding: 0 12px; font-size: 10px; letter-spacing: 1px; border-radius: 8px; }
-    .due-row { gap: 5px; margin-bottom: 4px; }
-    .due-label { font-size: 8px; letter-spacing: 0.5px; }
-    .due-input { font-size: 16px; padding: 4px 6px; border-radius: 7px; }
-    .task-row { gap: 7px; padding: 12px 0; }
-    .task-actions { flex-direction: column; gap: 0; align-self: flex-start; }
-    .task-circle { width: 19px; height: 19px; border-width: 1.5px; margin-top: 0; }
-    .task-text { font-family: var(--sans); font-size: 13px; line-height: 1.45; }
+    .panel-header { display: none; } /* the tabs are the header */
+
+    .add-row { gap: 8px; margin-bottom: 8px; }
+    .add-input { font-size: 16px; padding: 10px 12px; border-radius: 9px; min-width: 0; }
+    .add-btn { flex: none; padding: 0 16px; font-size: 11px; letter-spacing: 1px; border-radius: 9px; }
+    .due-row { gap: 6px; margin-bottom: 4px; }
+    .due-label { font-size: 9px; letter-spacing: 0.5px; }
+    .due-input { font-size: 16px; padding: 5px 8px; border-radius: 7px; }
+    .task-row { gap: 11px; padding: 13px 0; }
+    .task-circle { width: 22px; height: 22px; border-width: 2px; margin-top: 0; }
+    .task-text { font-family: var(--sans); font-size: 15px; line-height: 1.5; }
     .task-edit { font-family: var(--sans); font-size: 16px; }
-    .task-meta { font-size: 10px; margin-top: 3px; }
+    .task-meta { font-size: 11px; margin-top: 3px; }
     .due-bell { font-size: 14px; padding: 2px 6px; }
-    .task-datebtn { font-size: 13px; padding: 4px; }
-    .task-delete { font-size: 15px; padding: 4px 5px; }
-    .due-clear { font-size: 10px; padding: 5px 7px; }
-    .empty-state { font-size: 12px; padding: 16px 0; }
-    .completed-toggle { font-size: 9px; letter-spacing: 1.3px; gap: 5px; padding: 10px 0; }
-    .completed-toggle .count-badge { font-size: 9px; padding: 2px 7px; }
-    .panel-footer, .clear-completed { font-size: 10px; }
+    .task-datebtn { font-size: 15px; padding: 4px 5px; }
+    .task-delete { font-size: 17px; padding: 4px 6px; }
+    .due-clear { font-size: 11px; padding: 6px 9px; }
+    .empty-state { font-size: 14px; padding: 20px 0; }
+    .completed-toggle { font-size: 10px; letter-spacing: 1.5px; gap: 6px; padding: 11px 0; }
+    .completed-toggle .count-badge { font-size: 10px; padding: 2px 8px; }
+    .panel-footer, .clear-completed { font-size: 11px; }
   }
 
   /* Touch screens: no hover, so keep row buttons visible */
@@ -593,7 +634,8 @@
   /* ── Print ───────────────────────────────── */
   @media print {
     html, body { background: #fff; }
-    .toolbar-btn, .add-row, .due-row, .task-delete, .task-datebtn, .due-bell, .clear-completed, .status-msg, .modal-overlay, .ptr-indicator { display: none !important; }
+    .toolbar-btn, .add-row, .due-row, .task-delete, .task-datebtn, .due-bell, .clear-completed, .status-msg, .modal-overlay, .ptr-indicator, .mobile-tabs { display: none !important; }
+    .panels .panel { display: block !important; } /* print both lists even from the tab view */
     .panel { box-shadow: none; border: 1px solid var(--rule); break-inside: avoid; }
     .panels { gap: 16px; }
   }
@@ -608,6 +650,11 @@
     <button class="toolbar-btn" id="sync-btn">Sync</button>
     <button class="toolbar-btn" id="export-btn">Export backup</button>
     <button class="toolbar-btn" id="import-btn">Import backup</button>
+  </div>
+
+  <div class="mobile-tabs" id="mobile-tabs">
+    <button class="mobile-tab personal" id="tab-personal">Personal<span class="dot">.</span><span class="tab-count" id="tab-count-personal">0</span></button>
+    <button class="mobile-tab business" id="tab-business">Business<span class="dot">.</span><span class="tab-count" id="tab-count-business">0</span></button>
   </div>
 
   <div class="panels" id="panels"></div>
@@ -1164,6 +1211,9 @@
       countBadge.textContent = String(completed.length);
       countLabel.textContent = active.length + " to do";
       completedSection.classList.toggle("open", completedOpen);
+
+      var tabCount = document.getElementById("tab-count-" + config.id);
+      if (tabCount) tabCount.textContent = String(active.length);
     }
 
     addBtn.addEventListener("click", addTask);
@@ -1222,6 +1272,19 @@
   PANELS.forEach(function (config) {
     panelsRoot.appendChild(createPanel(config));
   });
+
+  // Mobile tab switcher — remembers the last list you were on
+  var MTAB_KEY = "dia_todo_mtab_v1";
+  function setMobileTab(id) {
+    panelsRoot.className = "panels show-" + id;
+    ["personal", "business"].forEach(function (t) {
+      document.getElementById("tab-" + t).classList.toggle("active", t === id);
+    });
+    localStorage.setItem(MTAB_KEY, id);
+  }
+  document.getElementById("tab-personal").addEventListener("click", function () { setMobileTab("personal"); });
+  document.getElementById("tab-business").addEventListener("click", function () { setMobileTab("business"); });
+  setMobileTab(localStorage.getItem(MTAB_KEY) === "business" ? "business" : "personal");
 
   // ── Export ───────────────────────────────────────────────
 
