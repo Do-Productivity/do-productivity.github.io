@@ -680,9 +680,9 @@
     <div id="sync-off-view">
       <p>Keep your iPhone and Mac showing the same lists, live. Your tasks are stored in a <b>secret Gist</b> on your own GitHub account — nothing new to sign up for.</p>
       <ol>
-        <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=My+To+Do+List+sync" target="_blank" rel="noopener">Open GitHub's token page</a> (the <b>gist</b> permission is pre-ticked), scroll down, tap <b>Generate token</b>, and copy it.</li>
+        <li><a href="https://github.com/settings/tokens/new?scopes=gist" id="sync-token-link" target="_blank" rel="noopener">Open GitHub's token page</a> (the <b>gist</b> permission is pre-ticked), scroll down, tap <b>Generate token</b>, and copy it.</li>
         <li>Paste it below and tap <b>Enable sync</b>.</li>
-        <li>Do the same on your other device with the <b>same token</b> — it finds the same data automatically.</li>
+        <li>Do the same on your other device — reuse this token or generate a new one, either finds the same data automatically.</li>
       </ol>
       <p class="modal-hint">Enable it first on the device whose lists are most up to date — other devices adopt that data when they join. The token is saved only on this device.</p>
       <input type="password" class="sync-token" id="sync-token-input" placeholder="Paste your GitHub token (ghp_…)" autocomplete="off">
@@ -1644,6 +1644,10 @@
 
   document.getElementById("sync-btn").addEventListener("click", function () {
     refreshSyncModal();
+    // GitHub token names must be unique per account, so suggest a fresh one each time
+    document.getElementById("sync-token-link").href =
+      "https://github.com/settings/tokens/new?scopes=gist&description=todo-sync-" +
+      Math.random().toString(36).slice(2, 7);
     document.getElementById("sync-modal").classList.add("show");
   });
 
