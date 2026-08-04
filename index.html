@@ -484,6 +484,45 @@
     margin-bottom: 4px;
   }
   .modal ol b { color: var(--ink); }
+  .modal-btn {
+    display: block;
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 13px 14px;
+    margin: 10px 0 2px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .modal-btn.primary {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+  .modal .modal-hint {
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin: 6px 0 8px;
+  }
+  .modal-details {
+    font-family: var(--sans);
+    margin: 12px 0 0;
+    border-top: 1px solid var(--rule);
+    padding-top: 10px;
+  }
+  .modal-details summary {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .modal-details ol { margin-top: 8px; }
 
   /* Phones (iPhone 16 Pro & co.): keep the two lists side by side, just compact.
      NOTE: must stay AFTER the base rules — equal specificity, cascade order decides.
@@ -578,16 +617,34 @@
 
 <div class="modal-overlay" id="ics-modal">
   <div class="modal">
-    <h2>One more step — add it to Calendar</h2>
-    <p>The reminder file was downloaded, but iPhone doesn't add it automatically. To finish:</p>
-    <ol>
-      <li>Tap the <b>⬇ Downloads</b> icon in Safari's address bar (or open the <b>Files</b> app → <b>Downloads</b>).</li>
-      <li>Tap <b>reminder.ics</b>.</li>
-      <li>When the event preview opens, tap <b>Add All</b> and choose your calendar.</li>
-    </ol>
-    <p>After that, your iPhone will notify you at the due time.</p>
+    <h2>Add to Apple Calendar</h2>
+    <button class="modal-btn primary" id="ics-shortcut-btn">⚡ Instant add — straight into Calendar</button>
+    <p class="modal-hint">Runs a Shortcut, no extra taps. First time? Do the one-time setup below — after that it's automatic.</p>
+    <button class="modal-btn" id="ics-file-btn">Download .ics file instead</button>
+    <details class="modal-details">
+      <summary>One-time Shortcut setup (about a minute)</summary>
+      <ol>
+        <li>Open the <b>Shortcuts</b> app and tap <b>+</b> to make a new shortcut.</li>
+        <li>Tap the name at the top and rename it exactly: <b>Add Task Reminder</b></li>
+        <li>Add the action <b>Split Text</b>. Tap its "Text" field and pick <b>Shortcut Input</b>. Set Separator to <b>Custom</b> and type <b>||</b> (two vertical bars).</li>
+        <li>Add the action <b>Add New Event</b> and expand its options (tap the arrow):
+          <br>• <b>Title</b>: pick the <b>Split Text</b> variable, tap the inserted token, set it to <b>First Item</b>.
+          <br>• <b>Start Date</b>: pick <b>Split Text</b> again, tap the token, set it to <b>Last Item</b>.
+          <br>• <b>Alert</b>: At time of event.
+          <br>• Turn <b>OFF</b> "Show Compose Sheet".</li>
+        <li>Tap <b>Done</b>. That's it — from now on "Instant add" drops the event into your Calendar automatically.</li>
+      </ol>
+    </details>
+    <details class="modal-details">
+      <summary>Downloaded the file? Here's where it goes</summary>
+      <ol>
+        <li>Tap the <b>⬇ Downloads</b> icon in Safari's address bar (or open the <b>Files</b> app → <b>Downloads</b>).</li>
+        <li>Tap <b>reminder.ics</b>.</li>
+        <li>When the event preview opens, tap <b>Add All</b> and choose your calendar.</li>
+      </ol>
+    </details>
     <div class="modal-actions">
-      <button class="toolbar-btn" id="ics-modal-close">Got it</button>
+      <button class="toolbar-btn" id="ics-modal-close">Close</button>
     </div>
   </div>
 </div>
@@ -756,10 +813,40 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
 
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  }
+
+  // Unambiguous natural-language date the Shortcuts app parses reliably,
+  // e.g. "5 Aug 2026 9:30 AM"
+  function formatShortcutDate(ts) {
+    var d = new Date(ts);
+    var hours = d.getHours();
+    var ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear() + " " +
+      hours + ":" + String(d.getMinutes()).padStart(2, "0") + " " + ampm;
+  }
+
+  // Hands the task to a user-installed "Add Task Reminder" shortcut, which
+  // adds the event to Apple Calendar silently — no compose sheet, no file.
+  function openReminderShortcut(task) {
+    var payload = task.text + "||" + formatShortcutDate(task.due);
+    window.location.href = "shortcuts://run-shortcut?name=Add%20Task%20Reminder&input=text&text=" +
+      encodeURIComponent(payload);
+  }
+
+  var pendingReminder = null;
+
+  function onBellTap(task, listTitle) {
+    if (isIOS()) {
+      pendingReminder = { task: task, listTitle: listTitle };
       document.getElementById("ics-modal").classList.add("show");
     } else {
+      downloadReminderICS(task, listTitle);
       flashStatus("Reminder downloaded — open the .ics file to add it to your calendar.");
     }
   }
@@ -974,7 +1061,7 @@
         dueMeta.appendChild(dueText);
         var bell = el("button", "due-bell", "🔔");
         bell.title = "Add reminder to your Calendar (fires a real iPhone notification)";
-        bell.addEventListener("click", function () { downloadReminderICS(task, config.title); });
+        bell.addEventListener("click", function () { onBellTap(task, config.title); });
         dueMeta.appendChild(bell);
         body.appendChild(dueMeta);
       }
@@ -1129,6 +1216,18 @@
 
   document.getElementById("ics-modal-close").addEventListener("click", function () {
     document.getElementById("ics-modal").classList.remove("show");
+  });
+
+  document.getElementById("ics-shortcut-btn").addEventListener("click", function () {
+    if (!pendingReminder) return;
+    document.getElementById("ics-modal").classList.remove("show");
+    openReminderShortcut(pendingReminder.task);
+  });
+
+  document.getElementById("ics-file-btn").addEventListener("click", function () {
+    if (!pendingReminder) return;
+    downloadReminderICS(pendingReminder.task, pendingReminder.listTitle);
+    flashStatus("Downloaded — see \"Here's where it goes\" below.");
   });
 
   document.getElementById("export-btn").addEventListener("click", function () {
