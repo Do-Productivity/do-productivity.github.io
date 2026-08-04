@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f7f3e9">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
 <title>My To Do List</title>
 <style>
   :root {
@@ -16,8 +19,8 @@
     --red-soft: #e8d5cf;
     --blue: #3d6b8c;
     --blue-soft: #d3dee6;
-    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-    --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --serif: "Iowan Old Style", ui-serif, "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,6 +32,8 @@
     color: var(--ink);
     font-family: var(--serif);
     min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   .layout {
@@ -465,35 +470,50 @@
   }
 
   /* Phones (iPhone 16 Pro & co.): keep the two lists side by side, just compact.
-     NOTE: must stay AFTER the base rules — equal specificity, cascade order decides. */
+     NOTE: must stay AFTER the base rules — equal specificity, cascade order decides.
+     Inputs stay at 16px so iOS Safari doesn't zoom-jump when they're focused.
+     Small running text switches to the system sans (SF on iPhone) — the serif
+     stays for panel titles, where it carries the paper look best. */
   @media (max-width: 720px) {
-    .layout { padding: 14px 10px 52px; }
-    .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .toolbar-btn { padding: 8px 10px; font-size: 9px; letter-spacing: 1px; }
-    .panels { gap: 10px; }
-    .panel { padding: 16px 12px 10px; min-height: 300px; min-width: 0; }
-    .panel-header .panel-title { font-size: 21px; }
-    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 2px; margin-top: 4px; }
+    .layout {
+      padding: calc(10px + env(safe-area-inset-top, 0px))
+               max(8px, env(safe-area-inset-left, 0px))
+               calc(52px + env(safe-area-inset-bottom, 0px))
+               max(8px, env(safe-area-inset-right, 0px));
+    }
+    .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .toolbar h1 { font-size: 11px; letter-spacing: 2.5px; }
+    .toolbar-btn { padding: 9px 11px; font-size: 9px; letter-spacing: 1px; border-radius: 7px; }
+    .panels { gap: 8px; }
+    .panel {
+      padding: 15px 12px 8px;
+      min-height: 0;
+      min-width: 0;
+      border-radius: 10px;
+      border-top-width: 3px;
+    }
+    .panel-header .panel-title { font-size: 22px; letter-spacing: 0.2px; }
+    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 1.6px; margin-top: 3px; }
     .panel-header .divider { margin: 10px 0 12px; }
-    .add-row { gap: 6px; }
-    .add-input { font-size: 13px; padding: 8px 9px; min-width: 0; }
-    .add-btn { padding: 0 10px; font-size: 10px; letter-spacing: 1px; }
-    .task-row { gap: 8px; padding: 11px 0; }
-    .task-circle { width: 17px; height: 17px; border-width: 1.5px; }
-    .task-text { font-size: 13px; line-height: 1.4; }
-    .task-edit { font-size: 13px; }
-    .task-meta { font-size: 9px; }
-    .task-delete { padding: 2px 4px; font-size: 14px; }
-    .empty-state { font-size: 12px; padding: 18px 0; }
-    .completed-toggle { font-size: 9px; letter-spacing: 1.5px; gap: 5px; }
+    .add-row { gap: 6px; margin-bottom: 6px; }
+    .add-input { font-size: 16px; padding: 8px 10px; border-radius: 8px; }
+    .add-btn { padding: 0 12px; font-size: 10px; letter-spacing: 1px; border-radius: 8px; }
+    .due-row { gap: 5px; margin-bottom: 4px; }
+    .due-label { font-size: 8px; letter-spacing: 0.5px; }
+    .due-input { font-size: 16px; padding: 4px 6px; border-radius: 7px; }
+    .task-row { gap: 9px; padding: 12px 0; }
+    .task-circle { width: 19px; height: 19px; border-width: 1.5px; margin-top: 0; }
+    .task-text { font-family: var(--sans); font-size: 13px; line-height: 1.45; }
+    .task-edit { font-family: var(--sans); font-size: 16px; }
+    .task-meta { font-size: 10px; margin-top: 3px; }
+    .due-bell { font-size: 11px; }
+    .task-datebtn { font-size: 13px; padding: 4px; }
+    .task-delete { font-size: 15px; padding: 4px 5px; }
+    .due-clear { font-size: 10px; padding: 5px 7px; }
+    .empty-state { font-size: 12px; padding: 16px 0; }
+    .completed-toggle { font-size: 9px; letter-spacing: 1.3px; gap: 5px; padding: 10px 0; }
     .completed-toggle .count-badge { font-size: 9px; padding: 2px 7px; }
     .panel-footer, .clear-completed { font-size: 10px; }
-    .due-row { gap: 5px; margin-bottom: 6px; }
-    .due-label { font-size: 8px; letter-spacing: 0.5px; }
-    .due-input { font-size: 10px; padding: 4px 5px; }
-    .due-bell { font-size: 10px; padding: 0 2px; }
-    .task-datebtn { font-size: 12px; padding: 2px 3px; }
-    .due-clear { font-size: 9px; padding: 4px 6px; }
   }
 
   /* Touch screens: no hover, so keep row buttons visible */
