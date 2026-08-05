@@ -738,11 +738,16 @@
         <p class="modal-hint"><b>Or subscribe in Outlook on the web</b> (Calendar → Add calendar → Subscribe from web) with this address — but Microsoft refreshes these slowly, so treat it as visibility, not reminders:</p>
         <input class="sync-token" id="feed-url-box" readonly>
       </details>
-      <p><b>Push notifications</b> — a rough backup only. Enable once per device (iPhone: open the app from its <b>Home Screen icon</b> first).</p>
-      <button class="modal-btn" id="push-enable-btn">🔔 Enable push on this device</button>
-      <p class="modal-hint" id="push-status-line">Timing is not guaranteed — GitHub's free scheduler often runs only once an hour, so pushes can be very late. Never rely on this for something you cannot miss; use the Calendar routes above.</p>
+      <details class="modal-details">
+        <summary>Advanced (rarely needed)</summary>
+        <p class="modal-hint"><b>Push notifications</b> — rough backup only; GitHub's free scheduler often runs just once an hour, so these can be very late. Never rely on it for something you cannot miss.</p>
+        <button class="modal-btn" id="push-enable-btn">🔔 Enable push on this device</button>
+        <p class="modal-hint" id="push-status-line"></p>
+      </details>
       <button class="modal-btn" id="sync-disable-btn">Turn off sync on this device</button>
     </div>
+    <details class="modal-details">
+      <summary>Write tasks into a work Outlook calendar (needs an app registration)</summary>
     <div id="ms-section">
       <h2 style="font-size:18px;margin:18px 0 6px">Mylo Outlook calendar</h2>
       <div id="ms-off">
@@ -769,6 +774,7 @@
       </div>
       <p class="modal-hint" id="ms-status-line"></p>
     </div>
+    </details>
     <div class="modal-actions">
       <button class="toolbar-btn" id="sync-modal-close">Close</button>
     </div>
@@ -776,48 +782,6 @@
 </div>
 
 <div class="ptr-indicator" id="ptr-indicator"><span class="ptr-arrow">↻</span></div>
-
-<div class="modal-overlay" id="ics-modal">
-  <div class="modal">
-    <h2>Reminder for this task</h2>
-    <button class="modal-btn primary" id="ics-file-btn">⏰ Put it in Calendar now — rings exactly on time</button>
-    <ol id="ics-steps">
-      <li>Tap the <b>⬇</b> in Safari's address bar (or <b>Files</b> app → <b>Downloads</b>).</li>
-      <li>Tap <b>reminder.ics</b>.</li>
-      <li>Tap <b>Add All</b>. Done — it will ring at the exact minute, phone locked.</li>
-    </ol>
-    <p class="modal-hint">Use this for anything you can't miss. Apple rings its own alarm locally, so it is never late.</p>
-    <button class="modal-btn" id="ics-auto-btn">Automatic for future tasks (subscription)</button>
-    <p class="modal-hint">Set up once; tasks dated an hour or more ahead arrive by themselves and also ring exactly on time.</p>
-    <button class="modal-btn" id="ics-shortcut-btn">⚡ Instant add via Shortcut</button>
-    <p class="modal-hint">Needs the one-time Shortcut setup below.</p>
-    <details class="modal-details">
-      <summary>One-time Shortcut setup (about a minute)</summary>
-      <ol>
-        <li>Open the <b>Shortcuts</b> app and tap <b>+</b> to make a new shortcut.</li>
-        <li>Tap the name at the top and rename it exactly: <b>Add Task Reminder</b></li>
-        <li>Add the action <b>Split Text</b>. Tap its "Text" field and pick <b>Shortcut Input</b>. Set Separator to <b>Custom</b> and type <b>||</b> (two vertical bars).</li>
-        <li>Add the action <b>Add New Event</b> and expand its options (tap the arrow):
-          <br>• <b>Title</b>: pick the <b>Split Text</b> variable, tap the inserted token, set it to <b>First Item</b>.
-          <br>• <b>Start Date</b>: pick <b>Split Text</b> again, tap the token, set it to <b>Last Item</b>.
-          <br>• <b>Alert</b>: At time of event.
-          <br>• Turn <b>OFF</b> "Show Compose Sheet".</li>
-        <li>Tap <b>Done</b>. That's it — from now on "Instant add" drops the event into your Calendar automatically.</li>
-      </ol>
-    </details>
-    <details class="modal-details">
-      <summary>Downloaded the file? Here's where it goes</summary>
-      <ol>
-        <li>Tap the <b>⬇ Downloads</b> icon in Safari's address bar (or open the <b>Files</b> app → <b>Downloads</b>).</li>
-        <li>Tap <b>reminder.ics</b>.</li>
-        <li>When the event preview opens, tap <b>Add All</b> and choose your calendar.</li>
-      </ol>
-    </details>
-    <div class="modal-actions">
-      <button class="toolbar-btn" id="ics-modal-close">Close</button>
-    </div>
-  </div>
-</div>
 
 <script>
 (function () {
@@ -1059,36 +1023,11 @@
     return /iPad|iPhone|iPod/.test(navigator.userAgent);
   }
 
-  // Unambiguous natural-language date the Shortcuts app parses reliably,
-  // e.g. "5 Aug 2026 9:30 AM"
-  function formatShortcutDate(ts) {
-    var d = new Date(ts);
-    var hours = d.getHours();
-    var ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    if (hours === 0) hours = 12;
-    return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear() + " " +
-      hours + ":" + String(d.getMinutes()).padStart(2, "0") + " " + ampm;
-  }
-
-  // Hands the task to a user-installed "Add Task Reminder" shortcut, which
-  // adds the event to Apple Calendar silently — no compose sheet, no file.
-  function openReminderShortcut(task) {
-    var payload = task.text + "||" + formatShortcutDate(task.due);
-    window.location.href = "shortcuts://run-shortcut?name=Add%20Task%20Reminder&input=text&text=" +
-      encodeURIComponent(payload);
-  }
-
-  var pendingReminder = null;
-
+  // Quiet manual route, used only when you tap ⏰ on a task that's due
+  // sooner than the calendar subscription can refresh. No dialogs.
   function onBellTap(task, listTitle) {
-    if (isIOS()) {
-      pendingReminder = { task: task, listTitle: listTitle };
-      document.getElementById("ics-modal").classList.add("show");
-    } else {
-      downloadReminderICS(task, listTitle);
-      flashStatus("Reminder downloaded — open the .ics file to add it to your calendar.");
-    }
+    downloadReminderICS(task, listTitle);
+    if (!isIOS()) flashStatus("Reminder downloaded — open it to add it to your calendar.");
   }
 
   function el(tag, className, text) {
@@ -1216,9 +1155,7 @@
       persist();
       render();
       if (task.due) outlook(task);
-      // Only prompt for a manual Calendar add when Outlook isn't doing it for us
-      if (task.due && isIOS() && !msConnected()) onBellTap(task, config.title);
-      else addInput.focus();
+      addInput.focus();
     }
 
     function startEdit(task, textNode) {
@@ -1283,8 +1220,6 @@
         persist();
         render();
         outlook(task);
-        // Only prompt when Outlook isn't handling it automatically
-        if (dateWasSet && isIOS() && !msConnected()) onBellTap(task, config.title);
       }
 
       input.addEventListener("change", ensureNotifyPermission);
@@ -1567,28 +1502,6 @@
 
   document.getElementById("export-modal-close").addEventListener("click", function () {
     document.getElementById("export-modal").classList.remove("show");
-  });
-
-  document.getElementById("ics-modal-close").addEventListener("click", function () {
-    document.getElementById("ics-modal").classList.remove("show");
-  });
-
-  document.getElementById("ics-auto-btn").addEventListener("click", function () {
-    document.getElementById("ics-modal").classList.remove("show");
-    refreshSyncModal();
-    document.getElementById("sync-modal").classList.add("show");
-  });
-
-  document.getElementById("ics-shortcut-btn").addEventListener("click", function () {
-    if (!pendingReminder) return;
-    document.getElementById("ics-modal").classList.remove("show");
-    openReminderShortcut(pendingReminder.task);
-  });
-
-  document.getElementById("ics-file-btn").addEventListener("click", function () {
-    if (!pendingReminder) return;
-    downloadReminderICS(pendingReminder.task, pendingReminder.listTitle);
-    flashStatus("Downloaded — see \"Here's where it goes\" below.");
   });
 
   document.getElementById("export-btn").addEventListener("click", function () {
