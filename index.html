@@ -743,6 +743,31 @@
       <p class="modal-hint" id="push-status-line">Timing is not guaranteed — GitHub's free scheduler often runs only once an hour, so pushes can be very late. Never rely on this for something you cannot miss; use the Calendar routes above.</p>
       <button class="modal-btn" id="sync-disable-btn">Turn off sync on this device</button>
     </div>
+    <div id="ms-section">
+      <h2 style="font-size:18px;margin:18px 0 6px">Mylo Outlook calendar</h2>
+      <div id="ms-off">
+        <p>Connect once and every task you date is written straight into <b>ahmed.mohsen@myloapp.com</b> — no prompts, no imports. Removing or completing a task deletes it again.</p>
+        <details class="modal-details" open>
+          <summary>Step 1 — register the app (one time, ~2 minutes)</summary>
+          <ol>
+            <li>Open <a href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade" target="_blank" rel="noopener">Microsoft Entra → New registration</a> and sign in with your Mylo account.</li>
+            <li><b>Name:</b> My To Do List</li>
+            <li><b>Supported account types:</b> "Accounts in this organizational directory only".</li>
+            <li><b>Redirect URI:</b> choose <b>Single-page application (SPA)</b> and paste:<br><input class="sync-token" id="ms-redirect-box" readonly></li>
+            <li>Click <b>Register</b>, then copy the <b>Application (client) ID</b>.</li>
+            <li>In the new app: <b>API permissions</b> → <b>Add a permission</b> → <b>Microsoft Graph</b> → <b>Delegated permissions</b> → tick <b>Calendars.ReadWrite</b> → <b>Add permissions</b>.</li>
+          </ol>
+        </details>
+        <p class="modal-hint">Step 2 — paste the Application (client) ID here:</p>
+        <input class="sync-token" id="ms-client-id" placeholder="e.g. 8f4c1b2e-…" autocomplete="off">
+        <button class="modal-btn primary" id="ms-connect-btn">Connect Outlook</button>
+      </div>
+      <div id="ms-on" style="display:none">
+        <p>✅ Connected to <b id="ms-account-name">your Mylo calendar</b>. Dated tasks are added automatically and ring on time.</p>
+        <button class="modal-btn" id="ms-disconnect-btn">Disconnect Outlook</button>
+      </div>
+      <p class="modal-hint" id="ms-status-line"></p>
+    </div>
     <div class="modal-actions">
       <button class="toolbar-btn" id="sync-modal-close">Close</button>
     </div>
@@ -871,6 +896,7 @@
       }
       task.id = (typeof t.id === "string" && t.id) ? t.id : "h" + textHash(t.text);
       if (typeof t.mt === "number") task.mt = t.mt;
+      if (typeof t.msEventId === "string") task.msEventId = t.msEventId;
       return task;
     }).filter(function (t) {
       return !(t.deleted && t.deletedAt && t.deletedAt < purgeBefore);
@@ -1148,6 +1174,14 @@
       scheduleSyncPush();
     }
 
+    // Mirror one task into the Mylo Outlook calendar (no-op unless connected)
+    function outlook(task) {
+      syncTaskToOutlook(task, config.title, function () {
+        saveTasks(config.storageKey, tasks);
+        scheduleSyncPush();
+      });
+    }
+
     function addTask() {
       var text = addInput.value.trim();
       if (!text) return;
@@ -1166,8 +1200,9 @@
       dueInput.value = "";
       persist();
       render();
-      // On iPhone, offer the Calendar add right away — the wee bell is easy to miss
-      if (task.due && isIOS()) onBellTap(task, config.title);
+      if (task.due) outlook(task);
+      // Only prompt for a manual Calendar add when Outlook isn't doing it for us
+      if (task.due && isIOS() && !msConnected()) onBellTap(task, config.title);
       else addInput.focus();
     }
 
@@ -1184,6 +1219,7 @@
         if (value && value !== task.text) {
           task.text = value;
           task.mt = Date.now();
+          outlook(task); // keep the calendar entry's title in step
         }
         persist();
         render();
@@ -1231,8 +1267,9 @@
         task.mt = Date.now();
         persist();
         render();
-        // On iPhone, saving a date immediately offers the Calendar add
-        if (dateWasSet && isIOS()) onBellTap(task, config.title);
+        outlook(task);
+        // Only prompt when Outlook isn't handling it automatically
+        if (dateWasSet && isIOS() && !msConnected()) onBellTap(task, config.title);
       }
 
       input.addEventListener("change", ensureNotifyPermission);
@@ -1273,6 +1310,7 @@
         task.mt = Date.now();
         persist();
         render();
+        outlook(task);
       });
       row.appendChild(circle);
 
@@ -1320,11 +1358,13 @@
       del.addEventListener("click", function () {
         if (task.deleted) {
           if (!confirm("Delete forever? This cannot be undone.")) return;
+          outlook({ msEventId: task.msEventId, deleted: true });
           tasks.splice(tasks.indexOf(task), 1);
         } else {
           task.deleted = true;
           task.deletedAt = Date.now();
           task.mt = Date.now();
+          outlook(task);
         }
         persist();
         render();
@@ -1395,6 +1435,7 @@
           t.deleted = true;
           t.deletedAt = now;
           t.mt = now;
+          outlook(t);
         }
       });
       persist();
@@ -1438,11 +1479,19 @@
       render();
     });
 
+    // Used right after Outlook is connected: mirror every dated task up
+    panelSyncers.push(function () {
+      tasks.forEach(function (t) {
+        if (t.due && !t.done && !t.deleted && !t.msEventId) outlook(t);
+      });
+    });
+
     render();
     return panel;
   }
 
   var panelReloaders = [];
+  var panelSyncers = [];
   var panelsRoot = document.getElementById("panels");
   PANELS.forEach(function (config) {
     panelsRoot.appendChild(createPanel(config));
@@ -1817,6 +1866,7 @@
 
   document.getElementById("sync-btn").addEventListener("click", function () {
     refreshSyncModal();
+    refreshMsSection();
     // GitHub token names must be unique per account, so suggest a fresh one each time
     document.getElementById("sync-token-link").href =
       "https://github.com/settings/tokens/new?scopes=gist&description=todo-sync-" +
@@ -1915,6 +1965,211 @@
   }
 
   document.getElementById("push-enable-btn").addEventListener("click", enablePush);
+
+  // ── Mylo Outlook calendar via Microsoft Graph ────────────
+
+  var MS_CFG_KEY = "dia_todo_ms_v1";
+  var MS_TENANT = "58191332-4582-42f1-a685-f77f77def707"; // myloapp.com
+  var MS_SCOPES = "openid profile offline_access Calendars.ReadWrite";
+  var MS_REDIRECT = location.origin + location.pathname;
+  var MS_TZ = (window.Intl && Intl.DateTimeFormat().resolvedOptions().timeZone) || "Africa/Cairo";
+
+  function getMsCfg() {
+    try {
+      var c = JSON.parse(localStorage.getItem(MS_CFG_KEY));
+      return (c && c.clientId) ? c : null;
+    } catch (e) { return null; }
+  }
+  function saveMsCfg(cfg) { localStorage.setItem(MS_CFG_KEY, JSON.stringify(cfg)); }
+  function msConnected() {
+    var c = getMsCfg();
+    return !!(c && c.refreshToken);
+  }
+  function msStatus(text) {
+    var line = document.getElementById("ms-status-line");
+    if (line) line.textContent = text || "";
+  }
+
+  function b64url(buf) {
+    var bytes = new Uint8Array(buf), s = "";
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function msLogin() {
+    var cfg = getMsCfg();
+    if (!cfg) return;
+    var verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+    sessionStorage.setItem("dia_todo_ms_verifier", verifier);
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)).then(function (hash) {
+      location.href = "https://login.microsoftonline.com/" + MS_TENANT + "/oauth2/v2.0/authorize" +
+        "?client_id=" + encodeURIComponent(cfg.clientId) +
+        "&response_type=code" +
+        "&redirect_uri=" + encodeURIComponent(MS_REDIRECT) +
+        "&response_mode=query" +
+        "&scope=" + encodeURIComponent(MS_SCOPES) +
+        "&code_challenge=" + b64url(hash) +
+        "&code_challenge_method=S256";
+    }).catch(function () { msStatus("Could not start sign-in on this browser."); });
+  }
+
+  function msTokenCall(body) {
+    return fetch("https://login.microsoftonline.com/" + MS_TENANT + "/oauth2/v2.0/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, json: j }; });
+    });
+  }
+
+  function msStoreTokens(cfg, j) {
+    cfg.accessToken = j.access_token;
+    if (j.refresh_token) cfg.refreshToken = j.refresh_token;
+    cfg.expiresAt = Date.now() + ((j.expires_in || 3600) - 120) * 1000;
+    saveMsCfg(cfg);
+  }
+
+  // Completes the OAuth redirect when Microsoft sends us back with ?code=
+  function msHandleRedirect() {
+    var params = new URLSearchParams(location.search);
+    var code = params.get("code");
+    var err = params.get("error_description") || params.get("error");
+    if (!code && !err) return Promise.resolve();
+    var cfg = getMsCfg();
+    var verifier = sessionStorage.getItem("dia_todo_ms_verifier");
+    history.replaceState({}, "", MS_REDIRECT);
+    if (err) { msStatus("Outlook sign-in failed: " + String(err).slice(0, 120)); return Promise.resolve(); }
+    if (!cfg || !verifier) return Promise.resolve();
+    return msTokenCall(
+      "client_id=" + encodeURIComponent(cfg.clientId) +
+      "&grant_type=authorization_code&code=" + encodeURIComponent(code) +
+      "&redirect_uri=" + encodeURIComponent(MS_REDIRECT) +
+      "&code_verifier=" + encodeURIComponent(verifier) +
+      "&scope=" + encodeURIComponent(MS_SCOPES)
+    ).then(function (res) {
+      sessionStorage.removeItem("dia_todo_ms_verifier");
+      if (!res.ok) { msStatus("Outlook sign-in failed: " + (res.json.error_description || "").slice(0, 140)); return; }
+      msStoreTokens(cfg, res.json);
+      flashStatus("Outlook connected — dated tasks now go to your Mylo calendar.");
+      refreshMsSection();
+      backfillOutlookEvents();
+    });
+  }
+
+  function msToken() {
+    var cfg = getMsCfg();
+    if (!cfg || !cfg.refreshToken) return Promise.reject(new Error("not connected"));
+    if (cfg.accessToken && cfg.expiresAt > Date.now()) return Promise.resolve(cfg.accessToken);
+    return msTokenCall(
+      "client_id=" + encodeURIComponent(cfg.clientId) +
+      "&grant_type=refresh_token&refresh_token=" + encodeURIComponent(cfg.refreshToken) +
+      "&scope=" + encodeURIComponent(MS_SCOPES)
+    ).then(function (res) {
+      if (!res.ok) {
+        delete cfg.refreshToken;
+        saveMsCfg(cfg);
+        refreshMsSection();
+        throw new Error("Outlook session expired — reconnect in Sync.");
+      }
+      msStoreTokens(cfg, res.json);
+      return cfg.accessToken;
+    });
+  }
+
+  function graph(path, opts) {
+    return msToken().then(function (tok) {
+      opts = opts || {};
+      return fetch("https://graph.microsoft.com/v1.0" + path, {
+        method: opts.method || "GET",
+        headers: {
+          Authorization: "Bearer " + tok,
+          "Content-Type": "application/json"
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+    });
+  }
+
+  function msEventPayload(task, listTitle) {
+    var at = toLocalInputValue(task.due) + ":00";
+    return {
+      subject: "To do: " + task.text,
+      body: { contentType: "text", content: "From My To Do List (" + listTitle + ")" },
+      start: { dateTime: at, timeZone: MS_TZ },
+      end: { dateTime: at, timeZone: MS_TZ },
+      isReminderOn: true,
+      reminderMinutesBeforeStart: 0,
+      showAs: "free",
+      categories: ["To do"]
+    };
+  }
+
+  // Single entry point: makes the Outlook calendar match this task's state.
+  function syncTaskToOutlook(task, listTitle, onChange) {
+    if (!msConnected()) return;
+    var shouldExist = !!task.due && !task.done && !task.deleted;
+    if (shouldExist) {
+      var payload = msEventPayload(task, listTitle);
+      if (task.msEventId) {
+        graph("/me/events/" + task.msEventId, { method: "PATCH", body: payload }).then(function (res) {
+          if (res.status === 404) { delete task.msEventId; syncTaskToOutlook(task, listTitle, onChange); }
+        }).catch(function (e) { msStatus(e.message); });
+      } else {
+        graph("/me/events", { method: "POST", body: payload }).then(function (res) {
+          if (!res.ok) throw new Error("Outlook rejected the event (HTTP " + res.status + ")");
+          return res.json();
+        }).then(function (ev) {
+          task.msEventId = ev.id;
+          task.mt = Date.now();
+          if (onChange) onChange();
+          flashStatus("Added to your Mylo calendar.");
+        }).catch(function (e) { msStatus(e.message); });
+      }
+    } else if (task.msEventId) {
+      var id = task.msEventId;
+      delete task.msEventId;
+      if (onChange) onChange();
+      graph("/me/events/" + id, { method: "DELETE" }).catch(function () { /* already gone */ });
+    }
+  }
+
+  // Push any already-dated tasks up when Outlook is first connected
+  function backfillOutlookEvents() {
+    if (!msConnected()) return;
+    panelSyncers.forEach(function (fn) { fn(); });
+  }
+
+  function refreshMsSection() {
+    var on = msConnected();
+    document.getElementById("ms-off").style.display = on ? "none" : "";
+    document.getElementById("ms-on").style.display = on ? "" : "none";
+    document.getElementById("ms-redirect-box").value = MS_REDIRECT;
+    var cfg = getMsCfg();
+    if (on && cfg && cfg.account) document.getElementById("ms-account-name").textContent = cfg.account;
+  }
+
+  document.getElementById("ms-connect-btn").addEventListener("click", function () {
+    var input = document.getElementById("ms-client-id");
+    var id = input.value.trim();
+    if (!/^[0-9a-fA-F-]{30,40}$/.test(id)) {
+      msStatus("That doesn't look like an Application (client) ID — it should look like 8f4c1b2e-1234-….");
+      input.focus();
+      return;
+    }
+    saveMsCfg({ clientId: id, account: "ahmed.mohsen@myloapp.com" });
+    msStatus("Redirecting to Microsoft sign-in…");
+    msLogin();
+  });
+
+  document.getElementById("ms-disconnect-btn").addEventListener("click", function () {
+    localStorage.removeItem(MS_CFG_KEY);
+    refreshMsSection();
+    msStatus("Disconnected. Events already in Outlook are left alone.");
+  });
+
+  refreshMsSection();
+  msHandleRedirect();
 
   // configs saved before the subscribe feature lack the owner login — backfill it
   (function ensureOwner() {
