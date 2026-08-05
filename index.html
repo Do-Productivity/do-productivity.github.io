@@ -942,7 +942,11 @@
       "PRODID:-//dia-todo//EN",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
-      "X-WR-CALNAME:My To Do List"
+      "X-WR-CALNAME:My To Do List",
+      // Tells subscribing clients (Outlook, Apple) how often to re-poll.
+      // Outlook in particular defaults to a very slow cycle without this.
+      "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+      "X-PUBLISHED-TTL:PT15M"
     ];
     [{ key: "dia_todo_personal_v1", name: "Personal" }, { key: "dia_todo_business_v1", name: "Business" }].forEach(function (list) {
       loadTasks(list.key).forEach(function (task) {
