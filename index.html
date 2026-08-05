@@ -993,9 +993,12 @@
           "SUMMARY:" + icsEscape("To do: " + task.text),
           "DESCRIPTION:" + icsEscape("From My To Do List (" + list.name + ")"),
           "BEGIN:VALARM",
+          "UID:alarm-" + task.due + "-" + textHash(task.text) + "@dia-todo",
           "ACTION:DISPLAY",
           "DESCRIPTION:" + icsEscape(task.text),
-          "TRIGGER:-PT0M",
+          // Apple's own export format for "at time of event"; -PT0M is
+          // accepted unevenly and can be dropped silently.
+          "TRIGGER:-PT0S",
           "END:VALARM",
           "END:VEVENT"
         );
@@ -1023,9 +1026,10 @@
       "SUMMARY:" + icsEscape("To do: " + task.text),
       "DESCRIPTION:" + icsEscape("From My To Do List (" + listTitle + ")"),
       "BEGIN:VALARM",
+      "UID:alarm-" + uid,
       "ACTION:DISPLAY",
       "DESCRIPTION:" + icsEscape(task.text),
-      "TRIGGER:-PT0M",
+      "TRIGGER:-PT0S",
       "END:VALARM",
       "END:VEVENT",
       "END:VCALENDAR"
