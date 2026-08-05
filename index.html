@@ -1405,6 +1405,10 @@
         if (t.done || t.deleted || !t.due || t.due > now || t.notified) return;
         t.notified = true;
         changed = true;
+        // Calendar already alerted at the due moment. Only speak up if the app
+        // happened to be open right as it fell due — never replay old ones on
+        // open, which just reads as a late duplicate.
+        if (now - t.due > 5 * 60 * 1000) return;
         if ("Notification" in window && Notification.permission === "granted") {
           try {
             // short title (iOS truncates it to one line); the full task text
