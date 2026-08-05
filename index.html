@@ -727,7 +727,14 @@
       </details>
       <details class="modal-details">
         <summary>Use Outlook instead of Apple Calendar?</summary>
-        <p class="modal-hint"><b>Best way (keeps alarms exact):</b> add your Outlook account to the iPhone — Settings → Apps → Calendar → Calendar Accounts → Add Account → Outlook.com/Exchange. Then set Settings → Apps → Calendar → <b>Default Calendar</b> to your Outlook calendar. Now every reminder you add with ⏰ lands in Outlook, syncs to all your devices, and still rings on time.</p>
+        <p class="modal-hint"><b>Best way (keeps alarms exact):</b></p>
+        <ol>
+          <li>Settings → <b>Apps</b> → <b>Calendar</b> → <b>Calendar Accounts</b> → <b>Add Account</b> → <b>Microsoft Exchange</b> (use this for a work account; "Outlook.com" is only for personal ones).</li>
+          <li>Enter the work address, tap <b>Next</b> → <b>Sign In</b>, and complete the Microsoft sign-in.</li>
+          <li>Turn <b>Calendars ON</b> (Mail and Contacts are optional) → <b>Save</b>.</li>
+          <li>Back in Settings → Apps → Calendar, set <b>Default Calendar</b> to the work calendar.</li>
+        </ol>
+        <p class="modal-hint">Every reminder added with ⏰ now lands in Outlook, syncs to laptop and web, and still rings exactly on time because iOS fires the alarm locally. Work meetings also show up alongside your tasks.</p>
         <p class="modal-hint"><b>Or subscribe in Outlook on the web</b> (Calendar → Add calendar → Subscribe from web) with this address — but Microsoft refreshes these slowly, so treat it as visibility, not reminders:</p>
         <input class="sync-token" id="feed-url-box" readonly>
       </details>
