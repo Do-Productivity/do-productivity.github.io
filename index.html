@@ -927,6 +927,10 @@
   function icsLocal(ts) {
     return toLocalInputValue(ts).replace(/[-:]/g, "");
   }
+  // DTSTAMP / LAST-MODIFIED must be UTC per RFC 5545
+  function icsUTC(ts) {
+    return new Date(ts).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  }
   function textHash(s) {
     return Math.abs(s.split("").reduce(function (h, c) {
       return (h * 31 + c.charCodeAt(0)) | 0;
@@ -951,17 +955,25 @@
     [{ key: "dia_todo_personal_v1", name: "Personal" }, { key: "dia_todo_business_v1", name: "Business" }].forEach(function (list) {
       loadTasks(list.key).forEach(function (task) {
         if (task.done || task.deleted || !task.due) return;
+        // UID must stay stable for the life of the task. If the due time is
+        // part of it, rescheduling looks like "delete one event, add another"
+        // and clients leave the old copy behind. SEQUENCE + LAST-MODIFIED are
+        // what actually tell a subscriber "same event, it moved".
+        var uid = "todo-" + (task.id || textHash(task.text)) + "@dia-todo";
+        var modified = task.mt || task.due;
         lines.push(
           "BEGIN:VEVENT",
-          "UID:todo-" + task.due + "-" + textHash(task.text) + "@dia-todo",
-          "DTSTAMP:" + icsLocal(Date.now()) + "00",
+          "UID:" + uid,
+          "SEQUENCE:" + Math.max(0, Math.floor((modified - 1780000000000) / 1000)),
+          "DTSTAMP:" + icsUTC(Date.now()),
+          "LAST-MODIFIED:" + icsUTC(modified),
           "DTSTART:" + icsLocal(task.due) + "00",
           // zero duration — shows as a point-in-time marker, not a 30-min block
           "DTEND:" + icsLocal(task.due) + "00",
           "SUMMARY:" + icsEscape("To do: " + task.text),
           "DESCRIPTION:" + icsEscape("From My To Do List (" + list.name + ")"),
           "BEGIN:VALARM",
-          "UID:alarm-" + task.due + "-" + textHash(task.text) + "@dia-todo",
+          "UID:alarm-" + uid,
           "ACTION:DISPLAY",
           "DESCRIPTION:" + icsEscape(task.text),
           // Apple's own export format for "at time of event"; -PT0M is
