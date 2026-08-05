@@ -965,7 +965,10 @@
           "BEGIN:VEVENT",
           "UID:" + uid,
           "SEQUENCE:" + Math.max(0, Math.floor((modified - 1780000000000) / 1000)),
-          "DTSTAMP:" + icsUTC(Date.now()),
+          // Derive from the task, never from "now" — otherwise every sync push
+          // rewrites the feed and makes subscribers re-process events that
+          // haven't actually changed.
+          "DTSTAMP:" + icsUTC(modified),
           "LAST-MODIFIED:" + icsUTC(modified),
           "DTSTART:" + icsLocal(task.due) + "00",
           // zero duration — shows as a point-in-time marker, not a 30-min block
