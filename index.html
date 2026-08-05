@@ -1032,6 +1032,16 @@
     ];
     var blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
     var url = URL.createObjectURL(blob);
+    // On iOS, opening a text/calendar blob can hand straight to the Calendar
+    // preview ("Add All") and skip the Files round-trip. Falls back to a normal
+    // download if the browser blocks it.
+    if (isIOS()) {
+      var win = window.open(url, "_blank");
+      if (win) {
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        return;
+      }
+    }
     var a = document.createElement("a");
     a.href = url;
     a.download = "reminder.ics";
