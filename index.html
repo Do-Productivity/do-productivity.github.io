@@ -1606,7 +1606,7 @@
 
   var SYNC_CFG_KEY = "dia_todo_sync_v1";
   var GIST_FILE = "dia-todo.json";
-  var syncState = { pushTimer: null, dirty: false, lastApplied: 0, loopStarted: false };
+  var syncState = { pushTimer: null, dirty: false, lastApplied: 0, lastRemote: null, loopStarted: false };
 
   function getSyncCfg() {
     try {
@@ -1623,6 +1623,10 @@
       "Authorization": "Bearer " + token,
       "Accept": "application/vnd.github+json"
     };
+    // GitHub sends "Cache-Control: private, max-age=60" on authenticated reads.
+    // Without this the browser serves a stale gist for up to a minute — which
+    // also poisons the merge-before-push and can drop the other device's tasks.
+    if (!opts.method || opts.method === "GET") opts.cache = "no-store";
     return fetch("https://api.github.com" + path, opts);
   }
 
@@ -1699,7 +1703,8 @@
       }
       var doc = buildSyncDoc();
       var files = {};
-      files[GIST_FILE] = { content: JSON.stringify(doc) };
+      var docJson = JSON.stringify(doc);
+      files[GIST_FILE] = { content: docJson };
       files["reminders.ics"] = { content: buildRemindersICS() };
       return ghFetch(cfg.token, "/gists/" + cfg.gistId, {
         method: "PATCH",
@@ -1708,6 +1713,8 @@
         if (!res.ok) throw new Error("HTTP " + res.status);
         syncState.dirty = false;
         syncState.lastApplied = doc.updatedAt;
+        // remember what we just published so the next pull doesn't re-apply it
+        syncState.lastRemote = docJson;
       });
     }).catch(function () {
       // stays dirty; the next mutation or pull tick retries
@@ -1727,11 +1734,15 @@
     }).then(function (gist) {
       var file = gist.files && gist.files[GIST_FILE];
       if (!file || !file.content) return;
+      // Compare the actual content, not timestamps. updatedAt is written by
+      // whichever device saved last, so any clock skew between Mac and phone
+      // made one device permanently ignore the other's changes.
+      if (file.content === syncState.lastRemote) return;
       var doc = JSON.parse(file.content);
-      if (doc && doc.lists && doc.updatedAt > syncState.lastApplied) {
-        applySyncDoc(doc);
-        syncState.lastApplied = doc.updatedAt;
-      }
+      if (!doc || !doc.lists) return;
+      applySyncDoc(doc);
+      syncState.lastRemote = file.content;
+      syncState.lastApplied = doc.updatedAt || Date.now();
     }).catch(function () { /* offline or transient — retry next tick */ });
   }
 
