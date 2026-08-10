@@ -712,6 +712,7 @@
     </div>
     <div id="sync-on-view" style="display:none">
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
+      <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
@@ -1606,7 +1607,7 @@
 
   var SYNC_CFG_KEY = "dia_todo_sync_v1";
   var GIST_FILE = "dia-todo.json";
-  var syncState = { pushTimer: null, dirty: false, lastApplied: 0, lastRemote: null, loopStarted: false };
+  var syncState = { pushTimer: null, dirty: false, lastApplied: 0, lastRemote: null, lastError: null, loopStarted: false };
 
   function getSyncCfg() {
     try {
@@ -1647,11 +1648,65 @@
     panelReloaders.forEach(function (r) { r(); });
   }
 
-  function setSyncStatusLine() {
+  function setSyncStatusLine(override) {
     var line = document.getElementById("sync-status-line");
-    line.textContent = syncState.lastApplied
+    if (override) { line.textContent = override; return; }
+    var parts = [];
+    parts.push(syncState.lastApplied
       ? "Last synced " + formatDateTime(syncState.lastApplied)
-      : "Waiting for first sync…";
+      : "Not synced yet on this device");
+    if (syncState.dirty) parts.push("⚠️ changes on this device are NOT uploaded yet");
+    if (syncState.lastError) parts.push("Last error: " + syncState.lastError);
+    line.textContent = parts.join(" · ");
+  }
+
+  // Manual, loud version of the background loop — used to diagnose a device
+  // that has quietly stopped syncing.
+  function syncNow() {
+    var cfg = getSyncCfg();
+    if (!cfg) { setSyncStatusLine("Sync isn't set up on this device."); return; }
+    setSyncStatusLine("Syncing…");
+    ghFetch(cfg.token, "/gists/" + cfg.gistId).then(function (res) {
+      if (res.status === 401) throw new Error("token rejected (401) — generate a new one");
+      if (res.status === 404) throw new Error("gist not found (404)");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (gist) {
+      var file = gist.files && gist.files[GIST_FILE];
+      if (file && file.content && file.content !== syncState.lastRemote) {
+        var doc = JSON.parse(file.content);
+        if (doc && doc.lists) {
+          applySyncDoc(doc);
+          syncState.lastRemote = file.content;
+          syncState.lastApplied = doc.updatedAt || Date.now();
+        }
+      }
+      // always publish this device's state so nothing stays stranded locally
+      return new Promise(function (resolve, reject) {
+        var doc = buildSyncDoc();
+        var files = {};
+        var docJson = JSON.stringify(doc);
+        files[GIST_FILE] = { content: docJson };
+        files["reminders.ics"] = { content: buildRemindersICS() };
+        ghFetch(cfg.token, "/gists/" + cfg.gistId, {
+          method: "PATCH",
+          body: JSON.stringify({ files: files })
+        }).then(function (res) {
+          if (!res.ok) { reject(new Error("upload failed: HTTP " + res.status)); return; }
+          syncState.dirty = false;
+          syncState.lastError = null;
+          syncState.lastApplied = doc.updatedAt;
+          syncState.lastRemote = docJson;
+          resolve();
+        }, reject);
+      });
+    }).then(function () {
+      setSyncStatusLine();
+      flashStatus("Synced.");
+    }).catch(function (err) {
+      syncState.lastError = err.message;
+      setSyncStatusLine();
+    });
   }
 
   function scheduleSyncPush() {
@@ -1712,13 +1767,15 @@
       }).then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         syncState.dirty = false;
+        syncState.lastError = null;
         syncState.lastApplied = doc.updatedAt;
         // remember what we just published so the next pull doesn't re-apply it
         syncState.lastRemote = docJson;
       });
-    }).catch(function () {
+    }).catch(function (err) {
       // stays dirty; the next mutation or pull tick retries
-      flashStatus("Sync upload failed — will retry.");
+      syncState.lastError = (err && err.message) || "upload failed";
+      flashStatus("Sync upload failed — open Sync for details.");
     });
   }
 
@@ -1839,6 +1896,8 @@
   document.getElementById("sync-modal-close").addEventListener("click", function () {
     document.getElementById("sync-modal").classList.remove("show");
   });
+
+  document.getElementById("sync-now-btn").addEventListener("click", syncNow);
 
   document.getElementById("sync-enable-btn").addEventListener("click", function () {
     var input = document.getElementById("sync-token-input");
