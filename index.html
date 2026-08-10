@@ -61,6 +61,21 @@
     text-transform: uppercase;
     color: var(--ink-faint);
   }
+  /* Small always-visible sync state indicator */
+  .sync-dot {
+    display: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: none;
+    background: var(--ink-faint);
+    transition: background-color 0.2s;
+  }
+  .sync-dot.on { display: inline-block; }
+  .sync-dot.ok { background: #4a8a5c; }
+  .sync-dot.busy { background: #d2a24c; }
+  .sync-dot.bad { background: var(--red); }
+
   .status-msg {
     flex: 1;
     font-family: var(--sans);
@@ -668,6 +683,7 @@
 
   <div class="toolbar">
     <h1>My Lists</h1>
+    <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
     <button class="toolbar-btn" id="export-btn">Export backup</button>
@@ -1730,11 +1746,45 @@
     });
   }
 
+  function setSyncDot(state) {
+    var dot = document.getElementById("sync-dot");
+    if (!dot) return;
+    if (!getSyncCfg()) { dot.className = "sync-dot"; return; }
+    dot.className = "sync-dot on " + state;
+    dot.title = state === "ok" ? "Synced" :
+      state === "busy" ? "Syncing…" :
+      state === "bad" ? "Not synced — will retry" : "Sync";
+  }
+
   function scheduleSyncPush() {
     if (!getSyncCfg()) return;
     syncState.dirty = true;
+    setSyncDot("busy");
     clearTimeout(syncState.pushTimer);
     syncState.pushTimer = setTimeout(pushSync, 1500);
+  }
+
+  // If the app is backgrounded or closed with an un-uploaded change, send it
+  // straight away — keepalive lets the request outlive the page.
+  function flushPendingSync() {
+    var cfg = getSyncCfg();
+    if (!cfg || !syncState.dirty) return;
+    clearTimeout(syncState.pushTimer);
+    var doc = buildSyncDoc();
+    var files = {};
+    files[GIST_FILE] = { content: JSON.stringify(doc) };
+    files["reminders.ics"] = { content: buildRemindersICS() };
+    try {
+      fetch("https://api.github.com/gists/" + cfg.gistId, {
+        method: "PATCH",
+        keepalive: true,
+        headers: {
+          Authorization: "Bearer " + cfg.token,
+          Accept: "application/vnd.github+json"
+        },
+        body: JSON.stringify({ files: files })
+      });
+    } catch (e) { /* nothing more we can do on the way out */ }
   }
 
   // Task-level merge: union by id, and where both sides have a task the copy
@@ -1792,10 +1842,12 @@
         syncState.lastApplied = doc.updatedAt;
         // remember what we just published so the next pull doesn't re-apply it
         syncState.lastRemote = docJson;
+        setSyncDot("ok");
       });
     }).catch(function (err) {
       // stays dirty; the next mutation or pull tick retries
       syncState.lastError = (err && err.message) || "upload failed";
+      setSyncDot("bad");
       flashStatus("Sync upload failed — open Sync for details.");
     });
   }
@@ -1823,7 +1875,10 @@
       syncState.lastApplied = doc.updatedAt || Date.now();
       // upload only if merging surfaced local tasks the remote didn't have
       if (weHaveMore) scheduleSyncPush();
-    }).catch(function () { /* offline or transient — retry next tick */ });
+      else setSyncDot("ok");
+    }).catch(function () {
+      setSyncDot("bad"); /* offline or transient — retry next tick */
+    });
   }
 
   function startSyncLoop() {
@@ -1831,9 +1886,17 @@
     syncState.loopStarted = true;
     setInterval(pullSync, 20000);
     document.addEventListener("visibilitychange", function () {
-      if (!document.hidden) pullSync();
+      if (document.hidden) flushPendingSync();   // leaving: don't strand a change
+      else pullSync();                            // returning: catch up at once
     });
     window.addEventListener("focus", pullSync);
+    window.addEventListener("pagehide", flushPendingSync);
+    // came back online after a failure — retry immediately rather than waiting
+    window.addEventListener("online", function () {
+      if (syncState.dirty) pushSync();
+      else pullSync();
+    });
+    window.addEventListener("offline", function () { setSyncDot("bad"); });
   }
 
   function enableSync(token, done) {
@@ -2228,6 +2291,7 @@
   })();
 
   if (getSyncCfg()) {
+    setSyncDot("busy");
     startSyncLoop();
     if (localStorage.getItem("dia_todo_import_pending")) {
       localStorage.removeItem("dia_todo_import_pending");
