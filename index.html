@@ -1642,6 +1642,26 @@
     };
   }
 
+  // Never replace local state with remote wholesale — a device may hold changes
+  // that were never uploaded (app closed before the push landed), and blind
+  // application destroys them. Merging is id-based and idempotent, so it is
+  // always safe in both directions.
+  // Returns true when this device contributed something the remote lacked,
+  // i.e. there is a reason to upload. Without that check two open devices
+  // would push to each other forever, since every upload restamps updatedAt.
+  function mergeRemoteIntoLocal(remoteDoc) {
+    var remoteLists = {
+      personal: normalizeTasks(remoteDoc.lists.personal || []),
+      business: normalizeTasks(remoteDoc.lists.business || [])
+    };
+    var merged = {
+      personal: mergeTaskLists(loadTasks("dia_todo_personal_v1"), remoteLists.personal),
+      business: mergeTaskLists(loadTasks("dia_todo_business_v1"), remoteLists.business)
+    };
+    applySyncDoc({ lists: merged });
+    return JSON.stringify(merged) !== JSON.stringify(remoteLists);
+  }
+
   function applySyncDoc(doc) {
     localStorage.setItem("dia_todo_personal_v1", JSON.stringify(doc.lists.personal || []));
     localStorage.setItem("dia_todo_business_v1", JSON.stringify(doc.lists.business || []));
@@ -1676,7 +1696,8 @@
       if (file && file.content && file.content !== syncState.lastRemote) {
         var doc = JSON.parse(file.content);
         if (doc && doc.lists) {
-          applySyncDoc(doc);
+          // merge, never overwrite — this device may hold unuploaded changes
+          mergeRemoteIntoLocal(doc);
           syncState.lastRemote = file.content;
           syncState.lastApplied = doc.updatedAt || Date.now();
         }
@@ -1797,9 +1818,11 @@
       if (file.content === syncState.lastRemote) return;
       var doc = JSON.parse(file.content);
       if (!doc || !doc.lists) return;
-      applySyncDoc(doc);
+      var weHaveMore = mergeRemoteIntoLocal(doc);
       syncState.lastRemote = file.content;
       syncState.lastApplied = doc.updatedAt || Date.now();
+      // upload only if merging surfaced local tasks the remote didn't have
+      if (weHaveMore) scheduleSyncPush();
     }).catch(function () { /* offline or transient — retry next tick */ });
   }
 
