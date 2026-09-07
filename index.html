@@ -763,6 +763,7 @@
         <button class="modal-btn" id="push-enable-btn">🔔 Enable push on this device</button>
         <p class="modal-hint" id="push-status-line"></p>
       </details>
+      <button class="modal-btn" id="sync-replace-token-btn">🔑 Paste a new token</button>
       <button class="modal-btn" id="sync-disable-btn">Turn off sync on this device</button>
     </div>
     <details class="modal-details">
@@ -1945,16 +1946,19 @@
         if (gists[i].files && gists[i].files[GIST_FILE]) { existing = gists[i]; break; }
       }
       if (existing) {
-        // joining an existing sync — the remote data wins
-        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({
+        // joining an existing sync — MERGE, never let either side win outright.
+        // A device re-connecting (e.g. after its token expired) may be holding
+        // days of changes that were never uploaded.
+        saveSyncCfg({
           token: token, gistId: existing.id,
           owner: existing.owner && existing.owner.login
-        }));
+        });
         return ghFetch(token, "/gists/" + existing.id).then(function (r) { return r.json(); }).then(function (gist) {
           var doc = JSON.parse(gist.files[GIST_FILE].content);
           if (doc && doc.lists) {
-            applySyncDoc(doc);
+            var weHaveMore = mergeRemoteIntoLocal(doc);
             syncState.lastApplied = doc.updatedAt || Date.now();
+            if (weHaveMore) scheduleSyncPush();
           }
         });
       }
@@ -2019,6 +2023,14 @@
   });
 
   document.getElementById("sync-now-btn").addEventListener("click", syncNow);
+
+  // Token expired? Show the paste box without disconnecting — reconnecting
+  // merges with the existing list rather than replacing it.
+  document.getElementById("sync-replace-token-btn").addEventListener("click", function () {
+    document.getElementById("sync-off-view").style.display = "";
+    document.getElementById("sync-on-view").style.display = "none";
+    document.getElementById("sync-token-input").focus();
+  });
 
   document.getElementById("sync-enable-btn").addEventListener("click", function () {
     var input = document.getElementById("sync-token-input");
