@@ -559,6 +559,7 @@
     margin-bottom: 4px;
   }
   .modal ol b { color: var(--ink); }
+  .modal ol li.warn { color: var(--red); }
   .modal-btn {
     display: block;
     width: 100%;
@@ -718,7 +719,8 @@
     <div id="sync-off-view">
       <p>Keep your iPhone and Mac showing the same lists, live. Your tasks are stored in a <b>secret Gist</b> on your own GitHub account — nothing new to sign up for.</p>
       <ol>
-        <li><a href="https://github.com/settings/tokens/new?scopes=gist" id="sync-token-link" target="_blank" rel="noopener">Open GitHub's token page</a> (the <b>gist</b> permission is pre-ticked), scroll down, tap <b>Generate token</b>, and copy it.</li>
+        <li><a href="https://github.com/settings/tokens/new?scopes=gist" id="sync-token-link" target="_blank" rel="noopener">Open GitHub's token page</a> (the <b>gist</b> permission is pre-ticked). Check you are signed in as <b>the account that owns your list</b>, set <b>Expiration</b> to <b>No expiration</b>, then <b>Generate token</b> and copy it.</li>
+        <li class="warn"><b>Expiration matters.</b> GitHub defaults to 30 days — when that day comes, every device silently stops syncing. Choose <b>No expiration</b>.</li>
         <li>Paste it below and tap <b>Enable sync</b>.</li>
         <li>Do the same on your other device — reuse this token or generate a new one, either finds the same data automatically.</li>
       </ol>
@@ -1634,6 +1636,36 @@
     }
   }
 
+  function saveSyncCfg(cfg) {
+    localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(cfg));
+  }
+
+  // GitHub returns the token's expiry date in a response header. Capture it so
+  // we can warn ahead of time instead of syncing silently dying on the day.
+  function noteTokenExpiry(res) {
+    try {
+      var cfg = getSyncCfg();
+      if (!cfg) return;
+      var v = res.headers.get("github-authentication-token-expiration");
+      var changed = false;
+      if (v && cfg.tokenExpires !== v) { cfg.tokenExpires = v; changed = true; }
+      if (!v && cfg.tokenExpires) { delete cfg.tokenExpires; changed = true; }
+      if (changed) saveSyncCfg(cfg);
+    } catch (e) { /* header unavailable */ }
+  }
+
+  function tokenExpiryWarning() {
+    var cfg = getSyncCfg();
+    if (!cfg || !cfg.tokenExpires) return null;
+    var when = new Date(String(cfg.tokenExpires).replace(" UTC", "Z").replace(" ", "T"));
+    if (isNaN(when.getTime())) return null;
+    var days = Math.ceil((when.getTime() - Date.now()) / 86400000);
+    if (days < 0) return "⚠️ token EXPIRED — sync is dead until you paste a new one";
+    if (days <= 14) return "⚠️ token expires in " + days + " day" + (days === 1 ? "" : "s") +
+      " — replace it with a No-expiration token";
+    return "token expires " + when.toDateString();
+  }
+
   function ghFetch(token, path, opts) {
     opts = opts || {};
     opts.headers = {
@@ -1693,6 +1725,8 @@
       : "Not synced yet on this device");
     if (syncState.dirty) parts.push("⚠️ changes on this device are NOT uploaded yet");
     if (syncState.lastError) parts.push("Last error: " + syncState.lastError);
+    var exp = tokenExpiryWarning();
+    if (exp) parts.push(exp);
     line.textContent = parts.join(" · ");
   }
 
@@ -1703,7 +1737,8 @@
     if (!cfg) { setSyncStatusLine("Sync isn't set up on this device."); return; }
     setSyncStatusLine("Syncing…");
     ghFetch(cfg.token, "/gists/" + cfg.gistId).then(function (res) {
-      if (res.status === 401) throw new Error("token rejected (401) — generate a new one");
+      noteTokenExpiry(res);
+      if (res.status === 401) throw new Error("token rejected (401) — it has probably expired; generate a new one with No expiration");
       if (res.status === 404) throw new Error("gist not found (404)");
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
