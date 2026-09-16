@@ -763,6 +763,8 @@
         <button class="modal-btn" id="push-enable-btn">🔔 Enable push on this device</button>
         <p class="modal-hint" id="push-status-line"></p>
       </details>
+      <button class="modal-btn" id="sync-adopt-btn">⬇️ Replace this device's list with the synced one</button>
+      <p class="modal-hint">Use this on a device showing an old list &mdash; for example Safari, if you normally use the Home Screen app. It discards what is stored here and takes the shared copy.</p>
       <button class="modal-btn" id="sync-replace-token-btn">🔑 Paste a new token</button>
       <button class="modal-btn" id="sync-disable-btn">Turn off sync on this device</button>
     </div>
@@ -2026,6 +2028,22 @@
 
   // Token expired? Show the paste box without disconnecting — reconnecting
   // merges with the existing list rather than replacing it.
+  // A browser that was never synced (e.g. Safari, when the Home Screen app is
+  // the synced one) holds its own stale list. This throws that away and takes
+  // the shared copy, instead of merging the stale tasks back up.
+  document.getElementById("sync-adopt-btn").addEventListener("click", function () {
+    if (!getSyncCfg()) { setSyncStatusLine("Turn sync on first."); return; }
+    if (!confirm("Replace this device's tasks with the synced list?\n\nAnything stored only on this device is discarded.")) return;
+    localStorage.setItem("dia_todo_personal_v1", JSON.stringify([]));
+    localStorage.setItem("dia_todo_business_v1", JSON.stringify([]));
+    syncState.lastRemote = null;
+    syncState.dirty = false;
+    panelReloaders.forEach(function (r) { r(); });
+    setSyncStatusLine("Fetching the synced list…");
+    pullSync();
+    setTimeout(function () { setSyncStatusLine(); flashStatus("Synced list loaded."); }, 1500);
+  });
+
   document.getElementById("sync-replace-token-btn").addEventListener("click", function () {
     document.getElementById("sync-off-view").style.display = "";
     document.getElementById("sync-on-view").style.display = "none";
