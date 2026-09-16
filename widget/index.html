@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>To Do Widget — Install</title>
+<style>
+  :root {
+    --paper:#f7f3e9; --card:#fffdf7; --ink:#2b2620; --soft:#6b6259;
+    --faint:#a89f93; --rule:#d9d2c2; --red:#c8553d; --blue:#3d6b8c;
+    --serif:"Iowan Old Style",ui-serif,Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--paper);
+    background-image:radial-gradient(circle,#e6dfd0 1px,transparent 1px);
+    background-size:22px 22px;
+    color:var(--ink); font-family:var(--sans);
+    padding:calc(18px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:620px;margin:0 auto}
+  h1{font-family:var(--serif);font-size:30px;margin-bottom:4px}
+  h1 .dot{color:var(--red)}
+  .sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-bottom:20px}
+  .card{background:var(--card);border-radius:12px;border-top:3px solid var(--red);
+        box-shadow:0 2px 12px rgba(43,38,32,.1);padding:18px 16px;margin-bottom:16px}
+  ol{padding-left:20px;line-height:1.9;font-size:14px;color:var(--soft)}
+  ol b{color:var(--ink)}
+  a{color:var(--blue)}
+  button{
+    display:block;width:100%;font-family:var(--sans);font-size:15px;font-weight:700;
+    letter-spacing:.5px;color:#fff;background:var(--red);border:none;border-radius:10px;
+    padding:16px;margin:14px 0 6px;cursor:pointer;
+  }
+  button.done{background:var(--blue)}
+  pre{
+    background:var(--paper);border:1px solid var(--rule);border-radius:8px;
+    padding:12px;overflow-x:auto;font-size:10.5px;line-height:1.5;
+    max-height:300px;overflow-y:auto;color:var(--soft);
+  }
+  .hint{font-size:12px;color:var(--faint);margin-top:8px;line-height:1.6}
+  details{margin-top:14px;border-top:1px solid var(--rule);padding-top:12px}
+  summary{font-size:13px;font-weight:700;color:var(--soft);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>To&nbsp;Do Widget<span class="dot">.</span></h1>
+  <div class="sub">Home screen · iPhone</div>
+
+  <div class="card">
+    <ol>
+      <li>Install <b><a href="https://apps.apple.com/app/scriptable/id1405459188">Scriptable</a></b> from the App&nbsp;Store (free).</li>
+      <li>Tap <b>Copy script</b> below.</li>
+      <li>Open Scriptable → <b>+</b> (top right) → tap the blank page → <b>Paste</b>.</li>
+      <li>Tap the settings icon, name it <b>To Do</b>, then <b>Done</b>.</li>
+      <li>On your Home Screen: long-press → <b>Edit</b> → <b>Add Widget</b> → <b>Scriptable</b> → pick a size.</li>
+      <li>Long-press the new widget → <b>Edit Widget</b> → Script: <b>To Do</b>, When Interacting: <b>Run Script</b>.</li>
+    </ol>
+    <button id="copy">Copy script</button>
+    <div class="hint">It reads the same live list your app syncs, so the widget always matches your phone and Mac. Tap the widget to open the app.</div>
+    <details>
+      <summary>Show the code</summary>
+      <pre id="code">// ─────────────────────────────────────────────────────────────
+//  My To Do List — iOS home screen widget
+//  Runs in Scriptable (free on the App Store).
+//  Reads the same live list the web app syncs to, so the widget
+//  always matches what you see on the phone and the Mac.
+//  Works in small / medium / large sizes.
+// ─────────────────────────────────────────────────────────────
+
+const FEED = &quot;https://gist.githubusercontent.com/ahmedmohsen18/&quot; +
+  &quot;1f3e9c2d3186c395b62391c6b62f0358/raw/dia-todo.json&quot;;
+const APP_URL = &quot;https://ahmedmohsen18.github.io/my-todo-list/&quot;;
+
+// paper palette, matching the web app
+const PAPER  = new Color(&quot;#f7f3e9&quot;);
+const CARD   = new Color(&quot;#fffdf7&quot;);
+const INK    = new Color(&quot;#2b2620&quot;);
+const SOFT   = new Color(&quot;#6b6259&quot;);
+const FAINT  = new Color(&quot;#a89f93&quot;);
+const RED    = new Color(&quot;#c8553d&quot;);   // Personal
+const BLUE   = new Color(&quot;#3d6b8c&quot;);   // Business
+const AMBER  = new Color(&quot;#b3701f&quot;);   // due today
+
+const size = config.runsInWidget ? config.widgetFamily : &quot;medium&quot;;
+const ROWS = { small: 3, medium: 4, large: 9 }[size] || 4;
+
+// ── data ─────────────────────────────────────────────────────
+
+async function loadLists() {
+  const cache = FileManager.local();
+  const cachePath = cache.joinPath(cache.cacheDirectory(), &quot;todo-widget.json&quot;);
+  try {
+    const req = new Request(FEED);
+    req.timeoutInterval = 15;
+    const doc = await req.loadJSON();
+    if (doc &amp;&amp; doc.lists) {
+      cache.writeString(cachePath, JSON.stringify(doc));
+      return doc;
+    }
+    throw new Error(&quot;bad payload&quot;);
+  } catch (e) {
+    // offline — fall back to the last good copy so the widget never goes blank
+    if (cache.fileExists(cachePath)) {
+      try { return JSON.parse(cache.readString(cachePath)); } catch (_) {}
+    }
+    return null;
+  }
+}
+
+function collectTasks(doc) {
+  const out = [];
+  for (const [key, label, tint] of [[&quot;personal&quot;, &quot;Personal&quot;, RED],
+                                    [&quot;business&quot;, &quot;Business&quot;, BLUE]]) {
+    for (const t of (doc.lists[key] || [])) {
+      if (t.done || t.deleted) continue;
+      out.push({ text: t.text, due: t.due || null, label, tint });
+    }
+  }
+  // dated first, soonest at the top; undated afterwards
+  out.sort((a, b) =&gt; {
+    if (a.due &amp;&amp; b.due) return a.due - b.due;
+    if (a.due) return -1;
+    if (b.due) return 1;
+    return 0;
+  });
+  return out;
+}
+
+// ── formatting ───────────────────────────────────────────────
+
+function sameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &amp;&amp;
+         a.getMonth() === b.getMonth() &amp;&amp;
+         a.getDate() === b.getDate();
+}
+
+function dueLabel(ts) {
+  if (!ts) return { text: &quot;&quot;, color: FAINT };
+  const now = new Date();
+  const d = new Date(ts);
+  const hhmm = d.toLocaleTimeString([], { hour: &quot;numeric&quot;, minute: &quot;2-digit&quot; });
+
+  if (d &lt; now) return { text: &quot;Overdue&quot;, color: RED };
+  if (sameDay(d, now)) return { text: hhmm, color: AMBER };
+
+  const tomorrow = new Date(now.getTime() + 86400000);
+  if (sameDay(d, tomorrow)) return { text: &quot;Tomorrow&quot;, color: SOFT };
+
+  const days = Math.ceil((d - now) / 86400000);
+  if (days &lt;= 6) {
+    return { text: d.toLocaleDateString([], { weekday: &quot;short&quot; }), color: SOFT };
+  }
+  return {
+    text: d.toLocaleDateString([], { day: &quot;numeric&quot;, month: &quot;short&quot; }),
+    color: SOFT
+  };
+}
+
+// ── widget ───────────────────────────────────────────────────
+
+function buildWidget(doc) {
+  const w = new ListWidget();
+  w.backgroundColor = PAPER;
+  w.setPadding(14, 14, 12, 14);
+  w.url = APP_URL;                     // tap the widget → opens the app
+  // ask iOS to refresh in ~15 minutes (it decides the real cadence)
+  w.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);
+
+  if (!doc) {
+    const t = w.addText(&quot;Can&#x27;t reach your list&quot;);
+    t.textColor = SOFT;
+    t.font = Font.systemFont(13);
+    return w;
+  }
+
+  const tasks = collectTasks(doc);
+  const personal = tasks.filter(t =&gt; t.label === &quot;Personal&quot;).length;
+  const business = tasks.length - personal;
+
+  // header ----------------------------------------------------
+  const head = w.addStack();
+  head.centerAlignContent();
+
+  const title = head.addText(&quot;My To Do List&quot;);
+  title.textColor = INK;
+  title.font = Font.semiboldSystemFont(size === &quot;small&quot; ? 12 : 13);
+
+  head.addSpacer();
+
+  const count = head.addText(String(tasks.length));
+  count.textColor = FAINT;
+  count.font = Font.semiboldSystemFont(size === &quot;small&quot; ? 12 : 13);
+
+  // hairline rule
+  const rule = w.addStack();
+  rule.backgroundColor = new Color(&quot;#d9d2c2&quot;);
+  rule.size = new Size(0, 1);
+  rule.addSpacer();
+  w.addSpacer(8);
+
+  // rows ------------------------------------------------------
+  if (tasks.length === 0) {
+    const t = w.addText(&quot;All clear 🎉&quot;);
+    t.textColor = SOFT;
+    t.font = Font.systemFont(13);
+  }
+
+  const shown = tasks.slice(0, ROWS);
+  for (let i = 0; i &lt; shown.length; i++) {
+    const task = shown[i];
+    const row = w.addStack();
+    row.centerAlignContent();
+
+    // coloured bar showing which list it belongs to
+    const bar = row.addStack();
+    bar.backgroundColor = task.tint;
+    bar.size = new Size(2.5, size === &quot;small&quot; ? 12 : 14);
+    bar.cornerRadius = 1.5;
+    bar.addSpacer();
+    row.addSpacer(7);
+
+    const label = row.addText(task.text);
+    label.textColor = INK;
+    label.font = Font.systemFont(size === &quot;small&quot; ? 11 : 12.5);
+    label.lineLimit = 1;
+    label.minimumScaleFactor = 0.85;
+
+    row.addSpacer(6);
+
+    const due = dueLabel(task.due);
+    if (due.text) {
+      const d = row.addText(due.text);
+      d.textColor = due.color;
+      d.font = Font.mediumSystemFont(size === &quot;small&quot; ? 10 : 11);
+      d.lineLimit = 1;
+    }
+
+    if (i &lt; shown.length - 1) w.addSpacer(size === &quot;small&quot; ? 5 : 7);
+  }
+
+  // footer ----------------------------------------------------
+  if (size !== &quot;small&quot;) {
+    w.addSpacer();
+    const foot = w.addStack();
+    foot.centerAlignContent();
+
+    const extra = tasks.length - shown.length;
+    const left = foot.addText(
+      extra &gt; 0 ? `+${extra} more` : `${personal} personal · ${business} business`
+    );
+    left.textColor = FAINT;
+    left.font = Font.systemFont(10);
+
+    foot.addSpacer();
+
+    const stamp = foot.addText(
+      new Date().toLocaleTimeString([], { hour: &quot;numeric&quot;, minute: &quot;2-digit&quot; })
+    );
+    stamp.textColor = FAINT;
+    stamp.font = Font.systemFont(10);
+  } else {
+    w.addSpacer();
+  }
+
+  return w;
+}
+
+// ── run ──────────────────────────────────────────────────────
+
+const doc = await loadLists();
+const widget = buildWidget(doc);
+
+if (config.runsInWidget) {
+  Script.setWidget(widget);
+} else {
+  // tapping Run inside Scriptable previews it
+  await widget.presentMedium();
+}
+Script.complete();
+</pre>
+    </details>
+  </div>
+</div>
+<script>
+  var SRC = "// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n//  My To Do List \u2014 iOS home screen widget\n//  Runs in Scriptable (free on the App Store).\n//  Reads the same live list the web app syncs to, so the widget\n//  always matches what you see on the phone and the Mac.\n//  Works in small / medium / large sizes.\n// \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nconst FEED = \"https://gist.githubusercontent.com/ahmedmohsen18/\" +\n  \"1f3e9c2d3186c395b62391c6b62f0358/raw/dia-todo.json\";\nconst APP_URL = \"https://ahmedmohsen18.github.io/my-todo-list/\";\n\n// paper palette, matching the web app\nconst PAPER  = new Color(\"#f7f3e9\");\nconst CARD   = new Color(\"#fffdf7\");\nconst INK    = new Color(\"#2b2620\");\nconst SOFT   = new Color(\"#6b6259\");\nconst FAINT  = new Color(\"#a89f93\");\nconst RED    = new Color(\"#c8553d\");   // Personal\nconst BLUE   = new Color(\"#3d6b8c\");   // Business\nconst AMBER  = new Color(\"#b3701f\");   // due today\n\nconst size = config.runsInWidget ? config.widgetFamily : \"medium\";\nconst ROWS = { small: 3, medium: 4, large: 9 }[size] || 4;\n\n// \u2500\u2500 data \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nasync function loadLists() {\n  const cache = FileManager.local();\n  const cachePath = cache.joinPath(cache.cacheDirectory(), \"todo-widget.json\");\n  try {\n    const req = new Request(FEED);\n    req.timeoutInterval = 15;\n    const doc = await req.loadJSON();\n    if (doc && doc.lists) {\n      cache.writeString(cachePath, JSON.stringify(doc));\n      return doc;\n    }\n    throw new Error(\"bad payload\");\n  } catch (e) {\n    // offline \u2014 fall back to the last good copy so the widget never goes blank\n    if (cache.fileExists(cachePath)) {\n      try { return JSON.parse(cache.readString(cachePath)); } catch (_) {}\n    }\n    return null;\n  }\n}\n\nfunction collectTasks(doc) {\n  const out = [];\n  for (const [key, label, tint] of [[\"personal\", \"Personal\", RED],\n                                    [\"business\", \"Business\", BLUE]]) {\n    for (const t of (doc.lists[key] || [])) {\n      if (t.done || t.deleted) continue;\n      out.push({ text: t.text, due: t.due || null, label, tint });\n    }\n  }\n  // dated first, soonest at the top; undated afterwards\n  out.sort((a, b) => {\n    if (a.due && b.due) return a.due - b.due;\n    if (a.due) return -1;\n    if (b.due) return 1;\n    return 0;\n  });\n  return out;\n}\n\n// \u2500\u2500 formatting \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nfunction sameDay(a, b) {\n  return a.getFullYear() === b.getFullYear() &&\n         a.getMonth() === b.getMonth() &&\n         a.getDate() === b.getDate();\n}\n\nfunction dueLabel(ts) {\n  if (!ts) return { text: \"\", color: FAINT };\n  const now = new Date();\n  const d = new Date(ts);\n  const hhmm = d.toLocaleTimeString([], { hour: \"numeric\", minute: \"2-digit\" });\n\n  if (d < now) return { text: \"Overdue\", color: RED };\n  if (sameDay(d, now)) return { text: hhmm, color: AMBER };\n\n  const tomorrow = new Date(now.getTime() + 86400000);\n  if (sameDay(d, tomorrow)) return { text: \"Tomorrow\", color: SOFT };\n\n  const days = Math.ceil((d - now) / 86400000);\n  if (days <= 6) {\n    return { text: d.toLocaleDateString([], { weekday: \"short\" }), color: SOFT };\n  }\n  return {\n    text: d.toLocaleDateString([], { day: \"numeric\", month: \"short\" }),\n    color: SOFT\n  };\n}\n\n// \u2500\u2500 widget \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nfunction buildWidget(doc) {\n  const w = new ListWidget();\n  w.backgroundColor = PAPER;\n  w.setPadding(14, 14, 12, 14);\n  w.url = APP_URL;                     // tap the widget \u2192 opens the app\n  // ask iOS to refresh in ~15 minutes (it decides the real cadence)\n  w.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);\n\n  if (!doc) {\n    const t = w.addText(\"Can't reach your list\");\n    t.textColor = SOFT;\n    t.font = Font.systemFont(13);\n    return w;\n  }\n\n  const tasks = collectTasks(doc);\n  const personal = tasks.filter(t => t.label === \"Personal\").length;\n  const business = tasks.length - personal;\n\n  // header ----------------------------------------------------\n  const head = w.addStack();\n  head.centerAlignContent();\n\n  const title = head.addText(\"My To Do List\");\n  title.textColor = INK;\n  title.font = Font.semiboldSystemFont(size === \"small\" ? 12 : 13);\n\n  head.addSpacer();\n\n  const count = head.addText(String(tasks.length));\n  count.textColor = FAINT;\n  count.font = Font.semiboldSystemFont(size === \"small\" ? 12 : 13);\n\n  // hairline rule\n  const rule = w.addStack();\n  rule.backgroundColor = new Color(\"#d9d2c2\");\n  rule.size = new Size(0, 1);\n  rule.addSpacer();\n  w.addSpacer(8);\n\n  // rows ------------------------------------------------------\n  if (tasks.length === 0) {\n    const t = w.addText(\"All clear \ud83c\udf89\");\n    t.textColor = SOFT;\n    t.font = Font.systemFont(13);\n  }\n\n  const shown = tasks.slice(0, ROWS);\n  for (let i = 0; i < shown.length; i++) {\n    const task = shown[i];\n    const row = w.addStack();\n    row.centerAlignContent();\n\n    // coloured bar showing which list it belongs to\n    const bar = row.addStack();\n    bar.backgroundColor = task.tint;\n    bar.size = new Size(2.5, size === \"small\" ? 12 : 14);\n    bar.cornerRadius = 1.5;\n    bar.addSpacer();\n    row.addSpacer(7);\n\n    const label = row.addText(task.text);\n    label.textColor = INK;\n    label.font = Font.systemFont(size === \"small\" ? 11 : 12.5);\n    label.lineLimit = 1;\n    label.minimumScaleFactor = 0.85;\n\n    row.addSpacer(6);\n\n    const due = dueLabel(task.due);\n    if (due.text) {\n      const d = row.addText(due.text);\n      d.textColor = due.color;\n      d.font = Font.mediumSystemFont(size === \"small\" ? 10 : 11);\n      d.lineLimit = 1;\n    }\n\n    if (i < shown.length - 1) w.addSpacer(size === \"small\" ? 5 : 7);\n  }\n\n  // footer ----------------------------------------------------\n  if (size !== \"small\") {\n    w.addSpacer();\n    const foot = w.addStack();\n    foot.centerAlignContent();\n\n    const extra = tasks.length - shown.length;\n    const left = foot.addText(\n      extra > 0 ? `+${extra} more` : `${personal} personal \u00b7 ${business} business`\n    );\n    left.textColor = FAINT;\n    left.font = Font.systemFont(10);\n\n    foot.addSpacer();\n\n    const stamp = foot.addText(\n      new Date().toLocaleTimeString([], { hour: \"numeric\", minute: \"2-digit\" })\n    );\n    stamp.textColor = FAINT;\n    stamp.font = Font.systemFont(10);\n  } else {\n    w.addSpacer();\n  }\n\n  return w;\n}\n\n// \u2500\u2500 run \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\nconst doc = await loadLists();\nconst widget = buildWidget(doc);\n\nif (config.runsInWidget) {\n  Script.setWidget(widget);\n} else {\n  // tapping Run inside Scriptable previews it\n  await widget.presentMedium();\n}\nScript.complete();\n";
+  document.getElementById('code').textContent = SRC;
+  document.getElementById('copy').addEventListener('click', function () {
+    var btn = this;
+    function ok(){ btn.textContent = '\u2713 Copied — now paste into Scriptable'; btn.classList.add('done'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(SRC).then(ok, fallback);
+    } else { fallback(); }
+    function fallback(){
+      var ta = document.createElement('textarea');
+      ta.value = SRC; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); ok(); }
+      catch(e){ btn.textContent = 'Open "Show the code" and copy manually'; }
+      document.body.removeChild(ta);
+    }
+  });
+</script>
+</body>
+</html>
