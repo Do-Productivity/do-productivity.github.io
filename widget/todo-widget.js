@@ -221,7 +221,10 @@ function build({ doc, live }) {
   const pad = size === "large" ? 18 : size === "small" ? 10 : 13;
   w.setPadding(pad, pad, pad * 0.8, pad);
   w.url = APP_URL;
-  w.refreshAfterDate = new Date(Date.now() + 10 * 60 * 1000);
+  // iOS decides the real cadence from a limited daily budget; this is only a
+  // hint. Asking for 2 minutes gets us refreshed as often as the system will
+  // allow (realistically every 5-15 min), rather than capping ourselves at 10.
+  w.refreshAfterDate = new Date(Date.now() + 2 * 60 * 1000);
 
   if (!doc) {
     const t = w.addText("Can't reach your list");
