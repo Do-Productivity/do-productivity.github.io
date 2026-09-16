@@ -34,10 +34,25 @@ const param = (args.widgetParameter || "").trim().toLowerCase();
 const which = LISTS[param] ? [LISTS[param]] : [LISTS.personal, LISTS.business];
 const bothLists = which.length === 2;
 
-// how many rows fit
-const ROWS = bothLists
-  ? ({ small: 2, medium: 3, large: 6 }[size] || 3)      // per list
-  : ({ small: 3, medium: 5, large: 12 }[size] || 5);
+// Type scale per widget size. A large widget is roughly 2.5x the height of a
+// medium one, so it needs genuinely larger type — not medium's sizes stretched.
+const SCALE = {
+  small:  { title: 15, sub: 8,  text: 11.5, due: 10,   circle: 11, gap: 5,  foot: 9,
+            rows: { both: 3, one: 5 } },
+  medium: { title: 19, sub: 9,  text: 14,   due: 11.5, circle: 13, gap: 7,  foot: 10,
+            rows: { both: 4, one: 6 } },
+  large:  { title: 27, sub: 12, text: 19,   due: 15,   circle: 18, gap: 13, foot: 12,
+            rows: { both: 9, one: 15 } }
+};
+const S = Object.assign({}, SCALE[size] || SCALE.medium);
+
+// two cards side by side get slightly tighter type so the text still fits
+if (bothLists) {
+  const k = size === "large" ? 0.82 : 0.86;
+  for (const f of ["title", "sub", "text", "due", "circle"]) S[f] = S[f] * k;
+  S.gap = S.gap * 0.85;
+}
+const ROWS = bothLists ? S.rows.both : S.rows.one;
 
 // ── data ─────────────────────────────────────────────────────
 
@@ -120,39 +135,39 @@ function hairline(container) {
   line.addSpacer();
 }
 
-function drawCard(container, list, tasks, compact) {
+function drawCard(container, list, tasks, showSub) {
   // heading: "Personal." with the coloured full stop, like the app
   const head = container.addStack();
   head.bottomAlignContent();
 
   const t = head.addText(list.title);
   t.textColor = INK;
-  t.font = serif(compact ? 14 : 17, true);
+  t.font = serif(S.title, true);
 
   const dot = head.addText(".");
   dot.textColor = list.tint;
-  dot.font = serif(compact ? 14 : 17, true);
+  dot.font = serif(S.title, true);
 
   head.addSpacer();
 
   const n = head.addText(String(tasks.length));
   n.textColor = FAINT;
-  n.font = Font.semiboldSystemFont(compact ? 10 : 12);
+  n.font = Font.semiboldSystemFont(S.sub + 3);
 
-  if (!compact) {
+  if (showSub) {
     const sub = container.addText(list.sub);
     sub.textColor = FAINT;
-    sub.font = Font.semiboldSystemFont(8);
+    sub.font = Font.semiboldSystemFont(S.sub);
   }
 
-  container.addSpacer(5);
+  container.addSpacer(S.gap * 0.7);
   hairline(container);
-  container.addSpacer(6);
+  container.addSpacer(S.gap);
 
   if (tasks.length === 0) {
     const e = container.addText("Nothing here yet.");
     e.textColor = FAINT;
-    e.font = Font.italicSystemFont(compact ? 10 : 11);
+    e.font = Font.italicSystemFont(S.text * 0.9);
     return;
   }
 
@@ -165,12 +180,12 @@ function drawCard(container, list, tasks, compact) {
     // open circle, as on the dashboard
     const circle = row.addText("○");
     circle.textColor = list.tint;
-    circle.font = Font.systemFont(compact ? 10 : 12);
-    row.addSpacer(5);
+    circle.font = Font.systemFont(S.circle);
+    row.addSpacer(S.circle * 0.45);
 
     const label = row.addText(task.text);
     label.textColor = INK;
-    label.font = Font.systemFont(compact ? 10.5 : 12);
+    label.font = Font.systemFont(S.text);
     label.lineLimit = 1;
     label.minimumScaleFactor = 0.8;
 
@@ -181,12 +196,12 @@ function drawCard(container, list, tasks, compact) {
       const d = row.addText(due.text);
       d.textColor = due.color;
       d.font = due.bold
-        ? Font.semiboldSystemFont(compact ? 9 : 10)
-        : Font.systemFont(compact ? 9 : 10);
+        ? Font.semiboldSystemFont(S.due)
+        : Font.systemFont(S.due);
       d.lineLimit = 1;
     }
 
-    if (i < shown.length - 1) container.addSpacer(compact ? 4 : 6);
+    if (i < shown.length - 1) container.addSpacer(S.gap);
   }
 
   const extra = tasks.length - shown.length;
@@ -194,7 +209,7 @@ function drawCard(container, list, tasks, compact) {
     container.addSpacer(4);
     const more = container.addText(`+${extra} more`);
     more.textColor = FAINT;
-    more.font = Font.systemFont(compact ? 8.5 : 9.5);
+    more.font = Font.systemFont(S.due);
   }
 }
 
@@ -203,7 +218,8 @@ function drawCard(container, list, tasks, compact) {
 function build({ doc, live }) {
   const w = new ListWidget();
   w.backgroundColor = PAPER;
-  w.setPadding(12, 13, 10, 13);
+  const pad = size === "large" ? 18 : size === "small" ? 10 : 13;
+  w.setPadding(pad, pad, pad * 0.8, pad);
   w.url = APP_URL;
   w.refreshAfterDate = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -223,7 +239,7 @@ function build({ doc, live }) {
     which.forEach((list, idx) => {
       const col = cols.addStack();
       col.layoutVertically();
-      drawCard(col, list, activeTasks(doc, list.key), true);
+      drawCard(col, list, activeTasks(doc, list.key), size === "large");
       if (idx === 0) {
         cols.addSpacer(10);
         const sep = cols.addStack();
@@ -236,7 +252,7 @@ function build({ doc, live }) {
   } else {
     const col = w.addStack();
     col.layoutVertically();
-    drawCard(col, which[0], activeTasks(doc, which[0].key), false);
+    drawCard(col, which[0], activeTasks(doc, which[0].key), true);
   }
 
   // footer: freshness, so a stale widget is obvious
@@ -248,7 +264,7 @@ function build({ doc, live }) {
     new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
   );
   stamp.textColor = FAINT;
-  stamp.font = Font.systemFont(8.5);
+  stamp.font = Font.systemFont(S.foot);
   foot.addSpacer();
 
   return w;
