@@ -12,6 +12,7 @@ import argparse
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 from datetime import datetime, timedelta
 
@@ -43,10 +44,30 @@ def parse_events(ics):
     return events
 
 
-def osa(script):
+def ensure_calendar_running():
+    """Under launchd the Calendar app is usually closed, and AppleScript then
+    fails with -600 ("Application isn't running"). `launch` starts it in the
+    background without stealing focus, unlike `activate`."""
+    # AppleScript's own `launch` also fails with -600 when the app is closed,
+    # so start it from the shell. -g keeps it behind other windows, -j hides it.
+    subprocess.run(["open", "-gj", "-a", "Calendar"], capture_output=True, text=True)
+    for _ in range(10):                     # wait for it to accept events
+        time.sleep(1)
+        probe = subprocess.run(
+            ["osascript", "-e", 'tell application "Calendar" to count calendars'],
+            capture_output=True, text=True)
+        if probe.returncode == 0:
+            return
+
+
+def osa(script, _retried=False):
     p = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if p.returncode != 0:
-        raise RuntimeError(p.stderr.strip())
+        err = p.stderr.strip()
+        if not _retried and "-600" in err:
+            ensure_calendar_running()
+            return osa(script, _retried=True)
+        raise RuntimeError(err)
     return p.stdout.strip()
 
 
@@ -132,6 +153,8 @@ def main():
         have = existing_events(args.calendar)
     except RuntimeError as e:
         print(f"could not read calendar {args.calendar!r}: {e}", file=sys.stderr)
+        print("hint: open Calendar.app once, or check Automation permission for "
+              "osascript under System Settings > Privacy & Security", file=sys.stderr)
         return 1
     print(f"calendar {args.calendar!r} has {len(have)} event(s)")
 
