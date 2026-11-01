@@ -142,12 +142,25 @@ def main():
                     help="don't remove events that left the feed (completed tasks)")
     args = ap.parse_args()
 
-    wanted = parse_events(fetch_feed(args.feed))
-    print(f"feed has {len(wanted)} event(s)")
-    if not wanted:
-        # never let a parse failure or an outage empty the calendar
-        print("refusing to continue: feed returned no events", file=sys.stderr)
+    try:
+        raw = fetch_feed(args.feed)
+    except Exception as e:
+        print(f"feed unreachable: {e}", file=sys.stderr)
         return 1
+
+    # A valid calendar with no events is normal (everything is done, or nothing
+    # is dated) and should prune. Only refuse when the payload is NOT a calendar
+    # at all, which is what an outage or an error page looks like.
+    # Must *start* with the VCALENDAR header — a substring check is not enough,
+    # because the app's own HTML page contains "BEGIN:VCALENDAR" in its JS and
+    # would sail through, letting an error page wipe the calendar.
+    if not raw.lstrip("\ufeff \t\r\n").startswith("BEGIN:VCALENDAR"):
+        print("refusing to continue: response is not a calendar feed "
+              f"(starts with {raw.lstrip()[:40]!r})", file=sys.stderr)
+        return 1
+
+    wanted = parse_events(raw)
+    print(f"feed has {len(wanted)} event(s)")
 
     try:
         have = existing_events(args.calendar)
