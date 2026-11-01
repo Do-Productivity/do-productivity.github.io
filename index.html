@@ -682,9 +682,10 @@
     .panel-footer { margin-top: auto; }
   }
 
-  /* Narrow phones: stop the toolbar wrapping onto a second line, which ate a
-     whole row of vertical space on anything under ~380px. */
-  @media (max-width: 400px) {
+  /* All portrait phones: stop the toolbar wrapping onto a second line, which
+     ate a whole row of vertical space. 440px covers every iPhone in portrait —
+     a 400px cutoff missed the 402px iPhone 16 Pro by two pixels. */
+  @media (max-width: 440px) {
     .toolbar { flex-wrap: nowrap; gap: 5px; }
     .toolbar h1 { font-size: 0; letter-spacing: 0; }
     .toolbar h1::after {
