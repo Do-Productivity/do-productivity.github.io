@@ -662,6 +662,47 @@
     .completed-toggle { font-size: 10px; letter-spacing: 1.5px; gap: 6px; padding: 11px 0; }
     .completed-toggle .count-badge { font-size: 10px; padding: 2px 8px; }
     .panel-footer, .clear-completed { font-size: 11px; }
+
+    /* Fill the screen: the card stretches to the bottom of the viewport so the
+       list uses the whole phone instead of floating in the top half, and the
+       footer sits where the thumb is. 100dvh accounts for Safari's bars. */
+    html, body { height: 100%; }
+    .layout {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .panels { flex: 1; min-height: 0; }
+    .panel { display: flex; flex-direction: column; height: 100%; }
+    .task-list { flex: 1; }
+    .completed-section.trash { margin-top: 0; }
+    /* keep the add row reachable and the footer pinned to the bottom edge */
+    .panel-footer { margin-top: auto; }
+  }
+
+  /* Narrow phones: stop the toolbar wrapping onto a second line, which ate a
+     whole row of vertical space on anything under ~380px. */
+  @media (max-width: 400px) {
+    .toolbar { flex-wrap: nowrap; gap: 5px; }
+    .toolbar h1 { font-size: 0; letter-spacing: 0; }
+    .toolbar h1::after {
+      content: "LISTS";
+      font-size: 10px;
+      letter-spacing: 1.5px;
+    }
+    .toolbar-btn { padding: 8px 7px; font-size: 8.5px; letter-spacing: 0.3px; }
+    .layout { padding-left: max(6px, env(safe-area-inset-left, 0px));
+              padding-right: max(6px, env(safe-area-inset-right, 0px)); }
+    .panel { padding: 15px 12px 8px; }
+    .mobile-tab { font-size: 16px; padding: 10px 6px 8px; }
+  }
+
+  /* Landscape / short screens: don't force a full-height card that pushes the
+     list below the fold. */
+  @media (max-width: 720px) and (max-height: 500px) {
+    .layout { min-height: 0; display: block; }
+    .panel { height: auto; }
   }
 
   /* Touch screens: no hover, so keep row buttons visible */
