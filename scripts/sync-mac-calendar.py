@@ -120,14 +120,19 @@ def remove_event(calendar, summary, dry_run=False):
     if dry_run:
         print(f"  [dry-run] would remove: {summary}")
         return
+    # Deleting while iterating `every event ... whose` invalidates the list
+    # mid-loop (-1728). Re-query and always delete item 1 instead.
     osa(f'''
 tell application "Calendar"
+  set cal to missing value
   repeat with c in calendars
-    if name of c is "{calendar}" then
-      repeat with e in (every event of c whose summary is "{safe}")
-        delete e
-      end repeat
-    end if
+    if name of c is "{calendar}" then set cal to c
+  end repeat
+  if cal is missing value then return
+  repeat 50 times
+    set matches to (every event of cal whose summary is "{safe}")
+    if (count of matches) is 0 then exit repeat
+    delete (item 1 of matches)
   end repeat
 end tell''')
     print(f"  removed: {summary}")
