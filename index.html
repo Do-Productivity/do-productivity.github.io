@@ -713,7 +713,10 @@
       padding-right: max(20px, env(safe-area-inset-right, 0px));
     }
     .panels { flex: 1; min-height: 0; align-items: stretch; gap: 20px; }
-    .panel { display: flex; flex-direction: column; }
+    /* grid items default to min-width:auto, so the date input's intrinsic
+       width pushed the columns wider than their track and overflowed */
+    .panel { display: flex; flex-direction: column; min-width: 0; }
+    .add-input, .due-input { min-width: 0; }
     .task-list { flex: 1; }
     .panel-footer { margin-top: auto; }
 
