@@ -673,7 +673,8 @@
       display: flex;
       flex-direction: column;
     }
-    .panels { flex: 1; min-height: 0; }
+    /* base rule sets align-items:start, which stops the card stretching */
+    .panels { flex: 1; min-height: 0; align-items: stretch; }
     .panel { display: flex; flex-direction: column; height: 100%; }
     .task-list { flex: 1; }
     .completed-section.trash { margin-top: 0; }
