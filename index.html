@@ -23,6 +23,8 @@
     --red-soft: #e8d5cf;
     --blue: #3d6b8c;
     --blue-soft: #d3dee6;
+    --green: #4a8a5c;
+    --green-soft: #dfeadf;
     --serif: "Iowan Old Style", ui-serif, "Palatino Linotype", Palatino, Georgia, serif;
     --sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
@@ -145,7 +147,7 @@
   /* ── Panels ──────────────────────────────── */
   .panels {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 28px;
     align-items: start;
   }
@@ -412,6 +414,160 @@
     padding: 26px 2px;
   }
 
+  /* ── Notes ───────────────────────────────── */
+  .panel.notes { border-top-color: var(--green); }
+  .panel.notes .dot { color: var(--green); }
+
+  .note-compose { margin-bottom: 10px; }
+  .note-input {
+    width: 100%;
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--card);
+    border: 1.5px solid var(--rule);
+    border-radius: 4px;
+    padding: 10px 12px;
+    outline: none;
+    resize: vertical;
+    min-height: 62px;
+    transition: border-color 0.15s;
+  }
+  .note-input:focus { border-color: var(--green); }
+  .note-input::placeholder { color: var(--ink-faint); font-style: italic; }
+
+  .note-compose-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 7px;
+  }
+  .note-link-select {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 8px 9px;
+    outline: none;
+  }
+  .note-add-btn {
+    flex: none;
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--green);
+    border: none;
+    border-radius: 4px;
+    padding: 9px 16px;
+    cursor: pointer;
+  }
+  .note-add-btn:hover { filter: brightness(1.08); }
+
+  .note-list { list-style: none; flex: 1; }
+  .note-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 2px;
+    border-bottom: 1px solid var(--rule);
+    animation: slide-in 0.25s ease;
+  }
+  .note-body { flex: 1; min-width: 0; }
+  .note-text {
+    font-size: 15px;
+    line-height: 1.5;
+    cursor: text;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .note-edit {
+    width: 100%;
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 6px 8px;
+    outline: none;
+    resize: vertical;
+    min-height: 60px;
+  }
+  .note-foot {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+  }
+  .note-chip {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 2px 9px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .note-chip.personal { background: var(--red-soft); color: var(--red); }
+  .note-chip.business { background: var(--blue-soft); color: var(--blue); }
+  .note-chip.gone { background: #eae4d7; color: var(--ink-faint); }
+  .note-date {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+  }
+
+  /* filter bar shown when you arrive from a task's note badge */
+  .note-filter {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 7px 10px;
+    margin-bottom: 9px;
+    font-family: var(--sans);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .note-filter.on { display: flex; }
+  .note-filter button {
+    margin-left: auto;
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* note count badge on a task row */
+  .task-notebtn {
+    flex: none;
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--green);
+    background: #dfeadf;
+    border: none;
+    border-radius: 10px;
+    padding: 2px 7px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
   /* ── Completed drawer ────────────────────── */
   .completed-section { margin-top: 14px; }
   .completed-toggle {
@@ -632,8 +788,17 @@
     /* One full-width list at a time, picked from the tabs */
     .mobile-tabs { display: flex; }
     .panels { grid-template-columns: 1fr; }
-    .panels.show-personal .panel.business { display: none; }
-    .panels.show-business .panel.personal { display: none; }
+    .panels.show-personal .panel.business,
+    .panels.show-personal .panel.notes,
+    .panels.show-business .panel.personal,
+    .panels.show-business .panel.notes,
+    .panels.show-notes .panel.personal,
+    .panels.show-notes .panel.business { display: none; }
+    .mobile-tab { font-size: 15px; padding: 11px 4px 9px; }
+    .tab-count { font-size: 9px; padding: 2px 5px; margin-left: 3px; }
+    .note-text, .note-input, .note-edit { font-family: var(--sans); font-size: 15px; }
+    .note-input, .note-edit { font-size: 16px; }   /* no iOS zoom-jump */
+    .note-link-select { font-size: 16px; }
     .panel {
       padding: 18px 16px 10px;
       min-height: 0;
@@ -713,7 +878,10 @@
       padding-left: max(20px, env(safe-area-inset-left, 0px));
       padding-right: max(20px, env(safe-area-inset-right, 0px));
     }
-    .panels { flex: 1; min-height: 0; align-items: stretch; gap: 20px; }
+    .panels { flex: 1; min-height: 0; align-items: stretch; gap: 20px;
+              grid-template-columns: 1fr 1fr; }
+    /* three narrow columns are unreadable here — give Notes its own row */
+    .panel.notes { grid-column: 1 / -1; }
     /* grid items default to min-width:auto, so the date input's intrinsic
        width pushed the columns wider than their track and overflowed */
     .panel { display: flex; flex-direction: column; min-width: 0; }
@@ -765,6 +933,7 @@
   <div class="mobile-tabs" id="mobile-tabs">
     <button class="mobile-tab personal" id="tab-personal">Personal<span class="dot">.</span><span class="tab-count" id="tab-count-personal">0</span></button>
     <button class="mobile-tab business" id="tab-business">Business<span class="dot">.</span><span class="tab-count" id="tab-count-business">0</span></button>
+    <button class="mobile-tab notes" id="tab-notes">Notes<span class="dot">.</span><span class="tab-count" id="tab-count-notes">0</span></button>
   </div>
 
   <div class="panels" id="panels"></div>
@@ -1408,6 +1577,13 @@
       row.appendChild(body);
 
       var actions = el("div", "task-actions");
+      var noteCount = notesForTask(task.id).length;
+      if (noteCount > 0) {
+        var nb = el("button", "task-notebtn", "\uD83D\uDCDD " + noteCount);
+        nb.title = noteCount === 1 ? "1 note on this task" : noteCount + " notes on this task";
+        nb.addEventListener("click", function () { showNotesForTask(task.id); });
+        actions.appendChild(nb);
+      }
       if (!task.done && !task.deleted) {
         var dateBtn = el("button", "task-datebtn", "📅");
         dateBtn.title = task.due ? "Change due date" : "Set due date & reminder";
@@ -1544,6 +1720,8 @@
       tasks = loadTasks(config.storageKey);
       render();
     });
+    // note badges live on task rows, so redraw when notes change
+    taskBadgeRefreshers.push(render);
 
     // Used right after Outlook is connected: mirror every dated task up
     panelSyncers.push(function () {
@@ -1556,25 +1734,297 @@
     return panel;
   }
 
+  // ── Notes ────────────────────────────────────────────────
+  // Free-form notes, each optionally attached to an open task. Same id + mt
+  // shape as tasks so the existing merge logic syncs them unchanged.
+
+  var NOTES_KEY = "dia_todo_notes_v1";
+  var noteReloaders = [];
+  var taskBadgeRefreshers = [];
+  var noteFilterTaskId = null;
+
+  function normalizeNotes(parsed) {
+    if (!Array.isArray(parsed)) return [];
+    var purgeBefore = Date.now() - 30 * 24 * 3600 * 1000;
+    return parsed.filter(function (n) {
+      return n && typeof n.text === "string";
+    }).map(function (n) {
+      var note = { text: n.text };
+      note.id = (typeof n.id === "string" && n.id) ? n.id : "n" + textHash(n.text);
+      note.created = typeof n.created === "number" ? n.created : Date.now();
+      if (typeof n.taskId === "string" && n.taskId) note.taskId = n.taskId;
+      if (typeof n.mt === "number") note.mt = n.mt;
+      if (n.deleted) {
+        note.deleted = true;
+        if (typeof n.deletedAt === "number") note.deletedAt = n.deletedAt;
+      }
+      return note;
+    }).filter(function (n) {
+      return !(n.deleted && n.deletedAt && n.deletedAt < purgeBefore);
+    });
+  }
+
+  function loadNotes() {
+    try { return normalizeNotes(JSON.parse(localStorage.getItem(NOTES_KEY))); }
+    catch (e) { return []; }
+  }
+
+  function persistNotes(notes) {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    scheduleSyncPush();
+  }
+
+  function liveNotes() {
+    return loadNotes().filter(function (n) { return !n.deleted; });
+  }
+
+  function notesForTask(taskId) {
+    if (!taskId) return [];
+    return liveNotes().filter(function (n) { return n.taskId === taskId; });
+  }
+
+  // every open task across both lists, for the "link to" picker
+  function openTasks() {
+    var out = [];
+    [["dia_todo_personal_v1", "personal", "Personal"],
+     ["dia_todo_business_v1", "business", "Business"]].forEach(function (cfg) {
+      loadTasks(cfg[0]).forEach(function (t) {
+        if (!t.done && !t.deleted) {
+          out.push({ id: t.id, text: t.text, list: cfg[1], title: cfg[2] });
+        }
+      });
+    });
+    return out;
+  }
+
+  function taskById(id) {
+    var found = null;
+    openTasks().forEach(function (t) { if (t.id === id) found = t; });
+    return found;
+  }
+
+  function refreshNotesUI() {
+    noteReloaders.forEach(function (fn) { fn(); });
+    taskBadgeRefreshers.forEach(function (fn) { fn(); });
+  }
+
+  // jump to Notes filtered to one task (used by the badge on a task row)
+  function showNotesForTask(taskId) {
+    noteFilterTaskId = taskId;
+    if (window.matchMedia("(max-width: 720px)").matches) setMobileTab("notes");
+    refreshNotesUI();
+    var panel = document.querySelector(".panel.notes");
+    if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function createNotesPanel() {
+    var panel = el("section", "panel notes");
+
+    var header = el("div", "panel-header");
+    var title = el("h2", "panel-title", "Notes");
+    title.appendChild(el("span", "dot", "."));
+    header.appendChild(title);
+    header.appendChild(el("div", "panel-subtitle", "CONTEXT & DETAIL"));
+    header.appendChild(el("div", "divider"));
+    panel.appendChild(header);
+
+    var filter = el("div", "note-filter");
+    var filterLabel = el("span", null, "");
+    var filterClear = el("button", null, "Show all notes");
+    filter.appendChild(filterLabel);
+    filter.appendChild(filterClear);
+    panel.appendChild(filter);
+
+    var compose = el("div", "note-compose");
+    var input = el("textarea", "note-input");
+    input.placeholder = "Write a note…";
+    input.rows = 2;
+    compose.appendChild(input);
+    var composeRow = el("div", "note-compose-row");
+    var select = el("select", "note-link-select");
+    var addBtn = el("button", "note-add-btn", "Add");
+    composeRow.appendChild(select);
+    composeRow.appendChild(addBtn);
+    compose.appendChild(composeRow);
+    panel.appendChild(compose);
+
+    var list = el("ul", "note-list");
+    panel.appendChild(list);
+
+    var footer = el("div", "panel-footer");
+    var countLabel = el("span", null, "0 notes");
+    footer.appendChild(countLabel);
+    panel.appendChild(footer);
+
+    function fillSelect(keepValue) {
+      var prev = keepValue !== undefined ? keepValue : select.value;
+      select.textContent = "";
+      var none = el("option", null, "Not linked to a task");
+      none.value = "";
+      select.appendChild(none);
+      openTasks().forEach(function (t) {
+        var opt = el("option", null, t.title + " — " + t.text.slice(0, 48));
+        opt.value = t.id;
+        select.appendChild(opt);
+      });
+      if (prev) select.value = prev;
+    }
+
+    function startEdit(note, textNode) {
+      var box = el("textarea", "note-edit");
+      box.value = note.text;
+      var finished = false;
+      function commit() {
+        if (finished) return;
+        finished = true;
+        var value = box.value.trim();
+        if (value && value !== note.text) {
+          var all = loadNotes();
+          all.forEach(function (n) {
+            if (n.id === note.id) { n.text = value; n.mt = Date.now(); }
+          });
+          persistNotes(all);
+        }
+        refreshNotesUI();
+      }
+      box.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") { finished = true; refreshNotesUI(); }
+      });
+      box.addEventListener("blur", commit);
+      textNode.replaceWith(box);
+      box.focus();
+      box.setSelectionRange(box.value.length, box.value.length);
+    }
+
+    function render() {
+      fillSelect();
+
+      var notes = liveNotes().sort(function (a, b) {
+        return (b.mt || b.created || 0) - (a.mt || a.created || 0);
+      });
+
+      if (noteFilterTaskId) {
+        var t = taskById(noteFilterTaskId);
+        filter.classList.add("on");
+        filterLabel.textContent = "Notes on: " + (t ? t.text.slice(0, 40) : "(task is gone)");
+        notes = notes.filter(function (n) { return n.taskId === noteFilterTaskId; });
+      } else {
+        filter.classList.remove("on");
+      }
+
+      list.textContent = "";
+      if (notes.length === 0) {
+        list.appendChild(el("li", "empty-state",
+          noteFilterTaskId ? "No notes on this task yet."
+                           : "Nothing written down yet. Add a note above."));
+      }
+
+      notes.forEach(function (note) {
+        var row = el("li", "note-row");
+        var body = el("div", "note-body");
+
+        var textNode = el("div", "note-text", note.text);
+        textNode.title = "Click to edit";
+        textNode.addEventListener("click", function () { startEdit(note, textNode); });
+        body.appendChild(textNode);
+
+        var foot = el("div", "note-foot");
+        if (note.taskId) {
+          var linked = taskById(note.taskId);
+          var chip = el("span", "note-chip " + (linked ? linked.list : "gone"),
+            linked ? linked.text.slice(0, 34) : "task closed or removed");
+          if (linked) {
+            chip.title = "Show only this task's notes";
+            chip.addEventListener("click", function () { showNotesForTask(note.taskId); });
+          }
+          foot.appendChild(chip);
+        }
+        foot.appendChild(el("span", "note-date", formatDateTime(note.created)));
+        body.appendChild(foot);
+        row.appendChild(body);
+
+        var del = el("button", "task-delete", "×");
+        del.title = "Delete note";
+        del.addEventListener("click", function () {
+          var all = loadNotes();
+          all.forEach(function (n) {
+            if (n.id === note.id) {
+              n.deleted = true;
+              n.deletedAt = Date.now();
+              n.mt = Date.now();
+            }
+          });
+          persistNotes(all);
+          refreshNotesUI();
+        });
+        row.appendChild(del);
+
+        list.appendChild(row);
+      });
+
+      var total = liveNotes().length;
+      countLabel.textContent = total + (total === 1 ? " note" : " notes");
+      var tabCount = document.getElementById("tab-count-notes");
+      if (tabCount) tabCount.textContent = String(total);
+    }
+
+    function addNote() {
+      var text = input.value.trim();
+      if (!text) { input.focus(); return; }
+      var all = loadNotes();
+      var now = Date.now();
+      all.push({
+        text: text,
+        id: "n" + now.toString(36) + Math.random().toString(36).slice(2, 6),
+        created: now,
+        mt: now,
+        taskId: select.value || undefined
+      });
+      persistNotes(all);
+      input.value = "";
+      refreshNotesUI();
+      input.focus();
+    }
+
+    addBtn.addEventListener("click", addNote);
+    input.addEventListener("keydown", function (e) {
+      // Cmd/Ctrl+Enter adds, plain Enter keeps writing
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNote();
+    });
+    filterClear.addEventListener("click", function () {
+      noteFilterTaskId = null;
+      refreshNotesUI();
+    });
+
+    noteReloaders.push(render);
+    render();
+    return panel;
+  }
+
   var panelReloaders = [];
   var panelSyncers = [];
   var panelsRoot = document.getElementById("panels");
   PANELS.forEach(function (config) {
     panelsRoot.appendChild(createPanel(config));
   });
+  panelsRoot.appendChild(createNotesPanel());
 
   // Mobile tab switcher — remembers the last list you were on
   var MTAB_KEY = "dia_todo_mtab_v1";
   function setMobileTab(id) {
     panelsRoot.className = "panels show-" + id;
-    ["personal", "business"].forEach(function (t) {
+    ["personal", "business", "notes"].forEach(function (t) {
       document.getElementById("tab-" + t).classList.toggle("active", t === id);
     });
     localStorage.setItem(MTAB_KEY, id);
   }
   document.getElementById("tab-personal").addEventListener("click", function () { setMobileTab("personal"); });
   document.getElementById("tab-business").addEventListener("click", function () { setMobileTab("business"); });
-  setMobileTab(localStorage.getItem(MTAB_KEY) === "business" ? "business" : "personal");
+  document.getElementById("tab-notes").addEventListener("click", function () { setMobileTab("notes"); });
+  (function () {
+    var saved = localStorage.getItem(MTAB_KEY);
+    setMobileTab(saved === "business" || saved === "notes" ? saved : "personal");
+  })();
 
   // ── Export ───────────────────────────────────────────────
 
@@ -1586,7 +2036,8 @@
       lists: {
         personal: loadTasks("dia_todo_personal_v1"),
         business: loadTasks("dia_todo_business_v1")
-      }
+      },
+      notes: loadNotes()
     };
   }
 
@@ -1670,6 +2121,7 @@
 
     localStorage.setItem("dia_todo_personal_v1", JSON.stringify(personal));
     localStorage.setItem("dia_todo_business_v1", JSON.stringify(business));
+    if (Array.isArray(data.notes)) localStorage.setItem(NOTES_KEY, JSON.stringify(data.notes));
     // if sync is on, the imported data must win over the remote copy after reload
     localStorage.setItem("dia_todo_import_pending", "1");
     location.reload();
@@ -1760,7 +2212,8 @@
       lists: {
         personal: loadTasks("dia_todo_personal_v1"),
         business: loadTasks("dia_todo_business_v1")
-      }
+      },
+      notes: loadNotes()
     };
   }
 
@@ -1776,18 +2229,24 @@
       personal: normalizeTasks(remoteDoc.lists.personal || []),
       business: normalizeTasks(remoteDoc.lists.business || [])
     };
+    // notes share the id + mt shape, so the same merge applies
+    var remoteNotes = normalizeNotes(remoteDoc.notes || []);
     var merged = {
       personal: mergeTaskLists(loadTasks("dia_todo_personal_v1"), remoteLists.personal),
       business: mergeTaskLists(loadTasks("dia_todo_business_v1"), remoteLists.business)
     };
-    applySyncDoc({ lists: merged });
-    return JSON.stringify(merged) !== JSON.stringify(remoteLists);
+    var mergedNotes = mergeTaskLists(loadNotes(), remoteNotes);
+    applySyncDoc({ lists: merged, notes: mergedNotes });
+    return JSON.stringify(merged) !== JSON.stringify(remoteLists) ||
+           JSON.stringify(mergedNotes) !== JSON.stringify(remoteNotes);
   }
 
   function applySyncDoc(doc) {
     localStorage.setItem("dia_todo_personal_v1", JSON.stringify(doc.lists.personal || []));
     localStorage.setItem("dia_todo_business_v1", JSON.stringify(doc.lists.business || []));
+    if (doc.notes) localStorage.setItem(NOTES_KEY, JSON.stringify(doc.notes));
     panelReloaders.forEach(function (r) { r(); });
+    noteReloaders.forEach(function (r) { r(); });
   }
 
   function setSyncStatusLine(override) {
