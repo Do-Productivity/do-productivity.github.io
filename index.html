@@ -497,6 +497,50 @@
   }
   .note-row.done .note-chip { opacity: 0.55; }
 
+  .note-group-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin: 14px 0 2px;
+  }
+  .note-group-head:first-child { margin-top: 2px; }
+  .note-group-head .gbar { width: 3px; height: 11px; border-radius: 2px; flex: none; }
+  .note-group-head.personal { color: var(--red); }
+  .note-group-head.personal .gbar { background: var(--red); }
+  .note-group-head.business { color: var(--blue); }
+  .note-group-head.business .gbar { background: var(--blue); }
+  .note-group-head.none { color: var(--ink-faint); }
+  .note-group-head.none .gbar { background: var(--ink-faint); }
+  .note-group-head .gcount { margin-left: auto; color: var(--ink-faint); font-weight: 400; }
+
+  .note-linkbtn {
+    font-family: var(--sans);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    background: none;
+    border: 1px dashed var(--rule);
+    border-radius: 10px;
+    padding: 2px 9px;
+    cursor: pointer;
+  }
+  .note-linkbtn:hover { color: var(--green); border-color: var(--green); }
+  .note-relink {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 3px 6px;
+    outline: none;
+    max-width: 100%;
+  }
+
   .note-list { list-style: none; flex: 1; }
   .note-row {
     display: flex;
@@ -2021,7 +2065,42 @@
                            : "Nothing written down yet. Add a note above."));
       }
 
-      notes.forEach(function (note) {
+      // swap the chip / link button for a picker so a note can be attached
+      // (or moved, or unlinked) long after it was written
+      function openRelink(note, holder) {
+        var sel = el("select", "note-relink");
+        var none = el("option", null, "Not linked to a task");
+        none.value = "";
+        sel.appendChild(none);
+        openTasks().forEach(function (t) {
+          var opt = el("option", null, t.title + " — " + t.text.slice(0, 44));
+          opt.value = t.id;
+          sel.appendChild(opt);
+        });
+        sel.value = note.taskId || "";
+        var done = false;
+        function apply() {
+          if (done) return;
+          done = true;
+          var chosen = sel.value;
+          if ((note.taskId || "") !== chosen) {
+            var all = loadNotes();
+            all.forEach(function (n) {
+              if (n.id !== note.id) return;
+              if (chosen) n.taskId = chosen; else delete n.taskId;
+              n.mt = Date.now();
+            });
+            persistNotes(all);
+          }
+          refreshNotesUI();
+        }
+        sel.addEventListener("change", apply);
+        sel.addEventListener("blur", apply);
+        holder.replaceWith(sel);
+        sel.focus();
+      }
+
+      function buildNoteRow(note) {
         var row = el("li", "note-row" + (note.done ? " done" : ""));
         if (!seenNoteIds[note.id]) {
           seenNoteIds[note.id] = true;
@@ -2044,7 +2123,6 @@
         row.appendChild(circle);
 
         var body = el("div", "note-body");
-
         var textNode = el("div", "note-text", note.text);
         if (!note.done) {
           textNode.title = "Click to edit";
@@ -2057,11 +2135,14 @@
           var linked = taskById(note.taskId);
           var chip = el("span", "note-chip " + (linked ? linked.list : "gone"),
             linked ? linked.text.slice(0, 34) : "task closed or removed");
-          if (linked) {
-            chip.title = "Show only this task's notes";
-            chip.addEventListener("click", function () { showNotesForTask(note.taskId); });
-          }
+          chip.title = "Change which task this belongs to";
+          chip.addEventListener("click", function () { openRelink(note, chip); });
           foot.appendChild(chip);
+        } else {
+          var linkBtn = el("button", "note-linkbtn", "+ link to a task");
+          linkBtn.title = "Attach this note to one of your tasks";
+          linkBtn.addEventListener("click", function () { openRelink(note, linkBtn); });
+          foot.appendChild(linkBtn);
         }
         foot.appendChild(el("span", "note-date",
           note.done && note.doneAt ? "Done " + formatDateTime(note.doneAt)
@@ -2084,9 +2165,50 @@
           refreshNotesUI();
         });
         row.appendChild(del);
+        return row;
+      }
 
-        list.appendChild(row);
-      });
+      if (noteFilterTaskId) {
+        // already narrowed to one task — headings would just repeat it
+        notes.forEach(function (note) { list.appendChild(buildNoteRow(note)); });
+      } else {
+        // gather every note for the same task under one heading
+        var groups = [];
+        var index = {};
+        notes.forEach(function (n) {
+          var key = n.taskId || "__none";
+          if (!index[key]) {
+            index[key] = { key: key, task: n.taskId ? taskById(n.taskId) : null, notes: [] };
+            groups.push(index[key]);
+          }
+          index[key].notes.push(n);
+        });
+        // linked groups first, unlinked last
+        groups.sort(function (a, b) {
+          if (a.key === "__none") return 1;
+          if (b.key === "__none") return -1;
+          return 0;
+        });
+
+        groups.forEach(function (g) {
+          var cls = g.key === "__none" ? "none" : (g.task ? g.task.list : "none");
+          var head = el("li", "note-group-head " + cls);
+          head.appendChild(el("span", "gbar"));
+          head.appendChild(el("span", null,
+            g.key === "__none" ? "Not linked"
+                               : (g.task ? g.task.text.slice(0, 38) : "Task closed or removed")));
+          var openInGroup = g.notes.filter(function (n) { return !n.done; }).length;
+          head.appendChild(el("span", "gcount",
+            openInGroup ? openInGroup + " open" : "all done"));
+          if (g.task) {
+            head.style.cursor = "pointer";
+            head.title = "Show only this task's notes";
+            head.addEventListener("click", function () { showNotesForTask(g.key); });
+          }
+          list.appendChild(head);
+          g.notes.forEach(function (note) { list.appendChild(buildNoteRow(note)); });
+        });
+      }
 
       var all = liveNotes();
       var openCount = all.filter(function (n) { return !n.done; }).length;
