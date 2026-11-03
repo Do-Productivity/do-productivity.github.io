@@ -998,10 +998,10 @@
       padding-left: max(20px, env(safe-area-inset-left, 0px));
       padding-right: max(20px, env(safe-area-inset-right, 0px));
     }
-    .panels { flex: 1; min-height: 0; align-items: stretch; gap: 20px;
-              grid-template-columns: 1fr 1fr; }
-    /* three narrow columns are unreadable here — give Notes its own row */
-    .panel.notes { grid-column: 1 / -1; }
+    /* Unfolded: all three side by side, like the desktop. */
+    .panels { flex: 1; min-height: 0; align-items: stretch; gap: 12px;
+              grid-template-columns: repeat(3, 1fr); }
+    .panel.notes { grid-column: auto; }
     /* grid items default to min-width:auto, so the date input's intrinsic
        width pushed the columns wider than their track and overflowed */
     .panel { display: flex; flex-direction: column; min-width: 0; }
@@ -1009,11 +1009,32 @@
     .task-list { flex: 1; }
     .panel-footer { margin-top: auto; }
 
-    .panel-header .panel-title { font-size: 30px; }
-    .task-text { font-size: 18px; line-height: 1.5; }
-    .task-meta { font-size: 12px; }
-    .add-input, .task-edit { font-size: 17px; }
-    .panel-footer, .clear-completed { font-size: 13px; }
+    .panel { padding: 16px 13px 10px; }
+    .panel-header .panel-title { font-size: 21px; }
+    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 1.4px; }
+    .panel-header .divider { margin: 10px 0 12px; }
+    .panel-count { display: none; }          /* the footer already counts */
+    .panel-peek { display: none; }           /* nothing is collapsed here */
+    .add-row { gap: 6px; }
+    .add-input, .task-edit { font-size: 14px; padding: 8px 9px; }
+    .add-btn { padding: 0 11px; font-size: 10px; letter-spacing: 0.5px; }
+    .due-row { gap: 5px; }
+    .due-label { font-size: 8px; letter-spacing: 0.3px; }
+    .due-input { font-size: 13px; padding: 4px 6px; }
+    .task-row { gap: 8px; padding: 11px 0; }
+    .task-circle { width: 18px; height: 18px; }
+    .task-text { font-size: 14px; line-height: 1.45; }
+    .task-meta { font-size: 10.5px; }
+    .task-actions { flex-direction: column; gap: 0; align-self: flex-start; }
+    .note-input, .note-edit, .note-text { font-size: 14px; }
+    .note-link-select { font-size: 12px; padding: 6px 7px; }
+    .note-add-btn { padding: 7px 11px; font-size: 10px; }
+    .note-circle { width: 17px; height: 17px; }
+    .note-chip, .note-linkbtn { font-size: 9.5px; padding: 2px 7px; }
+    .note-date { font-size: 9.5px; }
+    .note-group-head { font-size: 9px; }
+    .completed-toggle { font-size: 9px; letter-spacing: 1.2px; }
+    .panel-footer, .clear-completed { font-size: 10.5px; }
   }
 
   /* Landscape / short screens: don't force a full-height card that pushes the
@@ -1092,7 +1113,7 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
-      <p class="modal-hint">Build: <b>2026-11-03-1757</b> — if this looks old, pull down to refresh.</p>
+      <p class="modal-hint">Build: <b>2026-11-03-1803</b> — if this looks old, pull down to refresh.</p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -1878,7 +1899,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-03-1757";
+  var BUILD = "2026-11-03-1803";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
