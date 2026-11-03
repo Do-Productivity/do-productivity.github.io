@@ -1092,6 +1092,7 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
+      <p class="modal-hint">Build: <b>2026-11-03 17:54</b> — if this looks old, pull down to refresh.</p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -2260,8 +2261,22 @@
     function addNote() {
       // One line = one check point. Pasting a list makes each line its own
       // tickable note, with any bullet marker stripped off the front.
-      var lines = input.value.split(/\r?\n/)
-        .map(function (l) { return l.replace(/^\s*[-*\u2022\u2013\u2014]\s*/, "").trim(); })
+      var BULLET = /^\s*[-*\u2022\u2013\u2014\u00b7]\s+/;
+      var lines = [];
+      input.value.split(/\r?\n/).forEach(function (line) {
+        // Some apps flatten a bullet list onto one line when you copy it.
+        // If a line starts with a bullet, treat later bullets as separators
+        // too — but only ones surrounded by spaces, so "doc-score" is safe.
+        if (BULLET.test(line)) {
+          line.split(/\s+[-*\u2022\u2013\u2014]\s+/).forEach(function (part) {
+            lines.push(part);
+          });
+        } else {
+          lines.push(line);
+        }
+      });
+      lines = lines
+        .map(function (l) { return l.replace(BULLET, "").replace(/^\s*[-*\u2022]\s*/, "").trim(); })
         .filter(function (l) { return l.length > 0; });
       if (lines.length === 0) { input.focus(); return; }
 
