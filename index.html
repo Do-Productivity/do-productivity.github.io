@@ -794,6 +794,9 @@
       display: flex;
       flex-direction: column;
       gap: 9px;
+      /* base rule is align-items:start, which in a column flex sizes each card
+         to its content instead of the full width */
+      align-items: stretch;
     }
     .panel-header { display: block; cursor: pointer; }
     .panel-header .panel-title { font-size: 21px; }
