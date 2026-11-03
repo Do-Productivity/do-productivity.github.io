@@ -987,6 +987,22 @@
     .mobile-tab { font-size: 16px; padding: 10px 6px 8px; }
   }
 
+  /* Desktop: equal-height cards that reach the bottom of the window, rather
+     than three ragged cards with dead space beneath them. */
+  @media (min-width: 1101px) and (min-height: 600px) {
+    html, body { height: 100%; }
+    .layout {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .panels { flex: 1; min-height: 0; align-items: stretch; }
+    .panel { display: flex; flex-direction: column; }
+    .task-list, .note-list { flex: 1; }
+    .panel-footer { margin-top: auto; }
+  }
+
   /* Unfolded phones and tablets (and narrow laptop windows): keep the two
      columns, but let them fill the screen instead of sitting in the top third,
      and lift the type for the larger display. */
@@ -1115,7 +1131,7 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
-      <p class="modal-hint">Build: <b>2026-11-03-1806</b> — if this looks old, pull down to refresh.</p>
+      <p class="modal-hint">Build: <b>2026-11-03-1808</b> — if this looks old, pull down to refresh.</p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -1901,7 +1917,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-03-1806";
+  var BUILD = "2026-11-03-1808";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
