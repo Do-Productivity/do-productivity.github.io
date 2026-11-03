@@ -268,8 +268,10 @@
     gap: 14px;
     padding: 16px 2px;
     border-bottom: 1px solid var(--rule);
-    animation: slide-in 0.25s ease;
   }
+  /* only newly added rows slide in — re-rendering the list on every tick
+     used to replay the fade for everything, which read as a flicker */
+  .task-row.fresh, .note-row.fresh { animation: slide-in 0.25s ease; }
   @keyframes slide-in {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -502,7 +504,6 @@
     gap: 10px;
     padding: 12px 2px;
     border-bottom: 1px solid var(--rule);
-    animation: slide-in 0.25s ease;
   }
   .note-body { flex: 1; min-width: 0; }
   .note-text {
@@ -1600,8 +1601,14 @@
       input.focus();
     }
 
+    var seenTaskIds = Object.create(null);
+
     function buildRow(task) {
       var row = el("li", "task-row");
+      if (task.id && !seenTaskIds[task.id]) {
+        seenTaskIds[task.id] = true;
+        row.classList.add("fresh");
+      }
 
       var circle = el("button", "task-circle");
       circle.title = task.deleted ? "Restore task" : (task.done ? "Retrieve task" : "Complete task");
@@ -1986,6 +1993,8 @@
       box.setSelectionRange(box.value.length, box.value.length);
     }
 
+    var seenNoteIds = Object.create(null);
+
     function render() {
       fillSelect();
 
@@ -2014,6 +2023,10 @@
 
       notes.forEach(function (note) {
         var row = el("li", "note-row" + (note.done ? " done" : ""));
+        if (!seenNoteIds[note.id]) {
+          seenNoteIds[note.id] = true;
+          row.classList.add("fresh");
+        }
 
         var circle = el("button", "note-circle");
         circle.title = note.done ? "Mark as not done" : "Mark as done";
