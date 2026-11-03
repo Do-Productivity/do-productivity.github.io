@@ -1992,10 +1992,41 @@
     var list = el("ul", "note-list");
     panel.appendChild(list);
 
+    // checked notes collect here, same pattern as the task lists
+    var doneOpen = false;
+    var doneSection = el("div", "completed-section notes-done");
+    var doneToggle = el("button", "completed-toggle");
+    doneToggle.appendChild(el("span", "arrow", "\u25B6"));
+    doneToggle.appendChild(el("span", null, "Completed"));
+    var doneBadge = el("span", "count-badge", "0");
+    doneToggle.appendChild(doneBadge);
+    doneSection.appendChild(doneToggle);
+    var doneEmpty = el("div", "empty-state", "Nothing checked off yet.");
+    var doneList = el("ul", "completed-list");
+    doneSection.appendChild(doneEmpty);
+    doneSection.appendChild(doneList);
+    panel.appendChild(doneSection);
+
     var footer = el("div", "panel-footer");
     var countLabel = el("span", null, "0 notes");
+    var clearDone = el("button", "clear-completed", "Clear completed");
     footer.appendChild(countLabel);
+    footer.appendChild(clearDone);
     panel.appendChild(footer);
+
+    doneToggle.addEventListener("click", function () {
+      doneOpen = !doneOpen;
+      refreshNotesUI();
+    });
+    clearDone.addEventListener("click", function () {
+      var all = loadNotes();
+      var now = Date.now();
+      all.forEach(function (n) {
+        if (n.done && !n.deleted) { n.deleted = true; n.deletedAt = now; n.mt = now; }
+      });
+      persistNotes(all);
+      refreshNotesUI();
+    });
 
     function fillSelect(keepValue) {
       var prev = keepValue !== undefined ? keepValue : select.value;
@@ -2058,8 +2089,12 @@
         filter.classList.remove("on");
       }
 
+      var openNotes = notes.filter(function (n) { return !n.done; });
+      var doneNotes = notes.filter(function (n) { return n.done; })
+        .sort(function (a, b) { return (b.doneAt || 0) - (a.doneAt || 0); });
+
       list.textContent = "";
-      if (notes.length === 0) {
+      if (openNotes.length === 0) {
         list.appendChild(el("li", "empty-state",
           noteFilterTaskId ? "No notes on this task yet."
                            : "Nothing written down yet. Add a note above."));
@@ -2170,12 +2205,12 @@
 
       if (noteFilterTaskId) {
         // already narrowed to one task — headings would just repeat it
-        notes.forEach(function (note) { list.appendChild(buildNoteRow(note)); });
+        openNotes.forEach(function (note) { list.appendChild(buildNoteRow(note)); });
       } else {
         // gather every note for the same task under one heading
         var groups = [];
         var index = {};
-        notes.forEach(function (n) {
+        openNotes.forEach(function (n) {
           var key = n.taskId || "__none";
           if (!index[key]) {
             index[key] = { key: key, task: n.taskId ? taskById(n.taskId) : null, notes: [] };
@@ -2197,9 +2232,7 @@
           head.appendChild(el("span", null,
             g.key === "__none" ? "Not linked"
                                : (g.task ? g.task.text.slice(0, 38) : "Task closed or removed")));
-          var openInGroup = g.notes.filter(function (n) { return !n.done; }).length;
-          head.appendChild(el("span", "gcount",
-            openInGroup ? openInGroup + " open" : "all done"));
+          head.appendChild(el("span", "gcount", g.notes.length + " open"));
           if (g.task) {
             head.style.cursor = "pointer";
             head.title = "Show only this task's notes";
@@ -2210,11 +2243,15 @@
         });
       }
 
+      doneList.textContent = "";
+      doneNotes.forEach(function (note) { doneList.appendChild(buildNoteRow(note)); });
+      doneEmpty.classList.toggle("visible", doneNotes.length === 0);
+      doneBadge.textContent = String(doneNotes.length);
+      doneSection.classList.toggle("open", doneOpen);
+
       var all = liveNotes();
       var openCount = all.filter(function (n) { return !n.done; }).length;
-      var doneCount = all.length - openCount;
-      countLabel.textContent = openCount + (openCount === 1 ? " note" : " notes") +
-        (doneCount ? " · " + doneCount + " done" : "");
+      countLabel.textContent = openCount + (openCount === 1 ? " note" : " notes");
       var tabCount = document.getElementById("tab-count-notes");
       if (tabCount) tabCount.textContent = String(openCount);
       headCount.textContent = String(openCount);
