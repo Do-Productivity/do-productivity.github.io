@@ -60,9 +60,9 @@
     var w=window.innerWidth,h=window.innerHeight,dpr=window.devicePixelRatio||1;
     var cs=getComputedStyle(document.documentElement);
     function sa(p){var v=cs.getPropertyValue(p);return v?v.trim():"0px";}
-    var mode = w<=720 ? "phone (tabs, one list)"
-             : w<=1100 ? "unfolded (2 columns + notes below)"
-             : "desktop (3 columns)";
+    var mode = w<=720 ? "phone (stacked cards, tap to open)"
+             : w<=1100 ? "unfolded (3 columns side by side)"
+             : "desktop (3 columns, full width)";
     document.getElementById('size').innerHTML = w+" &times; "+h+" <small>css px</small>";
     document.getElementById('css').textContent = w+" x "+h;
     document.getElementById('device').textContent = Math.round(w*dpr)+" x "+Math.round(h*dpr);
