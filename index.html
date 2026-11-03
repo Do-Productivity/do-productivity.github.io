@@ -474,6 +474,27 @@
   }
   .note-add-btn:hover { filter: brightness(1.08); }
 
+  .note-circle {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    border: 2px solid var(--green);
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .note-circle:hover { background: var(--green-soft); }
+  .note-row.done .note-circle { background: var(--green); border-color: var(--green); }
+  .note-row.done .note-circle:hover { background: var(--card); }
+  .note-row.done .note-text {
+    text-decoration: line-through;
+    color: var(--ink-faint);
+    cursor: default;
+  }
+  .note-row.done .note-chip { opacity: 0.55; }
+
   .note-list { list-style: none; flex: 1; }
   .note-row {
     display: flex;
@@ -1634,10 +1655,14 @@
       row.appendChild(body);
 
       var actions = el("div", "task-actions");
-      var noteCount = notesForTask(task.id).length;
-      if (noteCount > 0) {
-        var nb = el("button", "task-notebtn", "\uD83D\uDCDD " + noteCount);
-        nb.title = noteCount === 1 ? "1 note on this task" : noteCount + " notes on this task";
+      var taskNotes = notesForTask(task.id);
+      var openNotes = taskNotes.filter(function (n) { return !n.done; }).length;
+      if (taskNotes.length > 0) {
+        var nb = el("button", "task-notebtn",
+          openNotes > 0 ? "\uD83D\uDCDD " + openNotes : "\uD83D\uDCDD \u2713");
+        nb.title = openNotes > 0
+          ? openNotes + (openNotes === 1 ? " open note" : " open notes") + " on this task"
+          : "all notes on this task are done";
         nb.addEventListener("click", function () { showNotesForTask(task.id); });
         actions.appendChild(nb);
       }
@@ -1811,6 +1836,10 @@
       note.id = (typeof n.id === "string" && n.id) ? n.id : "n" + textHash(n.text);
       note.created = typeof n.created === "number" ? n.created : Date.now();
       if (typeof n.taskId === "string" && n.taskId) note.taskId = n.taskId;
+      if (n.done) {
+        note.done = true;
+        if (typeof n.doneAt === "number") note.doneAt = n.doneAt;
+      }
       if (typeof n.mt === "number") note.mt = n.mt;
       if (n.deleted) {
         note.deleted = true;
@@ -1961,6 +1990,9 @@
       fillSelect();
 
       var notes = liveNotes().sort(function (a, b) {
+        // open ones on top, each group newest first
+        if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+        if (a.done && b.done) return (b.doneAt || 0) - (a.doneAt || 0);
         return (b.mt || b.created || 0) - (a.mt || a.created || 0);
       });
 
@@ -1981,12 +2013,30 @@
       }
 
       notes.forEach(function (note) {
-        var row = el("li", "note-row");
+        var row = el("li", "note-row" + (note.done ? " done" : ""));
+
+        var circle = el("button", "note-circle");
+        circle.title = note.done ? "Mark as not done" : "Mark as done";
+        circle.addEventListener("click", function () {
+          var all = loadNotes();
+          all.forEach(function (n) {
+            if (n.id !== note.id) return;
+            if (n.done) { delete n.done; delete n.doneAt; }
+            else { n.done = true; n.doneAt = Date.now(); }
+            n.mt = Date.now();
+          });
+          persistNotes(all);
+          refreshNotesUI();
+        });
+        row.appendChild(circle);
+
         var body = el("div", "note-body");
 
         var textNode = el("div", "note-text", note.text);
-        textNode.title = "Click to edit";
-        textNode.addEventListener("click", function () { startEdit(note, textNode); });
+        if (!note.done) {
+          textNode.title = "Click to edit";
+          textNode.addEventListener("click", function () { startEdit(note, textNode); });
+        }
         body.appendChild(textNode);
 
         var foot = el("div", "note-foot");
@@ -2000,7 +2050,9 @@
           }
           foot.appendChild(chip);
         }
-        foot.appendChild(el("span", "note-date", formatDateTime(note.created)));
+        foot.appendChild(el("span", "note-date",
+          note.done && note.doneAt ? "Done " + formatDateTime(note.doneAt)
+                                   : formatDateTime(note.created)));
         body.appendChild(foot);
         row.appendChild(body);
 
@@ -2023,11 +2075,14 @@
         list.appendChild(row);
       });
 
-      var total = liveNotes().length;
-      countLabel.textContent = total + (total === 1 ? " note" : " notes");
+      var all = liveNotes();
+      var openCount = all.filter(function (n) { return !n.done; }).length;
+      var doneCount = all.length - openCount;
+      countLabel.textContent = openCount + (openCount === 1 ? " note" : " notes") +
+        (doneCount ? " · " + doneCount + " done" : "");
       var tabCount = document.getElementById("tab-count-notes");
-      if (tabCount) tabCount.textContent = String(total);
-      headCount.textContent = String(total);
+      if (tabCount) tabCount.textContent = String(openCount);
+      headCount.textContent = String(openCount);
     }
 
     function addNote() {
