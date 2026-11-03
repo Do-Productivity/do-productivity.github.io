@@ -1978,7 +1978,7 @@
 
     var compose = el("div", "note-compose");
     var input = el("textarea", "note-input");
-    input.placeholder = "Write a note…";
+    input.placeholder = "Write a note… each line becomes its own check point";
     input.rows = 2;
     compose.appendChild(input);
     var composeRow = el("div", "note-compose-row");
@@ -2221,21 +2221,32 @@
     }
 
     function addNote() {
-      var text = input.value.trim();
-      if (!text) { input.focus(); return; }
+      // One line = one check point. Pasting a list makes each line its own
+      // tickable note, with any bullet marker stripped off the front.
+      var lines = input.value.split(/\r?\n/)
+        .map(function (l) { return l.replace(/^\s*[-*\u2022\u2013\u2014]\s*/, "").trim(); })
+        .filter(function (l) { return l.length > 0; });
+      if (lines.length === 0) { input.focus(); return; }
+
       var all = loadNotes();
       var now = Date.now();
-      all.push({
-        text: text,
-        id: "n" + now.toString(36) + Math.random().toString(36).slice(2, 6),
-        created: now,
-        mt: now,
-        taskId: select.value || undefined
+      var linkTo = select.value || undefined;
+      lines.forEach(function (text, i) {
+        // count down so the list keeps the order they were pasted in
+        var stamp = now + (lines.length - 1 - i);
+        all.push({
+          text: text,
+          id: "n" + stamp.toString(36) + Math.random().toString(36).slice(2, 6),
+          created: stamp,
+          mt: stamp,
+          taskId: linkTo
+        });
       });
       persistNotes(all);
       input.value = "";
       refreshNotesUI();
       input.focus();
+      if (lines.length > 1) flashStatus("Added " + lines.length + " check points.");
     }
 
     addBtn.addEventListener("click", addNote);
