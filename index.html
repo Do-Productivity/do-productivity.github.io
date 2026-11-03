@@ -788,17 +788,68 @@
     .toolbar h1 { font-size: 11px; letter-spacing: 2.5px; }
     .toolbar-btn { padding: 9px 11px; font-size: 9px; letter-spacing: 1px; border-radius: 7px; }
 
-    /* One full-width list at a time, picked from the tabs */
-    .mobile-tabs { display: flex; }
-    .panels { grid-template-columns: 1fr; }
-    .panels.show-personal .panel.business,
-    .panels.show-personal .panel.notes,
-    .panels.show-business .panel.personal,
-    .panels.show-business .panel.notes,
-    .panels.show-notes .panel.personal,
-    .panels.show-notes .panel.business { display: none; }
-    .mobile-tab { font-size: 15px; padding: 11px 4px 9px; }
-    .tab-count { font-size: 9px; padding: 2px 5px; margin-left: 3px; }
+    /* Accordion: all three cards on screen, the chosen one opened up. */
+    .mobile-tabs { display: none; }
+    .panels {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .panel-header { display: block; cursor: pointer; }
+    .panel-header .panel-title { font-size: 21px; }
+    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 1.6px; margin-top: 2px; }
+    .panel-header .divider { margin: 9px 0 10px; }
+
+    /* count sits beside the title so a shut card still tells you the number */
+    .panel-count {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      background: var(--paper);
+      border-radius: 10px;
+      padding: 2px 8px;
+      margin-left: 8px;
+      vertical-align: 4px;
+    }
+
+    /* shut: header only, compact */
+    .panel.collapsed {
+      flex: none;
+      padding-bottom: 12px;
+    }
+    .panel.collapsed .divider,
+    .panel.collapsed .add-row,
+    .panel.collapsed .due-row,
+    .panel.collapsed .task-list,
+    .panel.collapsed .note-compose,
+    .panel.collapsed .note-filter,
+    .panel.collapsed .note-list,
+    .panel.collapsed .completed-section,
+    .panel.collapsed .panel-footer { display: none; }
+    .panel.collapsed .panel-peek {
+      display: block;
+      font-family: var(--sans);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-top: 6px;
+    }
+    .panel.collapsed .panel-peek::after { content: "Tap to open"; }
+    .panel-peek { display: none; }
+
+    /* open: takes the rest of the screen */
+    .panel.expanded {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel.expanded .task-list,
+    .panel.expanded .note-list { flex: 1; }
+    .panel.expanded .panel-footer { margin-top: auto; }
     .note-text, .note-input, .note-edit { font-family: var(--sans); font-size: 15px; }
     .note-input, .note-edit { font-size: 16px; }   /* no iOS zoom-jump */
     .note-link-select { font-size: 16px; }
@@ -842,9 +893,7 @@
       flex-direction: column;
     }
     /* base rule sets align-items:start, which stops the card stretching */
-    .panels { flex: 1; min-height: 0; align-items: stretch; }
-    .panel { display: flex; flex-direction: column; height: 100%; }
-    .task-list { flex: 1; }
+    .panels { flex: 1; min-height: 0; }
     .completed-section.trash { margin-top: 0; }
     /* keep the add row reachable and the footer pinned to the bottom edge */
     .panel-footer { margin-top: auto; }
@@ -1342,8 +1391,11 @@
     var header = el("div", "panel-header");
     var title = el("h2", "panel-title", config.title);
     title.appendChild(el("span", "dot", "."));
+    var headCount = el("span", "panel-count", "0");
+    title.appendChild(headCount);
     header.appendChild(title);
     header.appendChild(el("div", "panel-subtitle", config.subtitle));
+    header.appendChild(el("div", "panel-peek"));   // "tap to open" affordance
     header.appendChild(el("div", "divider"));
     panel.appendChild(header);
 
@@ -1654,6 +1706,7 @@
 
       var tabCount = document.getElementById("tab-count-" + config.id);
       if (tabCount) tabCount.textContent = String(active.length);
+      headCount.textContent = String(active.length);
     }
 
     addBtn.addEventListener("click", addTask);
@@ -1826,8 +1879,11 @@
     var header = el("div", "panel-header");
     var title = el("h2", "panel-title", "Notes");
     title.appendChild(el("span", "dot", "."));
+    var headCount = el("span", "panel-count", "0");
+    title.appendChild(headCount);
     header.appendChild(title);
     header.appendChild(el("div", "panel-subtitle", "CONTEXT & DETAIL"));
+    header.appendChild(el("div", "panel-peek"));
     header.appendChild(el("div", "divider"));
     panel.appendChild(header);
 
@@ -1969,6 +2025,7 @@
       countLabel.textContent = total + (total === 1 ? " note" : " notes");
       var tabCount = document.getElementById("tab-count-notes");
       if (tabCount) tabCount.textContent = String(total);
+      headCount.textContent = String(total);
     }
 
     function addNote() {
@@ -2012,22 +2069,48 @@
   });
   panelsRoot.appendChild(createNotesPanel());
 
-  // Mobile tab switcher — remembers the last list you were on
+  // Phone layout: all three cards stay on screen; tapping one opens it and
+  // shrinks the others to a title + count. Keeps the whole picture visible
+  // instead of hiding two thirds of it behind tabs.
   var MTAB_KEY = "dia_todo_mtab_v1";
+  var PANEL_IDS = ["personal", "business", "notes"];
+
+  function panelEl(id) {
+    return panelsRoot.querySelector(".panel." + id);
+  }
+
   function setMobileTab(id) {
+    if (PANEL_IDS.indexOf(id) === -1) id = "personal";
     panelsRoot.className = "panels show-" + id;
-    ["personal", "business", "notes"].forEach(function (t) {
-      document.getElementById("tab-" + t).classList.toggle("active", t === id);
+    PANEL_IDS.forEach(function (t) {
+      var el2 = panelEl(t);
+      if (el2) {
+        el2.classList.toggle("expanded", t === id);
+        el2.classList.toggle("collapsed", t !== id);
+      }
+      var tab = document.getElementById("tab-" + t);
+      if (tab) tab.classList.toggle("active", t === id);
     });
     localStorage.setItem(MTAB_KEY, id);
   }
-  document.getElementById("tab-personal").addEventListener("click", function () { setMobileTab("personal"); });
-  document.getElementById("tab-business").addEventListener("click", function () { setMobileTab("business"); });
-  document.getElementById("tab-notes").addEventListener("click", function () { setMobileTab("notes"); });
-  (function () {
-    var saved = localStorage.getItem(MTAB_KEY);
-    setMobileTab(saved === "business" || saved === "notes" ? saved : "personal");
-  })();
+
+  PANEL_IDS.forEach(function (id) {
+    var panel = panelEl(id);
+    if (!panel) return;
+    var header = panel.querySelector(".panel-header");
+    if (!header) return;
+    header.addEventListener("click", function () {
+      // only acts as an accordion on phones; harmless elsewhere
+      if (!window.matchMedia("(max-width: 720px)").matches) return;
+      if (panel.classList.contains("expanded")) return;   // already open
+      setMobileTab(id);
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    var tab = document.getElementById("tab-" + id);
+    if (tab) tab.addEventListener("click", function () { setMobileTab(id); });
+  });
+
+  setMobileTab(localStorage.getItem(MTAB_KEY) || "personal");
 
   // ── Export ───────────────────────────────────────────────
 
