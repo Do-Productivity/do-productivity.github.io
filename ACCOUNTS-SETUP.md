@@ -1,38 +1,43 @@
-# Turning on accounts (so friends can use the app)
+# Letting friends sync across their devices
 
-The code is already in `index.html`. It stays dormant until the two constants
-near the top of the sync section are filled in, so nothing breaks while this
-is half-done.
+Right now each person's list lives only in the browser they opened it in.
+That is already private — there is no shared server for anyone to read. What
+it does not do is follow them from phone to laptop.
 
-Everything below is on free tiers. Total cost: **$0**.
+This adds that. **5 minutes, $0, and no Google setup.** People sign in by
+clicking a one-time link emailed to them: no password to invent, nothing to
+install.
+
+The code is already written and sitting dormant in `index.html`. It switches
+itself on the moment the two values from step 4 are filled in.
 
 ---
 
-## 1. Create the project (3 minutes)
+## 1. Create the project
 
-1. Go to <https://supabase.com> and sign in with GitHub.
-2. **New project**. Name it `my-todo-list`. Pick the region closest to you
-   (`eu-central-1` / Frankfurt is the nearest to Egypt).
-3. It asks for a database password — let it generate one and save it in your
-   password manager. You will not need it for this app.
-4. Wait ~2 minutes for it to finish building.
+1. <https://supabase.com> → **Start your project** → sign in with GitHub.
+2. **New project**, name it `my-todo-list`, region **Frankfurt (eu-central-1)**
+   — the closest to Egypt.
+3. It generates a database password. Save it in your password manager; this
+   app never uses it.
+4. Wait ~2 minutes while it builds.
 
-## 2. Create the table (1 minute)
+## 2. Create the table
 
-Open **SQL Editor** → **New query**, paste this, press **Run**:
+**SQL Editor** → **New query** → paste → **Run**:
 
 ```sql
--- One row per person. The whole sync document lives in `doc`, which keeps the
--- app's existing merge logic untouched — only the transport changed.
+-- One row per person. The whole sync document goes in `doc`, which leaves the
+-- app's existing merge logic untouched — only the transport changes.
 create table public.documents (
   user_id    uuid primary key references auth.users on delete cascade,
   doc        jsonb       not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 
--- Row Level Security is what makes this private. Without it, any signed-in
--- person could read every row. With it, the database itself refuses — the
--- browser is never trusted to do the filtering.
+-- This is the part that makes it private. Without it any signed-in person
+-- could read every row; with it the database itself refuses. The browser is
+-- never trusted to do the filtering.
 alter table public.documents enable row level security;
 
 create policy "read own document"   on public.documents
@@ -45,9 +50,9 @@ create policy "update own document" on public.documents
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 ```
 
-You should see `Success. No rows returned.`
+Expect: `Success. No rows returned.`
 
-## 3. Allow the app to send people back after sign-in (1 minute)
+## 3. Let the app receive people back after they click the link
 
 **Authentication** → **URL Configuration**:
 
@@ -56,53 +61,43 @@ You should see `Success. No rows returned.`
   - `https://ahmedmohsen18.github.io/my-todo-list/`
   - `http://localhost:8642/`
 
-Without this, sign-in completes and then refuses to return to the app.
+Skip this and sign-in completes but then refuses to return to the app.
 
-## 4. Give me the two values
+## 4. Send me two values
 
 **Project Settings** → **API**:
 
-- **Project URL** — looks like `https://abcdefghijkl.supabase.co`
+- **Project URL** — like `https://abcdefghijkl.supabase.co`
 - **anon public** key — a long string starting `eyJ…`
 
-Paste both to me and I'll wire them in.
+Paste both into the chat and I'll wire them in and test sign-in.
 
-> The anon key is *designed* to be public — it ships inside the page on every
-> site that uses Supabase. It grants nothing on its own; the RLS policies above
-> are what protect the data. Do **not** paste the `service_role` key, which is
-> the opposite: it bypasses RLS entirely.
-
----
-
-## 5. Sign in with Google (optional, ~10 minutes — you do this part)
-
-Email sign-in links work the moment steps 1–4 are done, with no extra setup.
-Google is nicer for friends but needs a Google Cloud project:
-
-1. <https://console.cloud.google.com> → new project.
-2. **APIs & Services** → **OAuth consent screen** → External → fill in app name
-   and your email → add yourself as a test user (or publish the app).
-3. **Credentials** → **Create credentials** → **OAuth client ID** → Web
-   application.
-4. **Authorised redirect URI** — paste the callback shown in Supabase under
-   **Authentication → Providers → Google**. It looks like
-   `https://<project>.supabase.co/auth/v1/callback`.
-5. Copy the **Client ID** and **Client secret** into that same Supabase Google
-   provider page, and enable it.
-
-Nothing in the app changes — the button is already there and starts working
-once the provider is enabled.
+> Send the **anon public** key. It is designed to be public and ships inside
+> the page on every site that uses Supabase; the policies in step 2 are what
+> protect the data. Never send the **service_role** key — that one bypasses
+> those policies completely.
 
 ---
 
-## What happens to your existing data
+## What your friends will see
 
-Your tasks are in a GitHub Gist today, and the widget and the Apple Calendar
-feed both read it. Signing in does **not** take that away:
+Sync panel → their email → a link arrives → they tap it → done. Their list
+then follows them to any browser they sign into, and nobody else can read it,
+including you.
 
-- The account becomes the source of truth for syncing between devices.
-- The gist keeps being written after every successful upload (`gistMirror`),
-  so the Scriptable widget and the `webcal://` calendar subscription carry on
-  working exactly as they do now.
-- The first sign-in on a device with no cloud data yet uploads what is already
-  on that device, so nothing is lost.
+## What happens to your own data
+
+Nothing is taken away. Your tasks are in a GitHub Gist today and both the
+home screen widget and the Apple Calendar feed read it. After you sign in:
+
+- the account becomes the source of truth for syncing between your devices,
+- the gist carries on being written after every upload (`gistMirror`), so the
+  widget and the `webcal://` subscription keep working exactly as now,
+- the first sign-in on a device that has no cloud data yet uploads what is
+  already there, so nothing is lost.
+
+## Later, if you want the Gmail button
+
+It needs a Google Cloud OAuth client (~10 min) and then flipping
+`CLOUD_GOOGLE` to `true` in `index.html`. The button is already built and
+hidden — nothing else changes. Not needed for any of the above.

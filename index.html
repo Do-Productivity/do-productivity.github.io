@@ -1517,17 +1517,16 @@
 <div class="modal-overlay" id="sync-modal">
   <div class="modal">
     <h2>Sync across devices</h2>
-    <p class="modal-hint">This device is running build <b id="build-text">…</b>. Tasks and notes arrive from your gist even on an old build, so stale code still looks alive — if the number is behind, tap here.</p>
-    <button class="modal-btn" id="force-update-btn">⬇️ Force update now</button>
 
     <div id="cloud-account">
       <div id="cloud-signed-out">
-        <p><b>Sign in and your lists follow you.</b> Every account gets its own private copy — your friends can each use the app with their own tasks, and nobody can see anyone else's.</p>
-        <button class="modal-btn primary cloud-google" id="cloud-google-btn"><span class="g">G</span> Continue with Google</button>
-        <div class="cloud-or">or</div>
+        <p><b>Use the same list on your phone and your computer.</b> Put in your email and you'll get a one-time link — no password to invent, nothing to install.</p>
         <input type="email" class="sync-token" id="cloud-email-input" placeholder="you@example.com" autocomplete="email" inputmode="email">
-        <button class="modal-btn" id="cloud-email-btn">Email me a sign-in link</button>
+        <button class="modal-btn primary" id="cloud-email-btn">Email me a sign-in link</button>
+        <div class="cloud-or" id="cloud-or" style="display:none">or</div>
+        <button class="modal-btn cloud-google" id="cloud-google-btn" style="display:none"><span class="g">G</span> Continue with Google</button>
         <p class="modal-hint" id="cloud-auth-msg"></p>
+        <p class="modal-hint">Your list stays private to your account — nobody else can read it, not even from another account on the same app.</p>
       </div>
       <div id="cloud-signed-in" style="display:none">
         <div class="cloud-who">
@@ -1539,10 +1538,15 @@
         <button class="modal-btn" id="cloud-signout-btn">Sign out of this device</button>
         <p class="modal-hint">Signing out leaves your tasks on this device but stops them syncing.</p>
       </div>
-      <p class="modal-hint" id="cloud-unconfigured" style="display:none">Accounts are not switched on for this copy yet.</p>
-      <hr class="cloud-rule">
-      <p class="modal-hint">Below is the older GitHub-token route. You only need it for the home-screen widget and the Apple Calendar feed — it keeps publishing both while your account holds the real data.</p>
+      <p class="modal-hint" id="cloud-unconfigured" style="display:none">Syncing between devices isn't switched on yet. Everything you write is saved on this device in the meantime, and works offline.</p>
     </div>
+
+    <details class="modal-details" id="advanced-sync">
+      <summary>Advanced — GitHub gist, calendar feeds, Outlook</summary>
+      <p class="modal-hint">This device is running build <b id="build-text">…</b>. Tasks and notes arrive even on an old build, so stale code still looks alive — if the number is behind, tap here.</p>
+      <button class="modal-btn" id="force-update-btn">⬇️ Force update now</button>
+      <hr class="cloud-rule">
+      <p class="modal-hint">The GitHub-token route below predates accounts. It is only needed for the home screen widget and the Apple Calendar feed, and it keeps publishing both once an account holds the real data.</p>
     <div id="sync-off-view">
       <p>Keep your iPhone and Mac showing the same lists, live. Your tasks are stored in a <b>secret Gist</b> on your own GitHub account — nothing new to sign up for.</p>
       <ol>
@@ -1623,6 +1627,7 @@
       </div>
       <p class="modal-hint" id="ms-status-line"></p>
     </div>
+    </details>
     </details>
     <div class="modal-actions">
       <button class="toolbar-btn" id="sync-modal-close">Close</button>
@@ -2452,7 +2457,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1437";
+  var BUILD = "2026-11-04-1446";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3524,6 +3529,9 @@
 
   var CLOUD_URL = "";   // https://<project>.supabase.co
   var CLOUD_KEY = "";   // the "anon public" key
+  // Only true once Google is actually enabled as a provider on the project.
+  // Showing the button before that gives people a sign-in that always fails.
+  var CLOUD_GOOGLE = false;
   var CLOUD_SESSION_KEY = "dia_todo_cloud_session_v1";
 
   function cloudConfigured() { return !!(CLOUD_URL && CLOUD_KEY); }
@@ -4259,6 +4267,10 @@
       return;
     }
     un.style.display = "none";
+    var g = document.getElementById("cloud-google-btn");
+    var or = document.getElementById("cloud-or");
+    if (g) g.style.display = CLOUD_GOOGLE ? "" : "none";
+    if (or) or.style.display = CLOUD_GOOGLE ? "" : "none";
     var s = loadCloudSession();
     out.style.display = s ? "none" : "";
     inn.style.display = s ? "" : "none";
