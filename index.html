@@ -157,11 +157,16 @@
   }
 
   /* ── Panels ──────────────────────────────── */
+  /* One row whatever the number of lists: fixed columns wrapped a fourth
+     list onto a second row, which breaks the full-height cards. Columns
+     share the width down to a floor, then the row scrolls sideways. */
   .panels {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(240px, 1fr);
     gap: 28px;
     align-items: start;
+    overflow-x: auto;
   }
   /* ── Pull-to-refresh indicator ───────────── */
   .ptr-indicator {
@@ -1286,7 +1291,7 @@
     }
     /* Unfolded: all three side by side, like the desktop. */
     .panels { flex: 1; min-height: 0; align-items: stretch; gap: 12px;
-              grid-template-columns: repeat(3, 1fr); }
+              grid-auto-columns: minmax(195px, 1fr); }
     .panel.notes { grid-column: auto; }
     /* grid items default to min-width:auto, so the date input's intrinsic
        width pushed the columns wider than their track and overflowed */
@@ -2290,7 +2295,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1042";
+  var BUILD = "2026-11-04-1045";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
