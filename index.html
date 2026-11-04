@@ -2457,7 +2457,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1541";
+  var BUILD = "2026-11-04-1544";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3528,7 +3528,10 @@
   // handling lives in one place and behaves identically on both backends.
 
   var CLOUD_URL = "https://mxlbafuzdbnypexhgptw.supabase.co";
-  var CLOUD_KEY = "";   // the "anon public" key
+  // Publishable key. Meant to be public — it ships in the page on every
+  // Supabase site. The row level security policies are what protect the
+  // data, not secrecy of this string.
+  var CLOUD_KEY = "sb_publishable_vG0EHaoQQAXvZ6i1cOJXlQ_OkIKML6A";
   // Only true once Google is actually enabled as a provider on the project.
   // Showing the button before that gives people a sign-in that always fails.
   var CLOUD_GOOGLE = false;
