@@ -7,7 +7,8 @@
 //  WIDGET PARAMETER (long-press widget → Edit Widget → Parameter):
 //     personal   → the Personal card only
 //     business   → the Business card only
-//     (blank)    → both lists together
+//     notes      → open notes, each with the task it belongs to
+//     (blank)    → Personal and Business together
 // ─────────────────────────────────────────────────────────────
 
 const FEED = "https://gist.githubusercontent.com/ahmedmohsen18/" +
@@ -23,10 +24,13 @@ const RULE  = new Color("#d9d2c2");
 const RED   = new Color("#c8553d");   // Personal
 const BLUE  = new Color("#3d6b8c");   // Business
 const AMBER = new Color("#b3701f");   // due today
+const GREEN = new Color("#4a8a5c");   // Notes
 
 const LISTS = {
-  personal: { key: "personal", title: "Personal", sub: "LIFE & HOME",      tint: RED  },
-  business: { key: "business", title: "Business", sub: "WORK & PROJECTS",  tint: BLUE }
+  personal: { key: "personal", title: "Personal", sub: "LIFE & HOME",     tint: RED   },
+  business: { key: "business", title: "Business", sub: "WORK & PROJECTS", tint: BLUE  },
+  notes:    { key: "notes",    title: "Notes",    sub: "CONTEXT & DETAIL", tint: GREEN,
+              isNotes: true }
 };
 
 const size  = config.runsInWidget ? config.widgetFamily : "medium";
@@ -78,6 +82,23 @@ async function loadDoc() {
     }
     return { doc: null, live: false };
   }
+}
+
+function openNotes(doc) {
+  const notes = (doc.notes || []).filter(n => n && !n.done && !n.deleted);
+  // look up the task each note hangs off, so the widget shows the link too
+  const names = {};
+  for (const key of ["personal", "business"]) {
+    for (const t of (doc.lists[key] || [])) {
+      if (t && t.id) names[t.id] = { text: t.text, list: key };
+    }
+  }
+  notes.sort((a, b) => (b.mt || b.created || 0) - (a.mt || a.created || 0));
+  return notes.map(n => ({
+    text: n.text,
+    due: null,
+    link: n.taskId && names[n.taskId] ? names[n.taskId] : null
+  }));
 }
 
 function activeTasks(doc, key) {
@@ -165,7 +186,7 @@ function drawCard(container, list, tasks, showSub) {
   container.addSpacer(S.gap);
 
   if (tasks.length === 0) {
-    const e = container.addText("Nothing here yet.");
+    const e = container.addText(list.isNotes ? "No open notes." : "Nothing here yet.");
     e.textColor = FAINT;
     e.font = Font.italicSystemFont(S.text * 0.9);
     return;
@@ -199,6 +220,13 @@ function drawCard(container, list, tasks, showSub) {
         ? Font.semiboldSystemFont(S.due)
         : Font.systemFont(S.due);
       d.lineLimit = 1;
+    } else if (task.link) {
+      // a note: show which task it belongs to, tinted by that list
+      const l = row.addText(task.link.text);
+      l.textColor = task.link.list === "personal" ? RED : BLUE;
+      l.font = Font.semiboldSystemFont(S.due);
+      l.lineLimit = 1;
+      l.minimumScaleFactor = 0.8;
     }
 
     if (i < shown.length - 1) container.addSpacer(S.gap);
@@ -242,7 +270,8 @@ function build({ doc, live }) {
     which.forEach((list, idx) => {
       const col = cols.addStack();
       col.layoutVertically();
-      drawCard(col, list, activeTasks(doc, list.key), size === "large");
+      drawCard(col, list, list.isNotes ? openNotes(doc) : activeTasks(doc, list.key),
+               size === "large");
       if (idx === 0) {
         cols.addSpacer(10);
         const sep = cols.addStack();
@@ -255,7 +284,8 @@ function build({ doc, live }) {
   } else {
     const col = w.addStack();
     col.layoutVertically();
-    drawCard(col, which[0], activeTasks(doc, which[0].key), true);
+    const only = which[0];
+    drawCard(col, only, only.isNotes ? openNotes(doc) : activeTasks(doc, only.key), true);
   }
 
   // footer: freshness, so a stale widget is obvious
