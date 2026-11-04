@@ -993,6 +993,68 @@
     margin-top: 4px;
   }
   .modal a { color: var(--blue); }
+  /* Offline notice. Pinned to the bottom so it never covers the toolbar, and
+     it clears the home indicator on phones. */
+  .net-banner {
+    position: fixed;
+    left: 50%;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(140%);
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100vw - 24px);
+    padding: 9px 15px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 12.5px;
+    line-height: 1.35;
+    box-shadow: 0 6px 20px rgba(43, 38, 32, .3);
+    transition: transform .32s cubic-bezier(.22, 1.12, .36, 1), opacity .25s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .net-banner.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .net-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #e0a33f; flex: 0 0 auto;
+  }
+  .net-banner.syncing .net-dot { background: #6fb98a; }
+  .cloud-rule {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 18px 0 14px;
+  }
+  .cloud-google {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+  }
+  .cloud-google .g {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 19px; height: 19px; border-radius: 50%;
+    background: #fff; color: #4285f4;
+    font-family: var(--sans); font-weight: 700; font-size: 13px;
+    flex: 0 0 auto;
+  }
+  .cloud-or {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--faint); margin: 14px 0 6px;
+  }
+  .cloud-or::before, .cloud-or::after {
+    content: ""; flex: 1; border-top: 1px solid var(--rule);
+  }
+  .cloud-who {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .cloud-avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-size: 16px; font-weight: 700;
+  }
 
   /* Phones (iPhone 16 Pro & co.): keep the two lists side by side, just compact.
      NOTE: must stay AFTER the base rules — equal specificity, cascade order decides.
@@ -1258,6 +1320,20 @@
   /* All portrait phones: stop the toolbar wrapping onto a second line, which
      ate a whole row of vertical space. 440px covers every iPhone in portrait —
      a 400px cutoff missed the 402px iPhone 16 Pro by two pixels. */
+  /* 320px (iPhone SE 1st gen, older Androids) is the floor the layout has to
+     survive. Everything here is a size reduction only — no structural change,
+     so the fan and the panels behave exactly as they do at 390px. */
+  @media (max-width: 349px) {
+    .toolbar { gap: 3px; }
+    .toolbar-btn { padding: 7px 5px; font-size: 8px; letter-spacing: 0.2px; }
+    .build-stamp { display: none; }
+    .panel { padding: 13px 10px 7px; }
+    .add-input, .task-edit { font-size: 16px; }
+    .task-text { font-size: 14.5px; }
+    .mobile-tab { font-size: 15px; }
+    .net-banner { font-size: 11.5px; padding: 8px 12px; }
+  }
+
   @media (max-width: 440px) {
     .toolbar { flex-wrap: nowrap; gap: 5px; }
     .toolbar h1 { font-size: 0; letter-spacing: 0; }
@@ -1279,25 +1355,32 @@
   @media (min-width: 1101px) and (min-height: 520px) {
     html, body { height: 100%; }
     .layout {
-      min-height: 100vh;
-      min-height: 100dvh;
+      height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
     }
     .panels { flex: 1; min-height: 0; align-items: stretch; }
-    .panel { display: flex; flex-direction: column; }
-    .task-list, .note-list { flex: 1; }
+    .panel { display: flex; flex-direction: column; min-height: 0; }
+    .task-list, .note-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
     .panel-footer { margin-top: auto; }
   }
 
   /* Unfolded phones and tablets (and narrow laptop windows): keep the two
      columns, but let them fill the screen instead of sitting in the top third,
      and lift the type for the larger display. */
-  @media (min-width: 721px) and (max-width: 1100px) and (min-height: 420px) {
+  @media (min-width: 721px) and (max-width: 1100px) and (min-height: 340px),
+         (min-width: 1101px) and (min-height: 340px) and (max-height: 519px) {
     html, body { height: 100%; }
     .layout {
-      min-height: 100vh;
-      min-height: 100dvh;
+      height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       padding-left: clamp(20px, env(safe-area-inset-left, 0px), 28px);
@@ -1309,9 +1392,15 @@
     .panel.notes { grid-column: auto; }
     /* grid items default to min-width:auto, so the date input's intrinsic
        width pushed the columns wider than their track and overflowed */
-    .panel { display: flex; flex-direction: column; min-width: 0; }
+    .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
     .add-input, .due-input { min-width: 0; }
-    .task-list { flex: 1; }
+    .task-list, .note-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
     .panel-footer { margin-top: auto; }
 
     .panel { padding: 13px 12px 8px; border-radius: 12px; }
@@ -1343,6 +1432,26 @@
     .note-group-head { font-size: 9px; }
     .completed-toggle { font-size: 9px; letter-spacing: 1.2px; }
     .panel-footer, .clear-completed { font-size: 10.5px; }
+  }
+
+  /* Phone held sideways: width is plentiful, height is the scarce resource,
+     so spend the savings vertically — drop the subtitle line, thin the
+     toolbar and tighten the paddings. */
+  @media (min-width: 721px) and (max-height: 460px) {
+    /* height, not min-height: on a 390px-tall window the page must not be
+       allowed to grow at all, or the add-row leaves the screen. */
+    .layout { height: 100dvh;
+              padding-top: calc(8px + env(safe-area-inset-top, 0px));
+              padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+    .panels { overflow: hidden; }
+    .toolbar { margin-bottom: 8px; }
+    .toolbar-btn { padding: 7px 9px; font-size: 9px; }
+    .panel { padding: 10px 11px 6px; }
+    .panel-header .panel-subtitle { display: none; }
+    .panel-header .divider { margin: 5px 0 6px; }
+    .panels { gap: 10px; }
+    .task-row { padding: 6px 0; }
+    .note-input { min-height: 38px; }
   }
 
   /* Landscape / short screens: don't force a full-height card that pushes the
@@ -1410,6 +1519,30 @@
     <h2>Sync across devices</h2>
     <p class="modal-hint">This device is running build <b id="build-text">…</b>. Tasks and notes arrive from your gist even on an old build, so stale code still looks alive — if the number is behind, tap here.</p>
     <button class="modal-btn" id="force-update-btn">⬇️ Force update now</button>
+
+    <div id="cloud-account">
+      <div id="cloud-signed-out">
+        <p><b>Sign in and your lists follow you.</b> Every account gets its own private copy — your friends can each use the app with their own tasks, and nobody can see anyone else's.</p>
+        <button class="modal-btn primary cloud-google" id="cloud-google-btn"><span class="g">G</span> Continue with Google</button>
+        <div class="cloud-or">or</div>
+        <input type="email" class="sync-token" id="cloud-email-input" placeholder="you@example.com" autocomplete="email" inputmode="email">
+        <button class="modal-btn" id="cloud-email-btn">Email me a sign-in link</button>
+        <p class="modal-hint" id="cloud-auth-msg"></p>
+      </div>
+      <div id="cloud-signed-in" style="display:none">
+        <div class="cloud-who">
+          <div class="cloud-avatar" id="cloud-avatar">?</div>
+          <div>Signed in as<br><b id="cloud-email">…</b></div>
+        </div>
+        <button class="modal-btn primary" id="cloud-sync-now">🔄 Sync now</button>
+        <p class="modal-hint" id="cloud-status-line"></p>
+        <button class="modal-btn" id="cloud-signout-btn">Sign out of this device</button>
+        <p class="modal-hint">Signing out leaves your tasks on this device but stops them syncing.</p>
+      </div>
+      <p class="modal-hint" id="cloud-unconfigured" style="display:none">Accounts are not switched on for this copy yet.</p>
+      <hr class="cloud-rule">
+      <p class="modal-hint">Below is the older GitHub-token route. You only need it for the home-screen widget and the Apple Calendar feed — it keeps publishing both while your account holds the real data.</p>
+    </div>
     <div id="sync-off-view">
       <p>Keep your iPhone and Mac showing the same lists, live. Your tasks are stored in a <b>secret Gist</b> on your own GitHub account — nothing new to sign up for.</p>
       <ol>
@@ -1517,6 +1650,10 @@
 </div>
 
 <div class="ptr-indicator" id="ptr-indicator"><span class="ptr-arrow">↻</span></div>
+<div class="net-banner" id="net-banner" role="status" aria-live="polite">
+  <span class="net-dot"></span>
+  <span id="net-banner-text">Offline — your changes are saved here and will sync when you reconnect</span>
+</div>
 
 <script>
 (function () {
@@ -1872,6 +2009,32 @@
     node.classList.add("show");
     clearTimeout(statusTimer);
     statusTimer = setTimeout(function () { node.classList.remove("show"); }, 3000);
+  }
+
+  // Offline is a normal state for this app, not an error: every edit is
+  // already written to localStorage first and the sync layer is what waits.
+  // The banner exists so that is visible rather than merely true.
+  var netBannerTimer = null;
+  function setNetBanner(offline, message) {
+    var node = document.getElementById("net-banner");
+    var text = document.getElementById("net-banner-text");
+    if (!node || !text) return;
+    clearTimeout(netBannerTimer);
+    if (offline) {
+      text.textContent = message ||
+        "Offline — your changes are saved here and will sync when you reconnect";
+      node.classList.remove("syncing");
+      node.classList.add("show");
+      return;
+    }
+    // Back online: say so briefly, then get out of the way.
+    if (!node.classList.contains("show")) return;
+    text.textContent = message || "Back online — syncing your changes…";
+    node.classList.add("syncing");
+    netBannerTimer = setTimeout(function () {
+      node.classList.remove("show");
+      node.classList.remove("syncing");
+    }, 2600);
   }
 
   // ── Panel ────────────────────────────────────────────────
@@ -2309,7 +2472,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1057";
+  var BUILD = "2026-11-04-1427";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3368,6 +3531,315 @@
     }
   });
 
+  // ── Cloud accounts ───────────────────────────────────────
+  // Everyone who signs in gets their own private copy of the data. Rows are
+  // isolated in the database itself by Row Level Security (RLS), so one
+  // person's token can only ever read their own row — the browser is not
+  // trusted to filter. The anon key below is meant to be public; RLS is what
+  // guards the data, not secrecy of the key.
+  //
+  // Only the TRANSPORT is new. buildSyncDoc / mergeRemoteIntoLocal /
+  // applySyncDoc are reused exactly as the gist path uses them, so conflict
+  // handling lives in one place and behaves identically on both backends.
+
+  var CLOUD_URL = "";   // https://<project>.supabase.co
+  var CLOUD_KEY = "";   // the "anon public" key
+  var CLOUD_SESSION_KEY = "dia_todo_cloud_session_v1";
+
+  function cloudConfigured() { return !!(CLOUD_URL && CLOUD_KEY); }
+
+  function loadCloudSession() {
+    if (!cloudConfigured()) return null;
+    try {
+      var s = JSON.parse(localStorage.getItem(CLOUD_SESSION_KEY));
+      return (s && s.access_token && s.uid) ? s : null;
+    } catch (e) { return null; }
+  }
+
+  function saveCloudSession(s) {
+    localStorage.setItem(CLOUD_SESSION_KEY, JSON.stringify(s));
+  }
+
+  function clearCloudSession() {
+    localStorage.removeItem(CLOUD_SESSION_KEY);
+  }
+
+  function cloudSignedIn() { return !!loadCloudSession(); }
+
+  // Which backend owns the data right now. Cloud wins when signed in; the
+  // gist stays available on its own for anyone who never makes an account.
+  function syncActive() {
+    if (cloudSignedIn()) return "cloud";
+    if (getSyncCfg()) return "gist";
+    return null;
+  }
+
+  function storeCloudTokens(j, extra) {
+    var s = loadCloudSession() || {};
+    if (j.access_token) s.access_token = j.access_token;
+    if (j.refresh_token) s.refresh_token = j.refresh_token;
+    if (j.expires_in) s.expires_at = Date.now() + (j.expires_in * 1000);
+    if (j.user && j.user.id) s.uid = j.user.id;
+    if (j.user && j.user.email) s.email = j.user.email;
+    if (extra) {
+      if (extra.uid) s.uid = extra.uid;
+      if (extra.email) s.email = extra.email;
+    }
+    if (s.access_token && s.uid) saveCloudSession(s);
+    return s;
+  }
+
+  function refreshCloudSession() {
+    var s = loadCloudSession();
+    if (!s || !s.refresh_token) return Promise.resolve(false);
+    return fetch(CLOUD_URL + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers: { apikey: CLOUD_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: s.refresh_token })
+    }).then(function (res) {
+      // A rejected refresh token is terminal — the session is gone for good,
+      // so drop it rather than retrying every 20 seconds forever.
+      if (res.status === 400 || res.status === 401) { clearCloudSession(); return false; }
+      if (!res.ok) return false;
+      return res.json().then(function (j) { storeCloudTokens(j); return true; });
+    }).catch(function () { return false; });
+  }
+
+  function cloudFetch(path, init, retried) {
+    var s = loadCloudSession();
+    var opts = { method: (init && init.method) || "GET" };
+    var h = { apikey: CLOUD_KEY, "Content-Type": "application/json" };
+    h.Authorization = "Bearer " + (s && s.access_token ? s.access_token : CLOUD_KEY);
+    if (init && init.prefer) h.Prefer = init.prefer;
+    opts.headers = h;
+    if (init && init.body) opts.body = init.body;
+    if (init && init.keepalive) opts.keepalive = true;
+    if (opts.method === "GET") opts.cache = "no-store";
+    return fetch(CLOUD_URL + path, opts).then(function (res) {
+      if (res.status === 401 && !retried && s && s.refresh_token) {
+        return refreshCloudSession().then(function (ok) {
+          return ok ? cloudFetch(path, init, true) : res;
+        });
+      }
+      return res;
+    });
+  }
+
+  // ── Signing in ───────────────────────────────────────────
+  // The app is a static page, so it uses the implicit flow: the provider sends
+  // the tokens back in the URL fragment, which never reaches a server.
+
+  function cloudRedirectTarget() {
+    return location.origin + location.pathname;
+  }
+
+  function cloudSignInGoogle() {
+    location.href = CLOUD_URL + "/auth/v1/authorize?provider=google&redirect_to=" +
+      encodeURIComponent(cloudRedirectTarget());
+  }
+
+  function cloudSendMagicLink(email) {
+    return fetch(CLOUD_URL + "/auth/v1/otp", {
+      method: "POST",
+      headers: { apikey: CLOUD_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email,
+        create_user: true,
+        options: { email_redirect_to: cloudRedirectTarget() }
+      })
+    }).then(function (res) {
+      if (res.ok) return null;
+      return res.json().then(function (j) {
+        throw new Error((j && (j.msg || j.error_description || j.message)) || ("HTTP " + res.status));
+      }, function () { throw new Error("HTTP " + res.status); });
+    });
+  }
+
+  function cloudSignOut() {
+    var s = loadCloudSession();
+    clearCloudSession();
+    syncState.lastRemote = null;
+    syncState.lastApplied = 0;
+    if (s && s.access_token) {
+      fetch(CLOUD_URL + "/auth/v1/logout", {
+        method: "POST",
+        headers: { apikey: CLOUD_KEY, Authorization: "Bearer " + s.access_token }
+      }).catch(function () { /* the local session is already gone */ });
+    }
+  }
+
+  // Tokens come back in the fragment. Capture them, learn who it is, then
+  // strip the fragment so a refresh or a shared URL carries no credentials.
+  function captureCloudRedirect() {
+    if (!cloudConfigured()) return Promise.resolve(false);
+    var frag = location.hash || "";
+    if (frag.indexOf("access_token=") < 0 && frag.indexOf("error=") < 0) return Promise.resolve(false);
+    var q = new URLSearchParams(frag.replace(/^#/, ""));
+    history.replaceState(null, "", location.pathname + location.search);
+    if (q.get("error")) {
+      cloudAuthMessage(q.get("error_description") || q.get("error"));
+      return Promise.resolve(false);
+    }
+    var tokens = {
+      access_token: q.get("access_token"),
+      refresh_token: q.get("refresh_token"),
+      expires_in: parseInt(q.get("expires_in"), 10) || 3600
+    };
+    if (!tokens.access_token) return Promise.resolve(false);
+    // The fragment carries no identity, so ask who this token belongs to.
+    return fetch(CLOUD_URL + "/auth/v1/user", {
+      headers: { apikey: CLOUD_KEY, Authorization: "Bearer " + tokens.access_token }
+    }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (u) {
+      storeCloudTokens(tokens, { uid: u.id, email: u.email });
+      return true;
+    }).catch(function () {
+      cloudAuthMessage("Signed in, but the account couldn't be read. Try again.");
+      return false;
+    });
+  }
+
+  function cloudAuthMessage(text) {
+    var el = document.getElementById("cloud-auth-msg");
+    if (el) el.textContent = text || "";
+  }
+
+  // ── Cloud transport ──────────────────────────────────────
+
+  function cloudPull() {
+    if (!cloudSignedIn()) return;
+    if (syncState.dirty) { cloudPush(); return; }
+    if (document.querySelector(".task-edit, .due-edit-row")) return;
+    cloudFetch("/rest/v1/documents?select=doc,updated_at").then(function (res) {
+      if (res.status === 401) {
+        syncState.lastError = "session expired — sign in again";
+        setSyncDot("bad");
+        return null;
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (rows) {
+      if (!rows) return;
+      // No row yet: this account is brand new, so what is on this device
+      // becomes its starting point.
+      if (!rows.length || !rows[0].doc || !rows[0].doc.lists) { scheduleSyncPush(); return; }
+      var doc = rows[0].doc;
+      var json = JSON.stringify(doc);
+      if (json === syncState.lastRemote) return;
+      var weHaveMore = mergeRemoteIntoLocal(doc);
+      syncState.lastRemote = json;
+      syncState.lastApplied = doc.updatedAt || Date.now();
+      syncState.lastError = null;
+      if (weHaveMore) scheduleSyncPush();
+      else setSyncDot("ok");
+    }).catch(function () {
+      setSyncDot("bad");   // offline or transient — the next tick retries
+    });
+  }
+
+  function cloudPush() {
+    var s = loadCloudSession();
+    if (!s) return;
+    cloudFetch("/rest/v1/documents?select=doc,updated_at").then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (rows) {
+      var remoteDoc = (rows && rows.length) ? rows[0].doc : null;
+      // Merge before overwriting, exactly as the gist path does — another
+      // device may have pushed since this one last looked.
+      if (remoteDoc && remoteDoc.lists && (remoteDoc.updatedAt || 0) > syncState.lastApplied) {
+        var mergedLists = {};
+        var seen = {};
+        taskLists().forEach(function (l) { seen[l.id] = true; });
+        Object.keys(remoteDoc.lists || {}).forEach(function (k) { seen[k] = true; });
+        Object.keys(seen).forEach(function (id) {
+          mergedLists[id] = mergeTaskLists(loadTasks(keyForListId(id)),
+                                           normalizeTasks(remoteDoc.lists[id] || []));
+        });
+        applySyncDoc({
+          lists: mergedLists,
+          customLists: mergeTaskLists(loadCustomLists(), normalizeLists(remoteDoc.customLists || []))
+        });
+      }
+      var doc = buildSyncDoc();
+      var json = JSON.stringify(doc);
+      return cloudFetch("/rest/v1/documents", {
+        method: "POST",
+        prefer: "resolution=merge-duplicates,return=minimal",
+        body: JSON.stringify({
+          user_id: s.uid,
+          doc: doc,
+          updated_at: new Date().toISOString()
+        })
+      }).then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        syncState.dirty = false;
+        syncState.lastError = null;
+        syncState.lastApplied = doc.updatedAt;
+        syncState.lastRemote = json;
+        setSyncDot("ok");
+        gistMirror();   // keep the widget and the calendar feed alive
+      });
+    }).catch(function (err) {
+      syncState.lastError = (err && err.message) || "upload failed";
+      setSyncDot("bad");
+    });
+  }
+
+  function cloudFlush() {
+    var s = loadCloudSession();
+    if (!s || !syncState.dirty) return;
+    clearTimeout(syncState.pushTimer);
+    var doc = buildSyncDoc();
+    try {
+      cloudFetch("/rest/v1/documents", {
+        method: "POST",
+        keepalive: true,
+        prefer: "resolution=merge-duplicates,return=minimal",
+        body: JSON.stringify({
+          user_id: s.uid,
+          doc: doc,
+          updated_at: new Date().toISOString()
+        })
+      });
+      syncState.dirty = false;
+    } catch (e) { /* the next launch retries */ }
+  }
+
+  // When an account owns the data, the gist becomes a one-way publish target
+  // so the Scriptable widget and the Apple Calendar feed keep reading it.
+  // It deliberately touches no syncState — the account is the source of truth.
+  function gistMirror() {
+    var cfg = getSyncCfg();
+    if (!cfg) return;
+    var files = {};
+    files[GIST_FILE] = { content: JSON.stringify(buildSyncDoc()) };
+    files["reminders.ics"] = { content: buildRemindersICS() };
+    ghFetch(cfg.token, "/gists/" + cfg.gistId, {
+      method: "PATCH",
+      body: JSON.stringify({ files: files })
+    }).catch(function () { /* the mirror is best-effort */ });
+  }
+
+  // ── Backend dispatch ─────────────────────────────────────
+
+  function syncPushNow() {
+    if (cloudSignedIn()) cloudPush();
+    else if (getSyncCfg()) pushSync();
+  }
+
+  function syncPullNow() {
+    if (cloudSignedIn()) cloudPull();
+    else if (getSyncCfg()) pullSync();
+  }
+
+  function syncFlushNow() {
+    if (cloudSignedIn()) cloudFlush();
+    else if (getSyncCfg()) flushPendingSync();
+  }
+
   // ── Cross-device sync via a secret GitHub Gist ───────────
 
   var SYNC_CFG_KEY = "dia_todo_sync_v1";
@@ -3565,7 +4037,7 @@
   function setSyncDot(state) {
     var dot = document.getElementById("sync-dot");
     if (!dot) return;
-    if (!getSyncCfg()) { dot.className = "sync-dot"; return; }
+    if (!syncActive()) { dot.className = "sync-dot"; return; }
     dot.className = "sync-dot on " + state;
     dot.title = state === "ok" ? "Synced" :
       state === "busy" ? "Syncing…" :
@@ -3573,11 +4045,11 @@
   }
 
   function scheduleSyncPush() {
-    if (!getSyncCfg()) return;
+    if (!syncActive()) return;
     syncState.dirty = true;
     setSyncDot("busy");
     clearTimeout(syncState.pushTimer);
-    syncState.pushTimer = setTimeout(pushSync, 1500);
+    syncState.pushTimer = setTimeout(syncPushNow, 1500);
   }
 
   // If the app is backgrounded or closed with an un-uploaded change, send it
@@ -3705,20 +4177,29 @@
   function startSyncLoop() {
     if (syncState.loopStarted) return;
     syncState.loopStarted = true;
-    setInterval(pullSync, 20000);
+    setInterval(syncPullNow, 20000);
     document.addEventListener("visibilitychange", function () {
-      if (document.hidden) flushPendingSync();   // leaving: don't strand a change
-      else pullSync();                            // returning: catch up at once
+      if (document.hidden) syncFlushNow();   // leaving: don't strand a change
+      else syncPullNow();                     // returning: catch up at once
     });
-    window.addEventListener("focus", pullSync);
-    window.addEventListener("pagehide", flushPendingSync);
-    // came back online after a failure — retry immediately rather than waiting
-    window.addEventListener("online", function () {
-      if (syncState.dirty) pushSync();
-      else pullSync();
-    });
-    window.addEventListener("offline", function () { setSyncDot("bad"); });
+    window.addEventListener("focus", syncPullNow);
+    window.addEventListener("pagehide", syncFlushNow);
   }
+
+  // Registered unconditionally: offline-first behaviour belongs to the app,
+  // not to whichever sync backend happens to be configured.
+  window.addEventListener("offline", function () {
+    setNetBanner(true);
+    if (syncActive()) setSyncDot("bad");
+  });
+  window.addEventListener("online", function () {
+    setNetBanner(false);
+    // Everything edited while offline is already in localStorage; this is the
+    // moment it reaches the account.
+    if (!syncActive()) return;
+    if (syncState.dirty) syncPushNow();
+    else syncPullNow();
+  });
 
   function enableSync(token, done) {
     ghFetch(token, "/gists?per_page=100").then(function (res) {
@@ -3773,6 +4254,42 @@
     });
   }
 
+  function setCloudStatusLine() {
+    var line = document.getElementById("cloud-status-line");
+    if (!line) return;
+    var parts = [];
+    parts.push(syncState.lastApplied
+      ? "Last synced " + formatDateTime(syncState.lastApplied)
+      : "Not synced yet on this device");
+    if (!navigator.onLine) parts.push("📴 offline — changes are saved here and upload when you reconnect");
+    else if (syncState.dirty) parts.push("uploading…");
+    if (syncState.lastError) parts.push("Last error: " + syncState.lastError);
+    line.textContent = parts.join(" · ");
+  }
+
+  function refreshCloudAccount() {
+    var out = document.getElementById("cloud-signed-out");
+    var inn = document.getElementById("cloud-signed-in");
+    var un = document.getElementById("cloud-unconfigured");
+    if (!out || !inn || !un) return;
+    if (!cloudConfigured()) {
+      out.style.display = "none";
+      inn.style.display = "none";
+      un.style.display = "";
+      return;
+    }
+    un.style.display = "none";
+    var s = loadCloudSession();
+    out.style.display = s ? "none" : "";
+    inn.style.display = s ? "" : "none";
+    if (s) {
+      document.getElementById("cloud-email").textContent = s.email || "your account";
+      document.getElementById("cloud-avatar").textContent =
+        (s.email || "?").charAt(0).toUpperCase();
+      setCloudStatusLine();
+    }
+  }
+
   function refreshSyncModal() {
     var cfg = getSyncCfg();
     document.getElementById("sync-off-view").style.display = cfg ? "none" : "";
@@ -3795,6 +4312,7 @@
 
   document.getElementById("sync-btn").addEventListener("click", function () {
     refreshSyncModal();
+    refreshCloudAccount();
     refreshMsSection();
     // GitHub token names must be unique per account, so suggest a fresh one each time
     document.getElementById("sync-token-link").href =
@@ -3856,6 +4374,7 @@
       }
       input.value = "";
       refreshSyncModal();
+    refreshCloudAccount();
       flashStatus("Sync enabled.");
     });
   });
@@ -3863,6 +4382,7 @@
   document.getElementById("sync-disable-btn").addEventListener("click", function () {
     localStorage.removeItem(SYNC_CFG_KEY);
     refreshSyncModal();
+    refreshCloudAccount();
     flashStatus("Sync turned off on this device. Your tasks stay put.");
   });
 
@@ -4145,18 +4665,74 @@
     }).catch(function () { /* retry next visit */ });
   })();
 
-  if (getSyncCfg()) {
+  (function wireCloudButtons() {
+    var g = document.getElementById("cloud-google-btn");
+    var mailBtn = document.getElementById("cloud-email-btn");
+    var mailIn = document.getElementById("cloud-email-input");
+    var out = document.getElementById("cloud-signout-btn");
+    var now = document.getElementById("cloud-sync-now");
+    if (g) g.addEventListener("click", function () {
+      cloudAuthMessage("Opening Google…");
+      cloudSignInGoogle();
+    });
+    function sendLink() {
+      var email = (mailIn.value || "").trim();
+      if (!email || email.indexOf("@") < 1) {
+        cloudAuthMessage("Type the email address you want the link sent to.");
+        mailIn.focus();
+        return;
+      }
+      mailBtn.disabled = true;
+      cloudAuthMessage("Sending…");
+      cloudSendMagicLink(email).then(function () {
+        mailBtn.disabled = false;
+        cloudAuthMessage("Link sent to " + email + ". Open it on this device and you are in.");
+      }).catch(function (err) {
+        mailBtn.disabled = false;
+        cloudAuthMessage("Couldn't send it: " + ((err && err.message) || "unknown error"));
+      });
+    }
+    if (mailBtn) mailBtn.addEventListener("click", sendLink);
+    if (mailIn) mailIn.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); sendLink(); }
+    });
+    if (now) now.addEventListener("click", function () {
+      syncState.lastRemote = null;   // force a re-read even if nothing changed
+      setCloudStatusLine();
+      cloudPull();
+      setTimeout(setCloudStatusLine, 1200);
+    });
+    if (out) out.addEventListener("click", function () {
+      cloudSignOut();
+      refreshCloudAccount();
+      // The gist route may still be configured, in which case it takes over.
+      setSyncDot("busy");
+      if (syncActive()) syncPullNow();
+      flashStatus("Signed out. Your tasks are still here on this device.");
+    });
+  })();
+
+  // Boot the right backend. A sign-in redirect has to be consumed first,
+  // otherwise the loop starts before the session exists and the first pull
+  // is wasted.
+  if (!navigator.onLine) setNetBanner(true);
+
+  captureCloudRedirect().then(function (justSignedIn) {
+    refreshCloudAccount();
+    if (!syncActive()) {
+      localStorage.removeItem("dia_todo_import_pending");
+      return;
+    }
     setSyncDot("busy");
     startSyncLoop();
+    if (justSignedIn) flashStatus("Signed in — syncing your lists…");
     if (localStorage.getItem("dia_todo_import_pending")) {
       localStorage.removeItem("dia_todo_import_pending");
       scheduleSyncPush();
     } else {
-      pullSync();
+      syncPullNow();
     }
-  } else {
-    localStorage.removeItem("dia_todo_import_pending");
-  }
+  });
 
   // ── Pull-to-refresh (touch devices) ──────────────────────
 

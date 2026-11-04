@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+native/ios/App/Pods/
+native/ios/App/public/
+native/www/
