@@ -733,7 +733,7 @@
   .clear-completed:hover { color: var(--red); }
 
   /* ── Card picker (tap a card to see them all, iOS-Wallet style) ── */
-  .card-picker { align-items: flex-end; }
+  .card-picker { align-items: flex-end; padding: 12px; }
   .picker-sheet {
     background: var(--card);
     width: 100%;
@@ -760,8 +760,10 @@
   }
   .picker-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
+    /* 150px was just too wide to fit two tiles on a 373px phone, so the
+       grid collapsed to a single column */
+    grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+    gap: 9px;
   }
   .picker-tile {
     position: relative;
@@ -770,7 +772,8 @@
     border: 1px solid var(--rule);
     border-top: 3px solid var(--rule);
     border-radius: 12px;
-    padding: 14px 12px 12px;
+    padding: 13px 10px 11px;
+    min-width: 0;
     cursor: pointer;
     font-family: var(--serif);
   }
@@ -1248,7 +1251,7 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
-      <p class="modal-hint">Build: <b>2026-11-04-0955</b> — if this looks old, pull down to refresh.</p>
+      <p class="modal-hint">Build: <b>2026-11-04-0957</b> — if this looks old, pull down to refresh.</p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -2042,7 +2045,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-0955";
+  var BUILD = "2026-11-04-0957";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
