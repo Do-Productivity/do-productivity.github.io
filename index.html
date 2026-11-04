@@ -436,6 +436,19 @@
   }
 
   /* ── Notes ───────────────────────────────── */
+  /* User-made lists carry their colour as variables rather than a class per
+     list, so adding one needs no new CSS. */
+  .panel.custom { border-top-color: var(--tint); }
+  .panel.custom .dot { color: var(--tint); }
+  .panel.custom .add-input:focus { border-color: var(--tint); }
+  .panel.custom .add-btn { background: var(--tint); }
+  .panel.custom .task-circle { border-color: var(--tint); }
+  .panel.custom .task-circle:hover { background: var(--tint-soft); }
+  .panel.custom .completed-toggle { color: var(--tint); }
+  .panel.custom .count-badge { background: var(--tint-soft); }
+  .picker-tile.custom { border-top-color: var(--tint); }
+  .picker-tile.custom .pt-dot { color: var(--tint); }
+
   .panel.notes { border-top-color: var(--green); }
   .panel.notes .dot { color: var(--green); }
 
@@ -775,6 +788,34 @@
     grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
     gap: 9px;
   }
+  .picker-tile.add-tile {
+    border: 1px dashed var(--rule);
+    border-top: 3px dashed var(--rule);
+    background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--sans); font-size: 13px; font-weight: 700;
+    letter-spacing: .4px; color: var(--ink-soft); min-height: 84px;
+  }
+  .pt-remove {
+    position: absolute; top: 4px; right: 4px;
+    width: 26px; height: 26px; line-height: 1;
+    border: none; background: transparent; cursor: pointer;
+    font-size: 15px; color: var(--ink-faint);
+  }
+  .pt-remove:hover { color: var(--red); }
+  .nl-input {
+    width: 100%; font-family: var(--sans); font-size: 16px;
+    padding: 11px 12px; margin-bottom: 9px;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: 10px;
+  }
+  .nl-swatches { display: flex; gap: 9px; justify-content: center; margin: 4px 0 14px; }
+  .nl-swatch {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid transparent; cursor: pointer; padding: 0;
+  }
+  .nl-swatch.on { border-color: var(--ink); }
+
   .picker-tile {
     position: relative;
     text-align: left;
@@ -1129,8 +1170,12 @@
     .card-fan {
       display: block; position: relative;
       height: 96px; margin: 0 0 8px;
-      perspective: 800px;
+      perspective: 760px;
+      perspective-origin: 50% 46%;
+      transform-style: preserve-3d;
+      transition: transform .32s cubic-bezier(.2, .9, .3, 1);
     }
+    .card-fan.dragging { transition: none; }
     /* Width and offset are chosen together: at 54%/40% the shoulder cards
        scale to .84 and still land ~20px inside a 373px screen, so they read
        as cards behind rather than slabs running off the edge. */
@@ -1141,9 +1186,15 @@
       display: flex; flex-direction: column; justify-content: space-between;
       text-align: left; color: #fff; cursor: pointer;
       box-shadow: 0 6px 18px rgba(43, 38, 32, 0.22);
-      transition: transform .34s cubic-bezier(.2, .8, .25, 1), opacity .24s ease;
+      /* a touch of overshoot, so a card settles into place like a real one
+         being thumbed forward rather than sliding to a dead stop */
+      transition: transform .42s cubic-bezier(.22, 1.12, .36, 1),
+                  opacity .28s ease, filter .28s ease, box-shadow .3s ease;
+      will-change: transform;
       -webkit-tap-highlight-color: transparent;
     }
+    .fan-card.pos-active { box-shadow: 0 12px 28px rgba(43, 38, 32, 0.3); }
+    .fan-card:active { filter: brightness(.93) !important; }
     .fan-card.personal { background: linear-gradient(140deg, #d4694f, #ab3a26); }
     .fan-card.business { background: linear-gradient(140deg, #4d82a8, #2b5472); }
     .fan-card.notes    { background: linear-gradient(140deg, #5fa675, #376d46); }
@@ -1155,12 +1206,11 @@
       letter-spacing: 1.6px; opacity: .72; margin-top: 3px;
     }
     .fc-count { font-family: var(--sans); font-size: 11px; font-weight: 700; opacity: .93; }
-    .fan-card.pos-active { transform: translateX(-50%) scale(1); z-index: 3; }
-    .fan-card.pos-prev {
-      transform: translateX(-50%) translateX(-40%) scale(.84); z-index: 2; opacity: .85;
-    }
-    .fan-card.pos-next {
-      transform: translateX(-50%) translateX(40%) scale(.84); z-index: 2; opacity: .85;
+    /* The fan deals itself out the first time it draws. Later moves are the
+       transition above, so this plays once rather than on every re-render. */
+    .card-fan.dealing .fan-card { animation: fan-deal .5s cubic-bezier(.2, .9, .3, 1) backwards; }
+    @keyframes fan-deal {
+      from { opacity: 0; transform: translateX(-50%) translateY(26px) scale(.8); }
     }
 
     /* Apple's "Other Cards & Pay Later Options" sits in the same place */
@@ -1181,7 +1231,8 @@
     .panel.expanded { padding-top: 12px; }
 
     @media (prefers-reduced-motion: reduce) {
-      .fan-card { transition: none; }
+      .fan-card, .card-fan { transition: none; }
+      .card-fan.dealing .fan-card { animation: none; }
     }
   }
 
@@ -1435,16 +1486,101 @@
   </div>
 </div>
 
+<div class="modal-overlay card-picker" id="new-list-modal">
+  <div class="picker-sheet">
+    <div class="picker-head">New list</div>
+    <input class="nl-input" id="nl-name" placeholder="List name" maxlength="24" autocomplete="off">
+    <input class="nl-input" id="nl-sub" placeholder="Subtitle (optional)" maxlength="28" autocomplete="off">
+    <div class="nl-swatches" id="nl-swatches"></div>
+    <button class="modal-btn primary" id="nl-create">Create list</button>
+    <button class="picker-close" id="nl-cancel">Cancel</button>
+  </div>
+</div>
+
 <div class="ptr-indicator" id="ptr-indicator"><span class="ptr-arrow">↻</span></div>
 
 <script>
 (function () {
   "use strict";
 
+  // The two originals keep their own storage keys — migrating them to the
+  // generic scheme would rewrite data that already syncs, for no gain.
   var PANELS = [
-    { id: "personal", title: "Personal", subtitle: "Life & Home", storageKey: "dia_todo_personal_v1" },
-    { id: "business", title: "Business", subtitle: "Work & Projects", storageKey: "dia_todo_business_v1" }
+    { id: "personal", title: "Personal", subtitle: "Life & Home", storageKey: "dia_todo_personal_v1", tint: "red" },
+    { id: "business", title: "Business", subtitle: "Work & Projects", storageKey: "dia_todo_business_v1", tint: "blue" }
   ];
+
+  // ── List registry ────────────────────────────────────────
+  // Lists the user adds live here; their tasks go in dia_todo_list_<id>_v1.
+  // Definitions carry id/mt/deleted so the ordinary merge handles them, which
+  // is what lets a list created on the phone appear on the Mac.
+  var CUSTOM_KEY = "dia_todo_customlists_v1";
+
+  var TINTS = {
+    red:    { a: "#d4694f", b: "#ab3a26", solid: "#c8553d" },
+    blue:   { a: "#4d82a8", b: "#2b5472", solid: "#3d6b8c" },
+    green:  { a: "#5fa675", b: "#376d46", solid: "#4a8a5c" },
+    amber:  { a: "#d59a3f", b: "#935f10", solid: "#b3701f" },
+    violet: { a: "#8f74b5", b: "#584080", solid: "#735a99" },
+    teal:   { a: "#4fa3a0", b: "#246b69", solid: "#358a87" }
+  };
+
+  function tint(name) { return TINTS[name] || TINTS.amber; }
+
+  // a pale version of the tint for hover fills and count badges
+  function softTint(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return "rgb(" + Math.round(r + (255 - r) * 0.68) + "," +
+                    Math.round(g + (255 - g) * 0.68) + "," +
+                    Math.round(b + (255 - b) * 0.68) + ")";
+  }
+
+  function listKey(id) { return "dia_todo_list_" + id + "_v1"; }
+
+  function keyForListId(id) {
+    if (id === "personal") return "dia_todo_personal_v1";
+    if (id === "business") return "dia_todo_business_v1";
+    return listKey(id);
+  }
+
+  function normalizeLists(parsed) {
+    if (!Array.isArray(parsed)) return [];
+    var purgeBefore = Date.now() - 30 * 24 * 3600 * 1000;
+    return parsed.filter(function (l) {
+      return l && typeof l.id === "string" && typeof l.title === "string";
+    }).map(function (l) {
+      var out = { id: l.id, title: l.title, sub: typeof l.sub === "string" ? l.sub : "", tint: TINTS[l.tint] ? l.tint : "amber" };
+      if (typeof l.mt === "number") out.mt = l.mt;
+      if (l.deleted) {
+        out.deleted = true;
+        if (typeof l.deletedAt === "number") out.deletedAt = l.deletedAt;
+      }
+      return out;
+    }).filter(function (l) {
+      return !(l.deleted && l.deletedAt && l.deletedAt < purgeBefore);
+    });
+  }
+
+  function loadCustomLists() {
+    try { return normalizeLists(JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]")); }
+    catch (e) { return []; }
+  }
+
+  function saveCustomLists(arr) {
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr));
+  }
+
+  // every live task list, built-ins first then the user's own
+  function taskLists() {
+    var out = PANELS.slice();
+    loadCustomLists().forEach(function (l) {
+      if (l.deleted) return;
+      out.push({ id: l.id, title: l.title, subtitle: l.sub,
+                 storageKey: listKey(l.id), tint: l.tint, custom: true });
+    });
+    return out;
+  }
 
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -1606,8 +1742,8 @@
       "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
       "X-PUBLISHED-TTL:PT15M"
     ];
-    [{ key: "dia_todo_personal_v1", name: "Personal" }, { key: "dia_todo_business_v1", name: "Business" }].forEach(function (list) {
-      loadTasks(list.key).forEach(function (task) {
+    taskLists().forEach(function (list) {
+      loadTasks(list.storageKey).forEach(function (task) {
         if (task.done || task.deleted || !task.due) return;
         // UID must stay stable for the life of the task. If the due time is
         // part of it, rescheduling looks like "delete one event, add another"
@@ -1725,7 +1861,12 @@
     var tasks = loadTasks(config.storageKey);
     var completedOpen = false;
 
-    var panel = el("section", "panel " + config.id);
+    var panel = el("section", "panel " + config.id + (config.custom ? " custom" : ""));
+    if (config.custom) {
+      var t = tint(config.tint);
+      panel.style.setProperty("--tint", t.solid);
+      panel.style.setProperty("--tint-soft", softTint(t.solid));
+    }
 
     // Header
     var header = el("div", "panel-header");
@@ -2149,7 +2290,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1033";
+  var BUILD = "2026-11-04-1042";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2226,11 +2367,10 @@
   // every open task across both lists, for the "link to" picker
   function openTasks() {
     var out = [];
-    [["dia_todo_personal_v1", "personal", "Personal"],
-     ["dia_todo_business_v1", "business", "Business"]].forEach(function (cfg) {
-      loadTasks(cfg[0]).forEach(function (t) {
+    taskLists().forEach(function (list) {
+      loadTasks(list.storageKey).forEach(function (t) {
         if (!t.done && !t.deleted) {
-          out.push({ id: t.id, text: t.text, list: cfg[1], title: cfg[2] });
+          out.push({ id: t.id, text: t.text, list: list.id, title: list.title });
         }
       });
     });
@@ -2620,7 +2760,7 @@
   var panelReloaders = [];
   var panelSyncers = [];
   var panelsRoot = document.getElementById("panels");
-  PANELS.forEach(function (config) {
+  taskLists().forEach(function (config) {
     panelsRoot.appendChild(createPanel(config));
   });
   panelsRoot.appendChild(createNotesPanel());
@@ -2629,12 +2769,27 @@
   // shrinks the others to a title + count. Keeps the whole picture visible
   // instead of hiding two thirds of it behind tabs.
   var MTAB_KEY = "dia_todo_mtab_v1";
-  var PANEL_IDS = ["personal", "business", "notes"];
-  var PANEL_META = {
-    personal: { title: "Personal", sub: "LIFE & HOME",      unit: "to do" },
-    business: { title: "Business", sub: "WORK & PROJECTS",  unit: "to do" },
-    notes:    { title: "Notes",    sub: "CONTEXT & DETAIL", unit: "open" }
-  };
+  var PANEL_IDS = [];
+  var PANEL_META = {};
+
+  // Notes always ride last, after however many task lists exist.
+  function rebuildPanelIndex() {
+    PANEL_IDS = [];
+    PANEL_META = {};
+    taskLists().forEach(function (l) {
+      PANEL_IDS.push(l.id);
+      PANEL_META[l.id] = {
+        title: l.title,
+        sub: (l.subtitle || "").toUpperCase(),
+        unit: "to do",
+        tint: l.tint || "amber",
+        custom: !!l.custom
+      };
+    });
+    PANEL_IDS.push("notes");
+    PANEL_META.notes = { title: "Notes", sub: "CONTEXT & DETAIL", unit: "open", tint: "green" };
+  }
+  rebuildPanelIndex();
 
   function panelEl(id) {
     return panelsRoot.querySelector(".panel." + id);
@@ -2668,17 +2823,51 @@
     return badge ? badge.textContent.trim() : "0";
   }
 
+  // How a card sits at each remove from the front one. Beyond the third it is
+  // parked off to the side at zero opacity, so a long list of lists still
+  // animates in and out instead of popping.
+  var FAN_DEPTH = [
+    { x: 0,  scale: 1,    opacity: 1,    z: 0,    rotate: 0,  blur: 0 },
+    { x: 40, scale: 0.84, opacity: 0.9,  z: -70,  rotate: 15, blur: 0 },
+    { x: 66, scale: 0.70, opacity: 0.46, z: -140, rotate: 22, blur: 0.6 },
+    { x: 84, scale: 0.62, opacity: 0,    z: -200, rotate: 26, blur: 1.2 }
+  ];
+
+  function placeFanCard(card, d) {
+    var g = FAN_DEPTH[Math.min(Math.abs(d), 3)];
+    var sign = d < 0 ? -1 : 1;
+    // the shoulders turn their far edge away, so the fan has real depth
+    // rather than being three flat rectangles at different sizes
+    card.style.transform =
+      "translateX(-50%) translateX(" + (sign * g.x) + "%)" +
+      " translateZ(" + g.z + "px)" +
+      " rotateY(" + (sign * g.rotate) + "deg)" +
+      " scale(" + g.scale + ")";
+    card.style.opacity = g.opacity;
+    card.style.filter = g.blur ? "blur(" + g.blur + "px)" : "none";
+    card.style.zIndex = String(20 - Math.abs(d));
+    card.style.pointerEvents = g.opacity === 0 ? "none" : "auto";
+  }
+
   function renderFan(activeId) {
+    var n = PANEL_IDS.length;
     var at = PANEL_IDS.indexOf(activeId);
     if (at < 0) at = 0;
+    var first = !fanRoot.firstChild;
     fanRoot.textContent = "";
     PANEL_IDS.forEach(function (id, i) {
       var meta = PANEL_META[id];
-      // with three cards, one sits left and one right of the open card
-      var offset = (i - at + PANEL_IDS.length) % PANEL_IDS.length;
-      var pos = offset === 0 ? "pos-active" : (offset === 1 ? "pos-next" : "pos-prev");
-      var card = el("button", "fan-card " + id + " " + pos);
+      // signed distance, wrapped — the fan is a loop, not a line
+      var d = i - at;
+      if (d > n / 2) d -= n;
+      if (d < -n / 2) d += n;
+
+      var card = el("button", "fan-card " + id + (meta.custom ? " custom" : ""));
+      var t = tint(meta.tint);
+      card.style.backgroundImage = "linear-gradient(140deg," + t.a + "," + t.b + ")";
       card.setAttribute("aria-label", meta.title + ", " + panelCount(id) + " " + meta.unit);
+      if (d === 0) card.classList.add("pos-active");
+      if (first) card.style.animationDelay = (Math.abs(d) * 70) + "ms";
 
       var head = el("span", "fc-head");
       var title = el("span", "fc-title", meta.title);
@@ -2690,11 +2879,13 @@
 
       card.addEventListener("click", function () {
         // front card opens the grid; a shoulder card simply comes forward
-        if (offset === 0) openCardPicker();
+        if (d === 0) openCardPicker();
         else setMobileTab(id);
       });
       fanRoot.appendChild(card);
+      placeFanCard(card, d);
     });
+    fanRoot.classList.toggle("dealing", first);
   }
 
   // Adding or checking something changes a count; mirror it onto the fan
@@ -2748,7 +2939,9 @@
       var meta = PANEL_META[id];
       var panel = panelEl(id);
       var count = panel ? panel.querySelector(".panel-count").textContent : "0";
-      var tile = el("button", "picker-tile " + id + (id === current ? " current" : ""));
+      var tile = el("button", "picker-tile " + id + (meta.custom ? " custom" : "") +
+                               (id === current ? " current" : ""));
+      if (meta.custom) tile.style.setProperty("--tint", tint(meta.tint).solid);
       var title = el("span", "pt-title", meta.title);
       title.appendChild(el("span", "pt-dot", "."));
       tile.appendChild(title);
@@ -2759,10 +2952,105 @@
         setMobileTab(id);
         panelsRoot.scrollIntoView({ behavior: "smooth", block: "start" });
       });
+      // only the user's own lists can be removed; the originals stay
+      if (meta.custom) {
+        var rm = el("button", "pt-remove", "\u00d7");
+        rm.title = "Delete this list";
+        rm.addEventListener("click", function (e) {
+          e.stopPropagation();
+          deleteList(id, meta.title);
+        });
+        tile.appendChild(rm);
+      }
       grid.appendChild(tile);
     });
+
+    var add = el("button", "picker-tile add-tile", "\uFF0B  New list");
+    add.addEventListener("click", function () {
+      closeCardPicker();
+      openNewListSheet();
+    });
+    grid.appendChild(add);
+
     document.getElementById("card-picker").classList.add("show");
   }
+
+  // ── Adding and removing lists ────────────────────────────
+
+  function newListId() {
+    return "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  function createList(title, sub, tintName) {
+    var def = { id: newListId(), title: title, sub: sub, tint: tintName, mt: Date.now() };
+    var lists = loadCustomLists();
+    lists.push(def);
+    saveCustomLists(lists);
+
+    var config = { id: def.id, title: def.title, subtitle: def.sub,
+                   storageKey: listKey(def.id), tint: def.tint, custom: true };
+    // Append rather than rebuild: every panel owns a due-date interval, and
+    // tearing them all down to redraw would leak one per list.
+    panelsRoot.insertBefore(createPanel(config), panelsRoot.querySelector(".panel.notes"));
+    rebuildPanelIndex();
+    setMobileTab(def.id);
+    scheduleSyncPush();
+    flashStatus("\u201c" + title + "\u201d added.");
+  }
+
+  function deleteList(id, title) {
+    var n = loadTasks(keyForListId(id)).filter(function (t) { return !t.deleted; }).length;
+    if (!confirm("Delete the list \u201c" + title + "\u201d?" +
+                 (n ? "\n\n" + n + " task(s) in it go too." : "") +
+                 "\n\nThis removes it from every synced device.")) return;
+    // soft delete, so the removal travels to the other devices instead of
+    // their copy simply reappearing on the next merge
+    var lists = loadCustomLists().map(function (l) {
+      if (l.id !== id) return l;
+      l.deleted = true;
+      l.deletedAt = Date.now();
+      l.mt = Date.now();
+      return l;
+    });
+    saveCustomLists(lists);
+    localStorage.removeItem(listKey(id));
+    if (localStorage.getItem(MTAB_KEY) === id) localStorage.setItem(MTAB_KEY, "personal");
+    scheduleSyncPush();
+    setTimeout(function () { location.reload(); }, 250);
+  }
+
+  function openNewListSheet() {
+    var chosen = "amber";
+    var swatches = document.getElementById("nl-swatches");
+    swatches.textContent = "";
+    Object.keys(TINTS).forEach(function (name) {
+      var b = el("button", "nl-swatch" + (name === chosen ? " on" : ""));
+      b.style.background = TINTS[name].solid;
+      b.setAttribute("aria-label", name);
+      b.addEventListener("click", function () {
+        chosen = name;
+        [].forEach.call(swatches.children, function (c) { c.classList.remove("on"); });
+        b.classList.add("on");
+      });
+      swatches.appendChild(b);
+    });
+    document.getElementById("nl-name").value = "";
+    document.getElementById("nl-sub").value = "";
+    document.getElementById("new-list-modal").classList.add("show");
+    document.getElementById("nl-create").onclick = function () {
+      var name = document.getElementById("nl-name").value.trim();
+      if (!name) { document.getElementById("nl-name").focus(); return; }
+      document.getElementById("new-list-modal").classList.remove("show");
+      createList(name, document.getElementById("nl-sub").value.trim(), chosen);
+    };
+  }
+
+  document.getElementById("nl-cancel").addEventListener("click", function () {
+    document.getElementById("new-list-modal").classList.remove("show");
+  });
+  document.getElementById("new-list-modal").addEventListener("click", function (e) {
+    if (e.target === this) this.classList.remove("show");
+  });
 
   function closeCardPicker() {
     document.getElementById("card-picker").classList.remove("show");
@@ -2789,7 +3077,19 @@
       startY = e.touches[0].clientY;
     }, { passive: true });
 
+    // the fan leans with your thumb while you drag, then springs back
+    root.addEventListener("touchmove", function (e) {
+      if (startX === null || root !== fanRoot) return;
+      var mx = e.touches[0].clientX - startX;
+      var my = e.touches[0].clientY - startY;
+      if (Math.abs(mx) < Math.abs(my)) return;
+      fanRoot.classList.add("dragging");
+      fanRoot.style.transform = "translateX(" + Math.max(-46, Math.min(46, mx * 0.34)) + "px)";
+    }, { passive: true });
+
     root.addEventListener("touchend", function (e) {
+      fanRoot.classList.remove("dragging");
+      fanRoot.style.transform = "";
       if (startX === null) return;
       var dx = e.changedTouches[0].clientX - startX;
       var dy = e.changedTouches[0].clientY - startY;
@@ -2811,10 +3111,8 @@
       app: "dia-todo",
       version: 1,
       exportedAt: new Date().toISOString(),
-      lists: {
-        personal: loadTasks("dia_todo_personal_v1"),
-        business: loadTasks("dia_todo_business_v1")
-      },
+      lists: listsSnapshot(),
+      customLists: loadCustomLists(),
       notes: loadNotes()
     };
   }
@@ -2899,6 +3197,13 @@
 
     localStorage.setItem("dia_todo_personal_v1", JSON.stringify(personal));
     localStorage.setItem("dia_todo_business_v1", JSON.stringify(business));
+    if (Array.isArray(data.customLists)) {
+      saveCustomLists(normalizeLists(data.customLists));
+      normalizeLists(data.customLists).forEach(function (l) {
+        if (!l.deleted) localStorage.setItem(listKey(l.id),
+          JSON.stringify(normalizeTasks((data.lists || {})[l.id] || [])));
+      });
+    }
     if (Array.isArray(data.notes)) localStorage.setItem(NOTES_KEY, JSON.stringify(data.notes));
     // if sync is on, the imported data must win over the remote copy after reload
     localStorage.setItem("dia_todo_import_pending", "1");
@@ -2987,12 +3292,17 @@
     return {
       app: "dia-todo",
       updatedAt: Date.now(),
-      lists: {
-        personal: loadTasks("dia_todo_personal_v1"),
-        business: loadTasks("dia_todo_business_v1")
-      },
+      lists: listsSnapshot(),
+      customLists: loadCustomLists(),
       notes: loadNotes()
     };
+  }
+
+  // { listId: tasks } across every live list
+  function listsSnapshot() {
+    var out = {};
+    taskLists().forEach(function (l) { out[l.id] = loadTasks(l.storageKey); });
+    return out;
   }
 
   // Never replace local state with remote wholesale — a device may hold changes
@@ -3003,26 +3313,48 @@
   // i.e. there is a reason to upload. Without that check two open devices
   // would push to each other forever, since every upload restamps updatedAt.
   function mergeRemoteIntoLocal(remoteDoc) {
-    var remoteLists = {
-      personal: normalizeTasks(remoteDoc.lists.personal || []),
-      business: normalizeTasks(remoteDoc.lists.business || [])
-    };
+    // List definitions merge first: a list made on another device has to exist
+    // here before its tasks have anywhere to land.
+    var remoteCustom = normalizeLists(remoteDoc.customLists || []);
+    var mergedCustom = mergeTaskLists(loadCustomLists(), remoteCustom);
+
+    var ids = {};
+    taskLists().forEach(function (l) { ids[l.id] = true; });
+    mergedCustom.forEach(function (l) { if (!l.deleted) ids[l.id] = true; });
+    Object.keys(remoteDoc.lists || {}).forEach(function (k) { ids[k] = true; });
+
+    var remoteLists = {}, merged = {};
+    Object.keys(ids).forEach(function (id) {
+      remoteLists[id] = normalizeTasks((remoteDoc.lists || {})[id] || []);
+      merged[id] = mergeTaskLists(loadTasks(keyForListId(id)), remoteLists[id]);
+    });
     // notes share the id + mt shape, so the same merge applies
     var remoteNotes = normalizeNotes(remoteDoc.notes || []);
-    var merged = {
-      personal: mergeTaskLists(loadTasks("dia_todo_personal_v1"), remoteLists.personal),
-      business: mergeTaskLists(loadTasks("dia_todo_business_v1"), remoteLists.business)
-    };
     var mergedNotes = mergeTaskLists(loadNotes(), remoteNotes);
-    applySyncDoc({ lists: merged, notes: mergedNotes });
+
+    applySyncDoc({ lists: merged, notes: mergedNotes, customLists: mergedCustom });
     return JSON.stringify(merged) !== JSON.stringify(remoteLists) ||
-           JSON.stringify(mergedNotes) !== JSON.stringify(remoteNotes);
+           JSON.stringify(mergedNotes) !== JSON.stringify(remoteNotes) ||
+           JSON.stringify(mergedCustom) !== JSON.stringify(remoteCustom);
   }
 
   function applySyncDoc(doc) {
-    localStorage.setItem("dia_todo_personal_v1", JSON.stringify(doc.lists.personal || []));
-    localStorage.setItem("dia_todo_business_v1", JSON.stringify(doc.lists.business || []));
+    var listsBefore = taskLists().map(function (l) { return l.id; }).join(",");
+    if (doc.customLists) saveCustomLists(doc.customLists);
+    Object.keys(doc.lists || {}).forEach(function (id) {
+      localStorage.setItem(keyForListId(id), JSON.stringify(doc.lists[id] || []));
+    });
     if (doc.notes) localStorage.setItem(NOTES_KEY, JSON.stringify(doc.notes));
+    // Panels are built once, so a list arriving or leaving needs a rebuild.
+    // Reloading is the honest way to do that without orphaning the per-panel
+    // timers; the guard stops two devices bouncing reloads off each other.
+    if (taskLists().map(function (l) { return l.id; }).join(",") !== listsBefore) {
+      if (sessionStorage.getItem("dia_todo_lists_reloaded") !== listsBefore) {
+        sessionStorage.setItem("dia_todo_lists_reloaded", listsBefore);
+        location.reload();
+        return;
+      }
+    }
     panelReloaders.forEach(function (r) { r(); });
     noteReloaders.forEach(function (r) { r(); });
   }
@@ -3165,13 +3497,18 @@
         if (file && file.content) remoteDoc = JSON.parse(file.content);
       } catch (e) { /* unreadable remote — push ours as-is */ }
       if (remoteDoc && remoteDoc.lists && remoteDoc.updatedAt > syncState.lastApplied) {
-        var mergedDoc = {
-          lists: {
-            personal: mergeTaskLists(loadTasks("dia_todo_personal_v1"), normalizeTasks(remoteDoc.lists.personal || [])),
-            business: mergeTaskLists(loadTasks("dia_todo_business_v1"), normalizeTasks(remoteDoc.lists.business || []))
-          }
-        };
-        applySyncDoc(mergedDoc);
+        var mergedLists = {};
+        var seen = {};
+        taskLists().forEach(function (l) { seen[l.id] = true; });
+        Object.keys(remoteDoc.lists || {}).forEach(function (k) { seen[k] = true; });
+        Object.keys(seen).forEach(function (id) {
+          mergedLists[id] = mergeTaskLists(loadTasks(keyForListId(id)),
+                                           normalizeTasks(remoteDoc.lists[id] || []));
+        });
+        applySyncDoc({
+          lists: mergedLists,
+          customLists: mergeTaskLists(loadCustomLists(), normalizeLists(remoteDoc.customLists || []))
+        });
       }
       var doc = buildSyncDoc();
       var files = {};
@@ -3350,8 +3687,7 @@
   document.getElementById("sync-adopt-btn").addEventListener("click", function () {
     if (!getSyncCfg()) { setSyncStatusLine("Turn sync on first."); return; }
     if (!confirm("Replace this device's tasks with the synced list?\n\nAnything stored only on this device is discarded.")) return;
-    localStorage.setItem("dia_todo_personal_v1", JSON.stringify([]));
-    localStorage.setItem("dia_todo_business_v1", JSON.stringify([]));
+    taskLists().forEach(function (l) { localStorage.setItem(l.storageKey, JSON.stringify([])); });
     syncState.lastRemote = null;
     syncState.dirty = false;
     panelReloaders.forEach(function (r) { r(); });
