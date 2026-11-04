@@ -2457,7 +2457,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1544";
+  var BUILD = "2026-11-04-1551";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3630,17 +3630,30 @@
   }
 
   function cloudSendMagicLink(email) {
-    return fetch(CLOUD_URL + "/auth/v1/otp", {
+    // redirect_to is a QUERY parameter on the REST endpoint. The nested
+    // `options: { email_redirect_to }` shape belongs to the supabase-js
+    // client, and this endpoint silently ignores it — the link then falls
+    // back to the project's Site URL, which is wrong on localhost and is
+    // only accidentally right in production.
+    var url = CLOUD_URL + "/auth/v1/otp?redirect_to=" +
+      encodeURIComponent(cloudRedirectTarget());
+    return fetch(url, {
       method: "POST",
       headers: { apikey: CLOUD_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: email,
-        create_user: true,
-        options: { email_redirect_to: cloudRedirectTarget() }
-      })
+      body: JSON.stringify({ email: email, create_user: true })
     }).then(function (res) {
       if (res.ok) return null;
       return res.json().then(function (j) {
+        var code = j && j.error_code;
+        // The built-in mail sender allows only a couple of messages an hour.
+        // Said plainly this is a wait; said as "email rate limit exceeded" it
+        // reads as a fault and people retry, which makes it worse.
+        if (code === "over_email_send_rate_limit" || res.status === 429) {
+          throw new Error("Too many sign-in emails in the last hour. Wait about an hour and try again.");
+        }
+        if (code === "email_address_invalid") {
+          throw new Error("That address was rejected. Check the spelling.");
+        }
         throw new Error((j && (j.msg || j.error_description || j.message)) || ("HTTP " + res.status));
       }, function () { throw new Error("HTTP " + res.status); });
     });
@@ -4681,7 +4694,7 @@
       cloudAuthMessage("Sending…");
       cloudSendMagicLink(email).then(function () {
         mailBtn.disabled = false;
-        cloudAuthMessage("Link sent to " + email + ". Open it on this device and you are in.");
+        cloudAuthMessage("Link sent to " + email + ". Open it on this device and you are in — check spam if it hasn't arrived in a minute.");
       }).catch(function (err) {
         mailBtn.disabled = false;
         cloudAuthMessage("Couldn't send it: " + ((err && err.message) || "unknown error"));
