@@ -1523,8 +1523,8 @@
         <p><b>Use the same list on your phone and your computer.</b> Make an account and your list follows you to any device you sign in on.</p>
         <input type="email" class="sync-token" id="cloud-email-input" placeholder="you@example.com" autocomplete="email" inputmode="email">
         <input type="password" class="sync-token" id="cloud-pass-input" placeholder="Password — at least 6 characters" autocomplete="current-password">
-        <button class="modal-btn primary" id="cloud-signin-btn">Sign in</button>
-        <button class="modal-btn" id="cloud-signup-btn">Create an account</button>
+        <button class="modal-btn primary" id="cloud-signup-btn">Create an account</button>
+        <button class="modal-btn" id="cloud-signin-btn">I already have one — sign in</button>
         <div class="cloud-or" id="cloud-or" style="display:none">or</div>
         <button class="modal-btn cloud-google" id="cloud-google-btn" style="display:none"><span class="g">G</span> Continue with Google</button>
         <p class="modal-hint" id="cloud-auth-msg"></p>
@@ -2464,7 +2464,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1604";
+  var BUILD = "2026-11-04-1615";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4810,7 +4810,16 @@
       runAuth(cloudSignUp, "Creating your account…");
     });
     if (passIn) passIn.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") { e.preventDefault(); runAuth(cloudSignInPassword, "Signing in…"); }
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      // Try signing in first; if there is no such account yet, make one.
+      // Guessing wrong either way costs the person a second attempt, and
+      // most people arriving here have no account at all.
+      runAuth(function (email, pass) {
+        return cloudSignInPassword(email, pass).catch(function () {
+          return cloudSignUp(email, pass);
+        });
+      }, "Signing in…");
     });
 
     if (mailBtn) mailBtn.addEventListener("click", sendLink);
