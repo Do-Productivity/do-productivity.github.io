@@ -942,11 +942,19 @@
      Small running text switches to the system sans (SF on iPhone) — the serif
      stays for panel titles, where it carries the paper look best. */
   @media (max-width: 720px) {
+    /* The side insets exist to dodge the camera and the status glyphs, but
+       those sit in the TOP strip only — paying the full inset down the whole
+       column surrendered about a fifth of the Duo's screen to empty paper.
+       Clamp the content, and let the toolbar alone clear the full strip. */
     .layout {
       padding: calc(10px + env(safe-area-inset-top, 0px))
-               max(8px, env(safe-area-inset-left, 0px))
+               clamp(8px, env(safe-area-inset-left, 0px), 20px)
                calc(52px + env(safe-area-inset-bottom, 0px))
-               max(8px, env(safe-area-inset-right, 0px));
+               clamp(8px, env(safe-area-inset-right, 0px), 20px);
+    }
+    .toolbar {
+      padding-left: max(0px, calc(env(safe-area-inset-left, 0px) - 20px));
+      padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 20px));
     }
     .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .toolbar h1 { font-size: 11px; letter-spacing: 2.5px; }
@@ -1124,8 +1132,8 @@
     }
     .toolbar-btn { padding: 8px 7px; font-size: 8.5px; letter-spacing: 0.3px; }
     .build-stamp { font-size: 8px; letter-spacing: 0.5px; }
-    .layout { padding-left: max(6px, env(safe-area-inset-left, 0px));
-              padding-right: max(6px, env(safe-area-inset-right, 0px)); }
+    .layout { padding-left: clamp(6px, env(safe-area-inset-left, 0px), 20px);
+              padding-right: clamp(6px, env(safe-area-inset-right, 0px), 20px); }
     .panel { padding: 15px 12px 8px; }
     .mobile-tab { font-size: 16px; padding: 10px 6px 8px; }
   }
@@ -1156,8 +1164,8 @@
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      padding-left: max(20px, env(safe-area-inset-left, 0px));
-      padding-right: max(20px, env(safe-area-inset-right, 0px));
+      padding-left: clamp(20px, env(safe-area-inset-left, 0px), 28px);
+      padding-right: clamp(20px, env(safe-area-inset-right, 0px), 28px);
     }
     /* Unfolded: all three side by side, like the desktop. */
     .panels { flex: 1; min-height: 0; align-items: stretch; gap: 12px;
@@ -2073,7 +2081,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1015";
+  var BUILD = "2026-11-04-1024";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
