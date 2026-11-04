@@ -15,7 +15,6 @@ html = idx.read_text()
 html, n = re.subn(r'var BUILD = "[^"]*";', f'var BUILD = "{build}";', html, count=1)
 if n == 0:
     raise SystemExit("BUILD constant not found in index.html")
-html = re.sub(r'Build: <b>[^<]*</b>', f'Build: <b>{build}</b>', html, count=1)
 idx.write_text(html)
 
 (here / "version.json").write_text(json.dumps({"build": build}) + "\n")

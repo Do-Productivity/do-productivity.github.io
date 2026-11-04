@@ -107,6 +107,13 @@
     transition: color 0.15s, border-color 0.15s;
   }
   .toolbar-btn:hover { color: var(--ink); border-color: var(--ink-faint); }
+  /* A device running stale code is otherwise indistinguishable from a device
+     running current code, because the data keeps arriving from the gist either
+     way. Showing the build makes that visible without opening anything. */
+  .build-stamp {
+    font-size: 9px; letter-spacing: 1px; color: var(--ink-faint);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
 
   /* ── Mobile list switcher (hidden on desktop) ── */
   .mobile-tabs {
@@ -1116,6 +1123,7 @@
       letter-spacing: 1.5px;
     }
     .toolbar-btn { padding: 8px 7px; font-size: 8.5px; letter-spacing: 0.3px; }
+    .build-stamp { font-size: 8px; letter-spacing: 0.5px; }
     .layout { padding-left: max(6px, env(safe-area-inset-left, 0px));
               padding-right: max(6px, env(safe-area-inset-right, 0px)); }
     .panel { padding: 15px 12px 8px; }
@@ -1220,6 +1228,7 @@
 
   <div class="toolbar">
     <h1>My Lists</h1>
+    <span class="build-stamp" id="build-stamp" title="Which version this device is running"></span>
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
@@ -1253,6 +1262,8 @@
 <div class="modal-overlay" id="sync-modal">
   <div class="modal">
     <h2>Sync across devices</h2>
+    <p class="modal-hint">This device is running build <b id="build-text">…</b>. Tasks and notes arrive from your gist even on an old build, so stale code still looks alive — if the number is behind, tap here.</p>
+    <button class="modal-btn" id="force-update-btn">⬇️ Force update now</button>
     <div id="sync-off-view">
       <p>Keep your iPhone and Mac showing the same lists, live. Your tasks are stored in a <b>secret Gist</b> on your own GitHub account — nothing new to sign up for.</p>
       <ol>
@@ -1269,8 +1280,6 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
-      <p class="modal-hint">Build: <b>2026-11-04-1008</b> — if this looks older than the one you were told to expect, tap below. It reloads the app past every cache.</p>
-      <button class="modal-btn" id="force-update-btn">⬇️ Force update now</button>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -2064,7 +2073,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1008";
+  var BUILD = "2026-11-04-1015";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2077,6 +2086,11 @@
       })
       .catch(function () { /* offline — try again next time */ });
   }
+
+  var stampEl = document.getElementById("build-stamp");
+  if (stampEl) stampEl.textContent = "b" + BUILD.slice(-4);
+  var buildTextEl = document.getElementById("build-text");
+  if (buildTextEl) buildTextEl.textContent = BUILD;
 
   checkForUpdate();
   window.addEventListener("focus", checkForUpdate);
