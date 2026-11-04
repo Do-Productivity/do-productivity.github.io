@@ -1520,13 +1520,20 @@
 
     <div id="cloud-account">
       <div id="cloud-signed-out">
-        <p><b>Use the same list on your phone and your computer.</b> Put in your email and you'll get a one-time link — no password to invent, nothing to install.</p>
+        <p><b>Use the same list on your phone and your computer.</b> Make an account and your list follows you to any device you sign in on.</p>
         <input type="email" class="sync-token" id="cloud-email-input" placeholder="you@example.com" autocomplete="email" inputmode="email">
-        <button class="modal-btn primary" id="cloud-email-btn">Email me a sign-in link</button>
+        <input type="password" class="sync-token" id="cloud-pass-input" placeholder="Password — at least 6 characters" autocomplete="current-password">
+        <button class="modal-btn primary" id="cloud-signin-btn">Sign in</button>
+        <button class="modal-btn" id="cloud-signup-btn">Create an account</button>
         <div class="cloud-or" id="cloud-or" style="display:none">or</div>
         <button class="modal-btn cloud-google" id="cloud-google-btn" style="display:none"><span class="g">G</span> Continue with Google</button>
         <p class="modal-hint" id="cloud-auth-msg"></p>
         <p class="modal-hint">Your list stays private to your account — nobody else can read it, not even from another account on the same app.</p>
+        <details class="modal-details">
+          <summary>No password — email me a link instead</summary>
+          <p class="modal-hint">Sends a one-time link to the address above. Slower, and it depends on the mail sender being set up.</p>
+          <button class="modal-btn" id="cloud-email-btn">Email me a sign-in link</button>
+        </details>
       </div>
       <div id="cloud-signed-in" style="display:none">
         <div class="cloud-who">
@@ -2457,7 +2464,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1551";
+  var BUILD = "2026-11-04-1604";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3659,6 +3666,58 @@
     });
   }
 
+  // Password accounts send no email at all, which sidesteps the built-in
+  // mail sender entirely — it allows about two messages an hour and is not
+  // meant for real use.
+  function cloudAuthError(j, status) {
+    var code = j && (j.error_code || j.code);
+    var msg = j && (j.msg || j.message || j.error_description);
+    if (code === "invalid_credentials" || status === 400 && /invalid login/i.test(msg || "")) {
+      return "Wrong email or password. If you have not made an account yet, tap Create an account.";
+    }
+    if (code === "user_already_exists" || code === "email_exists") {
+      return "That email already has an account — tap Sign in instead.";
+    }
+    if (code === "weak_password") return "Password needs to be at least 6 characters.";
+    if (code === "email_address_invalid") return "That address was rejected. Check the spelling.";
+    if (code === "signup_disabled") return "New accounts are switched off for this app.";
+    if (code === "over_email_send_rate_limit" || status === 429) {
+      return "Too many attempts in the last hour. Wait a while and try again.";
+    }
+    return msg || ("Something went wrong (HTTP " + status + ").");
+  }
+
+  function cloudCredentialPost(path, email, password) {
+    return fetch(CLOUD_URL + path, {
+      method: "POST",
+      headers: { apikey: CLOUD_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: password })
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        if (!res.ok) throw new Error(cloudAuthError(j, res.status));
+        return j;
+      });
+    });
+  }
+
+  function cloudSignUp(email, password) {
+    return cloudCredentialPost("/auth/v1/signup", email, password).then(function (j) {
+      // With "Confirm email" still on, signup returns the user but no
+      // session, and a confirmation mail is queued instead.
+      if (!j.access_token) return "confirm";
+      storeCloudTokens(j);
+      return "in";
+    });
+  }
+
+  function cloudSignInPassword(email, password) {
+    return cloudCredentialPost("/auth/v1/token?grant_type=password", email, password)
+      .then(function (j) {
+        storeCloudTokens(j);
+        return "in";
+      });
+  }
+
   function cloudSignOut() {
     var s = loadCloudSession();
     clearCloudSession();
@@ -4700,9 +4759,63 @@
         cloudAuthMessage("Couldn't send it: " + ((err && err.message) || "unknown error"));
       });
     }
+    var passIn = document.getElementById("cloud-pass-input");
+    var inBtn = document.getElementById("cloud-signin-btn");
+    var upBtn = document.getElementById("cloud-signup-btn");
+
+    function credentials() {
+      var email = (mailIn.value || "").trim();
+      var pass = passIn.value || "";
+      if (!email || email.indexOf("@") < 1) {
+        cloudAuthMessage("Type your email address.");
+        mailIn.focus();
+        return null;
+      }
+      if (pass.length < 6) {
+        cloudAuthMessage("Your password needs at least 6 characters.");
+        passIn.focus();
+        return null;
+      }
+      return { email: email, pass: pass };
+    }
+
+    function runAuth(fn, busyText) {
+      var c = credentials();
+      if (!c) return;
+      inBtn.disabled = upBtn.disabled = true;
+      cloudAuthMessage(busyText);
+      fn(c.email, c.pass).then(function (result) {
+        inBtn.disabled = upBtn.disabled = false;
+        if (result === "confirm") {
+          cloudAuthMessage("Account created, but it needs confirming by email before you can sign in — check your inbox.");
+          return;
+        }
+        passIn.value = "";
+        cloudAuthMessage("");
+        refreshCloudAccount();
+        setSyncDot("busy");
+        startSyncLoop();
+        syncPullNow();
+        flashStatus("Signed in — syncing your lists…");
+      }).catch(function (err) {
+        inBtn.disabled = upBtn.disabled = false;
+        cloudAuthMessage((err && err.message) || "Sign-in failed.");
+      });
+    }
+
+    if (inBtn) inBtn.addEventListener("click", function () {
+      runAuth(cloudSignInPassword, "Signing in…");
+    });
+    if (upBtn) upBtn.addEventListener("click", function () {
+      runAuth(cloudSignUp, "Creating your account…");
+    });
+    if (passIn) passIn.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); runAuth(cloudSignInPassword, "Signing in…"); }
+    });
+
     if (mailBtn) mailBtn.addEventListener("click", sendLink);
     if (mailIn) mailIn.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") { e.preventDefault(); sendLink(); }
+      if (e.key === "Enter") { e.preventDefault(); passIn.focus(); }
     });
     if (now) now.addEventListener("click", function () {
       syncState.lastRemote = null;   // force a re-read even if nothing changed
