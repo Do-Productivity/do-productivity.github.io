@@ -732,6 +732,88 @@
   }
   .clear-completed:hover { color: var(--red); }
 
+  /* ── Card picker (tap a card to see them all, iOS-Wallet style) ── */
+  .card-picker { align-items: flex-end; }
+  .picker-sheet {
+    background: var(--card);
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+    border-radius: 18px 18px 0 0;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 40px rgba(43, 38, 32, 0.3);
+    animation: picker-rise 0.22s ease;
+  }
+  @keyframes picker-rise {
+    from { transform: translateY(18px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  .picker-head {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--faint, var(--ink-faint));
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .picker-tile {
+    position: relative;
+    text-align: left;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--rule);
+    border-radius: 12px;
+    padding: 14px 12px 12px;
+    cursor: pointer;
+    font-family: var(--serif);
+  }
+  .picker-tile.personal { border-top-color: var(--red); }
+  .picker-tile.business { border-top-color: var(--blue); }
+  .picker-tile.notes    { border-top-color: var(--green); }
+  .picker-tile.current { background: var(--card); box-shadow: inset 0 0 0 2px var(--rule); }
+  .picker-tile .pt-title { display: block; font-size: 19px; font-weight: 700; color: var(--ink); }
+  .picker-tile.personal .pt-dot { color: var(--red); }
+  .picker-tile.business .pt-dot { color: var(--blue); }
+  .picker-tile.notes    .pt-dot { color: var(--green); }
+  .picker-tile .pt-sub {
+    display: block;
+    font-family: var(--sans);
+    font-size: 7.5px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 3px;
+  }
+  .picker-tile .pt-count {
+    display: block;
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 9px;
+  }
+  .picker-close {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 13px;
+    cursor: pointer;
+  }
+
   /* ── Export modal ────────────────────────── */
   .modal-overlay {
     position: fixed;
@@ -1166,7 +1248,7 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
-      <p class="modal-hint">Build: <b>2026-11-04-0952</b> — if this looks old, pull down to refresh.</p>
+      <p class="modal-hint">Build: <b>2026-11-04-0955</b> — if this looks old, pull down to refresh.</p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -1235,6 +1317,14 @@
     <div class="modal-actions">
       <button class="toolbar-btn" id="sync-modal-close">Close</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay card-picker" id="card-picker">
+  <div class="picker-sheet">
+    <div class="picker-head">Choose a list</div>
+    <div class="picker-grid" id="picker-grid"></div>
+    <button class="picker-close" id="picker-close">Cancel</button>
   </div>
 </div>
 
@@ -1952,7 +2042,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-0952";
+  var BUILD = "2026-11-04-0955";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2428,6 +2518,11 @@
   // instead of hiding two thirds of it behind tabs.
   var MTAB_KEY = "dia_todo_mtab_v1";
   var PANEL_IDS = ["personal", "business", "notes"];
+  var PANEL_META = {
+    personal: { title: "Personal", sub: "LIFE & HOME",      unit: "to do" },
+    business: { title: "Business", sub: "WORK & PROJECTS",  unit: "to do" },
+    notes:    { title: "Notes",    sub: "CONTEXT & DETAIL", unit: "open" }
+  };
 
   function panelEl(id) {
     return panelsRoot.querySelector(".panel." + id);
@@ -2456,7 +2551,10 @@
     header.addEventListener("click", function () {
       // only acts as an accordion on phones; harmless elsewhere
       if (!window.matchMedia("(max-width: 720px)").matches) return;
-      if (panel.classList.contains("expanded")) return;   // already open
+      if (panel.classList.contains("expanded")) {
+        openCardPicker();        // already open — show them all to choose from
+        return;
+      }
       setMobileTab(id);
       panel.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -2465,6 +2563,41 @@
   });
 
   setMobileTab(localStorage.getItem(MTAB_KEY) || "personal");
+
+  // Tapping the open card shows every list at once to pick from, the way
+  // iOS 27's Apple Pay sheet opens a grid of your cards.
+  function openCardPicker() {
+    var grid = document.getElementById("picker-grid");
+    var current = localStorage.getItem(MTAB_KEY) || "personal";
+    grid.textContent = "";
+    PANEL_IDS.forEach(function (id) {
+      var meta = PANEL_META[id];
+      var panel = panelEl(id);
+      var count = panel ? panel.querySelector(".panel-count").textContent : "0";
+      var tile = el("button", "picker-tile " + id + (id === current ? " current" : ""));
+      var title = el("span", "pt-title", meta.title);
+      title.appendChild(el("span", "pt-dot", "."));
+      tile.appendChild(title);
+      tile.appendChild(el("span", "pt-sub", meta.sub));
+      tile.appendChild(el("span", "pt-count", count + " " + meta.unit));
+      tile.addEventListener("click", function () {
+        closeCardPicker();
+        setMobileTab(id);
+        panelsRoot.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      grid.appendChild(tile);
+    });
+    document.getElementById("card-picker").classList.add("show");
+  }
+
+  function closeCardPicker() {
+    document.getElementById("card-picker").classList.remove("show");
+  }
+
+  document.getElementById("picker-close").addEventListener("click", closeCardPicker);
+  document.getElementById("card-picker").addEventListener("click", function (e) {
+    if (e.target === this) closeCardPicker();   // tap the dimmed area to dismiss
+  });
 
   // Flick sideways to rotate through the cards, the way you thumb between
   // cards in Wallet. Vertical drags are left alone so pull-to-refresh and
