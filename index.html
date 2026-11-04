@@ -1128,12 +1128,15 @@
        — or the pill beneath — for the full grid. */
     .card-fan {
       display: block; position: relative;
-      height: 104px; margin: 0 0 9px;
+      height: 96px; margin: 0 0 8px;
       perspective: 800px;
     }
+    /* Width and offset are chosen together: at 54%/40% the shoulder cards
+       scale to .84 and still land ~20px inside a 373px screen, so they read
+       as cards behind rather than slabs running off the edge. */
     .fan-card {
       position: absolute; left: 50%; top: 0;
-      width: 63%; max-width: 236px; height: 100px;
+      width: 54%; max-width: 212px; height: 92px;
       border: none; border-radius: 13px; padding: 12px 14px;
       display: flex; flex-direction: column; justify-content: space-between;
       text-align: left; color: #fff; cursor: pointer;
@@ -1154,10 +1157,10 @@
     .fc-count { font-family: var(--sans); font-size: 11px; font-weight: 700; opacity: .93; }
     .fan-card.pos-active { transform: translateX(-50%) scale(1); z-index: 3; }
     .fan-card.pos-prev {
-      transform: translateX(-50%) translateX(-47%) scale(.84); z-index: 2; opacity: .88;
+      transform: translateX(-50%) translateX(-40%) scale(.84); z-index: 2; opacity: .85;
     }
     .fan-card.pos-next {
-      transform: translateX(-50%) translateX(47%) scale(.84); z-index: 2; opacity: .88;
+      transform: translateX(-50%) translateX(40%) scale(.84); z-index: 2; opacity: .85;
     }
 
     /* Apple's "Other Cards & Pay Later Options" sits in the same place */
@@ -2146,7 +2149,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1031";
+  var BUILD = "2026-11-04-1033";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
