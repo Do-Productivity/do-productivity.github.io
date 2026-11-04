@@ -2309,7 +2309,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1055";
+  var BUILD = "2026-11-04-1057";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2585,7 +2585,8 @@
       if (openNotes.length === 0) {
         list.appendChild(el("li", "empty-state",
           noteFilterTaskId ? "No notes on this task yet."
-                           : "Nothing written down yet. Add a note above."));
+            : openTasks().length ? "Nothing written down yet. Add a note above."
+            : "Notes hang off a task, and there are no open ones yet."));
       }
 
       // swap the chip / link button for a picker so a note can be attached
