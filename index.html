@@ -1010,6 +1010,24 @@
     .panel.collapsed .note-list,
     .panel.collapsed .completed-section,
     .panel.collapsed .panel-footer { display: none; }
+    /* the open card advertises the grid picker */
+    .panel.expanded .panel-peek {
+      display: block;
+      position: absolute;
+      top: 12px;
+      right: 13px;
+      font-family: var(--sans);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: var(--ink-soft);
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 20px;
+      padding: 5px 10px;
+    }
+    .panel.expanded .panel-peek::after { content: "\229E  ALL LISTS"; }
+
     .panel.collapsed .panel-peek {
       display: none;
       font-family: var(--sans);
@@ -1251,7 +1269,7 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
-      <p class="modal-hint">Build: <b>2026-11-04-0957</b> — if this looks old, pull down to refresh.</p>
+      <p class="modal-hint">Build: <b>2026-11-04-1004</b> — if this looks old, pull down to refresh.</p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -2045,7 +2063,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-0957";
+  var BUILD = "2026-11-04-1004";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
