@@ -2457,7 +2457,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1446";
+  var BUILD = "2026-11-04-1541";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3527,7 +3527,7 @@
   // applySyncDoc are reused exactly as the gist path uses them, so conflict
   // handling lives in one place and behaves identically on both backends.
 
-  var CLOUD_URL = "";   // https://<project>.supabase.co
+  var CLOUD_URL = "https://mxlbafuzdbnypexhgptw.supabase.co";
   var CLOUD_KEY = "";   // the "anon public" key
   // Only true once Google is actually enabled as a provider on the project.
   // Showing the button before that gives people a sign-in that always fails.
