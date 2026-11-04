@@ -87,6 +87,7 @@ TEMPLATE = """<!DOCTYPE html>
       <tr><td><code>personal</code></td><td>Personal card only &mdash; biggest text</td></tr>
       <tr><td><code>business</code></td><td>Business card only &mdash; biggest text</td></tr>
       <tr><td><code>notes</code></td><td>Open notes, each tagged with its task</td></tr>
+      <tr><td><i>a list name</i></td><td>Any list you made yourself, e.g. <code>squash</code></td></tr>
       <tr><td><i>(blank)</i></td><td>Both lists side by side &mdash; smaller text</td></tr>
     </table>
 

@@ -8,6 +8,7 @@
 //     personal   → the Personal card only
 //     business   → the Business card only
 //     notes      → open notes, each with the task it belongs to
+//     <any list>  → a list you made yourself, by its name
 //     (blank)    → Personal and Business together
 // ─────────────────────────────────────────────────────────────
 
@@ -26,17 +27,49 @@ const BLUE  = new Color("#3d6b8c");   // Business
 const AMBER = new Color("#b3701f");   // due today
 const GREEN = new Color("#4a8a5c");   // Notes
 
-const LISTS = {
-  personal: { key: "personal", title: "Personal", sub: "LIFE & HOME",     tint: RED   },
-  business: { key: "business", title: "Business", sub: "WORK & PROJECTS", tint: BLUE  },
-  notes:    { key: "notes",    title: "Notes",    sub: "CONTEXT & DETAIL", tint: GREEN,
-              isNotes: true }
+// the app's own palette, so a list made on the phone keeps its colour here
+const TINTS = {
+  red:    new Color("#c8553d"),
+  blue:   new Color("#3d6b8c"),
+  green:  new Color("#4a8a5c"),
+  amber:  new Color("#b3701f"),
+  violet: new Color("#735a99"),
+  teal:   new Color("#358a87")
 };
+
+// Lists are no longer fixed — the user can add their own, so the roster comes
+// out of the feed rather than being hard-coded here.
+function listsFromDoc(doc) {
+  const out = [
+    { key: "personal", title: "Personal", sub: "LIFE & HOME",     tint: RED  },
+    { key: "business", title: "Business", sub: "WORK & PROJECTS", tint: BLUE }
+  ];
+  ((doc && doc.customLists) || []).forEach(l => {
+    if (!l || l.deleted || !l.id) return;
+    out.push({
+      key: l.id,
+      title: l.title || "List",
+      sub: (l.sub || "").toUpperCase(),
+      tint: TINTS[l.tint] || TINTS.amber
+    });
+  });
+  out.push({ key: "notes", title: "Notes", sub: "CONTEXT & DETAIL", tint: GREEN, isNotes: true });
+  return out;
+}
 
 const size  = config.runsInWidget ? config.widgetFamily : "medium";
 const param = (args.widgetParameter || "").trim().toLowerCase();
-const which = LISTS[param] ? [LISTS[param]] : [LISTS.personal, LISTS.business];
-const bothLists = which.length === 2;
+
+// filled in once the feed has been read
+let which = [], bothLists = false, S = null, ROWS = 0;
+
+function chooseLists(doc) {
+  const all = listsFromDoc(doc);
+  // match the parameter against the id or the name the user gave the list
+  const hit = all.find(l => l.key.toLowerCase() === param || l.title.toLowerCase() === param);
+  which = hit ? [hit] : [all[0], all[1]];
+  bothLists = which.length === 2;
+}
 
 // Type scale per widget size. A large widget is roughly 2.5x the height of a
 // medium one, so it needs genuinely larger type — not medium's sizes stretched.
@@ -48,15 +81,16 @@ const SCALE = {
   large:  { title: 27, sub: 12, text: 19,   due: 15,   circle: 18, gap: 13, foot: 12,
             rows: { both: 9, one: 15 } }
 };
-const S = Object.assign({}, SCALE[size] || SCALE.medium);
-
-// two cards side by side get slightly tighter type so the text still fits
-if (bothLists) {
-  const k = size === "large" ? 0.82 : 0.86;
-  for (const f of ["title", "sub", "text", "due", "circle"]) S[f] = S[f] * k;
-  S.gap = S.gap * 0.85;
+function applyScale() {
+  S = Object.assign({}, SCALE[size] || SCALE.medium);
+  // two cards side by side get slightly tighter type so the text still fits
+  if (bothLists) {
+    const k = size === "large" ? 0.82 : 0.86;
+    for (const f of ["title", "sub", "text", "due", "circle"]) S[f] = S[f] * k;
+    S.gap = S.gap * 0.85;
+  }
+  ROWS = bothLists ? S.rows.both : S.rows.one;
 }
-const ROWS = bothLists ? S.rows.both : S.rows.one;
 
 // ── data ─────────────────────────────────────────────────────
 
@@ -88,17 +122,19 @@ function openNotes(doc) {
   const notes = (doc.notes || []).filter(n => n && !n.done && !n.deleted);
   // look up the task each note hangs off, so the widget shows the link too
   const names = {};
-  for (const key of ["personal", "business"]) {
+  for (const key of Object.keys(doc.lists || {})) {
     for (const t of (doc.lists[key] || [])) {
       if (t && t.id) names[t.id] = { text: t.text, list: key };
     }
   }
   notes.sort((a, b) => (b.mt || b.created || 0) - (a.mt || a.created || 0));
-  return notes.map(n => ({
-    text: n.text,
-    due: null,
-    link: n.taskId && names[n.taskId] ? names[n.taskId] : null
-  }));
+  const byKey = {};
+  listsFromDoc(doc).forEach(l => { byKey[l.key] = l; });
+  return notes.map(n => {
+    const link = n.taskId && names[n.taskId] ? names[n.taskId] : null;
+    if (link && byKey[link.list]) link.tint = byKey[link.list].tint;
+    return { text: n.text, due: null, link: link };
+  });
 }
 
 function activeTasks(doc, key) {
@@ -223,7 +259,7 @@ function drawCard(container, list, tasks, showSub) {
     } else if (task.link) {
       // a note: show which task it belongs to, tinted by that list
       const l = row.addText(task.link.text);
-      l.textColor = task.link.list === "personal" ? RED : BLUE;
+      l.textColor = task.link.tint || (task.link.list === "personal" ? RED : BLUE);
       l.font = Font.semiboldSystemFont(S.due);
       l.lineLimit = 1;
       l.minimumScaleFactor = 0.8;
@@ -306,6 +342,8 @@ function build({ doc, live }) {
 // ── run ──────────────────────────────────────────────────────
 
 const result = await loadDoc();
+chooseLists(result.doc);
+applyScale();
 const widget = build(result);
 
 if (config.runsInWidget) {
