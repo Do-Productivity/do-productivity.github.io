@@ -865,7 +865,7 @@
     .panels {
       display: flex;
       flex-direction: column;
-      gap: 9px;
+      gap: 0;
       /* base rule is align-items:start, which in a column flex sizes each card
          to its content instead of the full width */
       align-items: stretch;
@@ -889,10 +889,32 @@
       vertical-align: 4px;
     }
 
-    /* shut: header only, compact */
+    /* Shut cards tuck under each other like cards in a wallet: a slim strip
+       showing just the name and count. On a 603px-tall screen every pixel
+       they give back goes to the open card. */
     .panel.collapsed {
       flex: none;
-      padding-bottom: 12px;
+      padding: 10px 14px 11px;
+      margin-top: -7px;                 /* the overlap */
+      border-radius: 14px;
+      border-top-width: 3px;
+      box-shadow: 0 -3px 10px rgba(43, 38, 32, 0.09);
+      position: relative;
+      cursor: pointer;
+    }
+    .panel.collapsed .panel-header {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      margin: 0;
+    }
+    .panel.collapsed .panel-title { font-size: 17px; }
+    .panel.collapsed .panel-subtitle { display: none; }
+    .panel.collapsed .panel-count {
+      margin-left: auto;
+      font-size: 10px;
+      padding: 1px 7px;
+      vertical-align: baseline;
     }
     .panel.collapsed .divider,
     .panel.collapsed .add-row,
@@ -904,7 +926,7 @@
     .panel.collapsed .completed-section,
     .panel.collapsed .panel-footer { display: none; }
     .panel.collapsed .panel-peek {
-      display: block;
+      display: none;
       font-family: var(--sans);
       font-size: 10px;
       letter-spacing: 1px;
@@ -921,6 +943,9 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
+      position: relative;
+      z-index: 5;                        /* lifted clear of the tucked cards */
+      box-shadow: 0 4px 16px rgba(43, 38, 32, 0.13);
     }
     .panel.expanded .task-list,
     .panel.expanded .note-list { flex: 1; }
@@ -929,12 +954,15 @@
     .note-input, .note-edit { font-size: 16px; }   /* no iOS zoom-jump */
     .note-link-select { font-size: 16px; }
     .panel {
-      padding: 18px 16px 10px;
+      padding: 14px 15px 8px;
       min-height: 0;
       min-width: 0;
-      border-radius: 12px;
+      border-radius: 14px;
       border-top-width: 3px;
     }
+    .panel.expanded .panel-header .panel-title { font-size: 20px; }
+    .panel.expanded .panel-header .panel-subtitle { font-size: 7.5px; margin-top: 2px; }
+    .panel.expanded .panel-header .divider { margin: 8px 0 9px; }
 
     .add-row { gap: 8px; margin-bottom: 8px; }
     .add-input { font-size: 16px; padding: 10px 12px; border-radius: 9px; min-width: 0; }
@@ -1031,24 +1059,27 @@
     .task-list { flex: 1; }
     .panel-footer { margin-top: auto; }
 
-    .panel { padding: 16px 13px 10px; }
-    .panel-header .panel-title { font-size: 21px; }
-    .panel-header .panel-subtitle { font-size: 8px; letter-spacing: 1.4px; }
-    .panel-header .divider { margin: 10px 0 12px; }
+    .panel { padding: 13px 12px 8px; border-radius: 12px; }
+    .panel-header .panel-title { font-size: 18px; }
+    .panel-header .panel-subtitle { font-size: 7.5px; letter-spacing: 1.2px; margin-top: 1px; }
+    .panel-header .divider { margin: 7px 0 8px; }
     .panel-count { display: none; }          /* the footer already counts */
     .panel-peek { display: none; }           /* nothing is collapsed here */
-    .add-row { gap: 6px; }
-    .add-input, .task-edit { font-size: 14px; padding: 8px 9px; }
-    .add-btn { padding: 0 11px; font-size: 10px; letter-spacing: 0.5px; }
-    .due-row { gap: 5px; }
+    .add-row { gap: 5px; margin-bottom: 5px; }
+    .add-input, .task-edit { font-size: 13.5px; padding: 6px 8px; }
+    .add-btn { padding: 0 10px; font-size: 9.5px; letter-spacing: 0.5px; }
+    .due-row { gap: 4px; margin-bottom: 3px; }
     .due-label { font-size: 8px; letter-spacing: 0.3px; }
     .due-input { font-size: 13px; padding: 4px 6px; }
-    .task-row { gap: 8px; padding: 11px 0; }
+    .task-row { gap: 7px; padding: 8px 0; }
     .task-circle { width: 18px; height: 18px; }
     .task-text { font-size: 14px; line-height: 1.45; }
     .task-meta { font-size: 10.5px; }
     .task-actions { flex-direction: column; gap: 0; align-self: flex-start; }
-    .note-input, .note-edit, .note-text { font-size: 14px; }
+    .note-input, .note-edit, .note-text { font-size: 13.5px; }
+    .note-input { min-height: 46px; }
+    .note-row { padding: 8px 0; }
+    .note-compose { margin-bottom: 6px; }
     .note-link-select { font-size: 12px; padding: 6px 7px; }
     .note-add-btn { padding: 7px 11px; font-size: 10px; }
     .note-circle { width: 17px; height: 17px; }
@@ -1135,7 +1166,7 @@
       <p>✅ Sync is <b>on</b>. Changes upload automatically; devices refresh about every 20 seconds and whenever you reopen the app (pull down to refresh forces it too).</p>
       <button class="modal-btn primary" id="sync-now-btn">🔄 Sync now</button>
       <p class="modal-hint" id="sync-status-line"></p>
-      <p class="modal-hint">Build: <b>2026-11-03-1823</b> — if this looks old, pull down to refresh.</p>
+      <p class="modal-hint">Build: <b>2026-11-04-0950</b> — if this looks old, pull down to refresh.</p>
       <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task with a date will appear in Apple Calendar by itself — alerts included, nothing else to do, ever.</p>
       <a class="modal-btn primary" id="sync-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
       <p class="modal-hint">iPhone shows "Subscribe to calendar?" — tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -1921,7 +1952,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-03-1823";
+  var BUILD = "2026-11-04-0950";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
