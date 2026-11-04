@@ -50,6 +50,9 @@
     padding: 28px 28px 52px;
   }
 
+  /* The wallet fan belongs to the phone layout only. */
+  .card-fan, .fan-more { display: none; }
+
   /* ── Toolbar ─────────────────────────────── */
   .toolbar {
     display: flex;
@@ -1117,6 +1120,66 @@
     .completed-section.trash { margin-top: 0; }
     /* keep the add row reachable and the footer pinned to the bottom edge */
     .panel-footer { margin-top: auto; }
+
+    /* ── Wallet fan ──────────────────────────────────────
+       The three lists ride as cards the way Apple Pay fans your payment
+       cards: the open one square on, the other two tucked behind at either
+       shoulder. Tap a shoulder card to bring it forward, tap the front card
+       — or the pill beneath — for the full grid. */
+    .card-fan {
+      display: block; position: relative;
+      height: 104px; margin: 0 0 9px;
+      perspective: 800px;
+    }
+    .fan-card {
+      position: absolute; left: 50%; top: 0;
+      width: 63%; max-width: 236px; height: 100px;
+      border: none; border-radius: 13px; padding: 12px 14px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      text-align: left; color: #fff; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(43, 38, 32, 0.22);
+      transition: transform .34s cubic-bezier(.2, .8, .25, 1), opacity .24s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fan-card.personal { background: linear-gradient(140deg, #d4694f, #ab3a26); }
+    .fan-card.business { background: linear-gradient(140deg, #4d82a8, #2b5472); }
+    .fan-card.notes    { background: linear-gradient(140deg, #5fa675, #376d46); }
+    .fc-head { display: block; }
+    .fc-title { font-family: var(--serif); font-size: 19px; font-weight: 700; }
+    .fc-dot { opacity: .6; }
+    .fc-sub {
+      display: block; font-family: var(--sans); font-size: 7.5px;
+      letter-spacing: 1.6px; opacity: .72; margin-top: 3px;
+    }
+    .fc-count { font-family: var(--sans); font-size: 11px; font-weight: 700; opacity: .93; }
+    .fan-card.pos-active { transform: translateX(-50%) scale(1); z-index: 3; }
+    .fan-card.pos-prev {
+      transform: translateX(-50%) translateX(-47%) scale(.84); z-index: 2; opacity: .88;
+    }
+    .fan-card.pos-next {
+      transform: translateX(-50%) translateX(47%) scale(.84); z-index: 2; opacity: .88;
+    }
+
+    /* Apple's "Other Cards & Pay Later Options" sits in the same place */
+    .fan-more {
+      display: block; margin: 0 auto 10px;
+      font-family: var(--sans); font-size: 10px; font-weight: 700;
+      letter-spacing: .9px; color: var(--ink-soft);
+      background: rgba(43, 38, 32, 0.07);
+      border: none; border-radius: 20px; padding: 8px 16px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* the fan carries the identity now, so the card below drops its own
+       heading and the spines it used to stack underneath */
+    .panel.collapsed { display: none; }
+    .panel.expanded .panel-header,
+    .panel.expanded .panel-peek { display: none; }
+    .panel.expanded { padding-top: 12px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fan-card { transition: none; }
+    }
   }
 
   /* All portrait phones: stop the toolbar wrapping onto a second line, which
@@ -1250,6 +1313,8 @@
     <button class="mobile-tab notes" id="tab-notes">Notes<span class="dot">.</span><span class="tab-count" id="tab-count-notes">0</span></button>
   </div>
 
+  <div class="card-fan" id="card-fan"></div>
+  <button class="fan-more" id="fan-more">&#x229E;&nbsp; All Lists</button>
   <div class="panels" id="panels"></div>
 
 </div>
@@ -2081,7 +2146,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1024";
+  var BUILD = "2026-11-04-1031";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2585,7 +2650,69 @@
       if (tab) tab.classList.toggle("active", t === id);
     });
     localStorage.setItem(MTAB_KEY, id);
+    renderFan(id);
   }
+
+  // ── Wallet fan ───────────────────────────────────────────
+  // Three cards, the chosen one face on and the other two at its shoulders.
+  // The counts live on the panels themselves, so read them from there rather
+  // than keeping a second tally that could drift.
+  var fanRoot = document.getElementById("card-fan");
+
+  function panelCount(id) {
+    var panel = panelEl(id);
+    var badge = panel && panel.querySelector(".panel-count");
+    return badge ? badge.textContent.trim() : "0";
+  }
+
+  function renderFan(activeId) {
+    var at = PANEL_IDS.indexOf(activeId);
+    if (at < 0) at = 0;
+    fanRoot.textContent = "";
+    PANEL_IDS.forEach(function (id, i) {
+      var meta = PANEL_META[id];
+      // with three cards, one sits left and one right of the open card
+      var offset = (i - at + PANEL_IDS.length) % PANEL_IDS.length;
+      var pos = offset === 0 ? "pos-active" : (offset === 1 ? "pos-next" : "pos-prev");
+      var card = el("button", "fan-card " + id + " " + pos);
+      card.setAttribute("aria-label", meta.title + ", " + panelCount(id) + " " + meta.unit);
+
+      var head = el("span", "fc-head");
+      var title = el("span", "fc-title", meta.title);
+      title.appendChild(el("span", "fc-dot", "."));
+      head.appendChild(title);
+      head.appendChild(el("span", "fc-sub", meta.sub));
+      card.appendChild(head);
+      card.appendChild(el("span", "fc-count", panelCount(id) + " " + meta.unit));
+
+      card.addEventListener("click", function () {
+        // front card opens the grid; a shoulder card simply comes forward
+        if (offset === 0) openCardPicker();
+        else setMobileTab(id);
+      });
+      fanRoot.appendChild(card);
+    });
+  }
+
+  // Adding or checking something changes a count; mirror it onto the fan
+  // without having to find every place that can do so.
+  (function () {
+    var pending = null;
+    new MutationObserver(function () {
+      if (pending) return;
+      pending = requestAnimationFrame(function () {
+        pending = null;
+        var active = localStorage.getItem(MTAB_KEY) || "personal";
+        PANEL_IDS.forEach(function (id) {
+          var card = fanRoot.querySelector(".fan-card." + id + " .fc-count");
+          if (card) card.textContent = panelCount(id) + " " + PANEL_META[id].unit;
+        });
+        if (!fanRoot.querySelector(".fan-card." + active + ".pos-active")) renderFan(active);
+      });
+    }).observe(panelsRoot, { childList: true, subtree: true, characterData: true });
+  })();
+
+  document.getElementById("fan-more").addEventListener("click", openCardPicker);
 
   PANEL_IDS.forEach(function (id) {
     var panel = panelEl(id);
@@ -2649,7 +2776,8 @@
   (function () {
     var startX = null, startY = null;
 
-    panelsRoot.addEventListener("touchstart", function (e) {
+    [panelsRoot, fanRoot].forEach(function (root) {
+    root.addEventListener("touchstart", function (e) {
       if (!window.matchMedia("(max-width: 720px)").matches) return;
       if (e.touches.length !== 1) return;
       // don't hijack a drag that begins inside something you're typing in
@@ -2658,7 +2786,7 @@
       startY = e.touches[0].clientY;
     }, { passive: true });
 
-    panelsRoot.addEventListener("touchend", function (e) {
+    root.addEventListener("touchend", function (e) {
       if (startX === null) return;
       var dx = e.changedTouches[0].clientX - startX;
       var dy = e.changedTouches[0].clientY - startY;
@@ -2669,8 +2797,8 @@
       if (at < 0) at = 0;
       var next = (at + (dx < 0 ? 1 : -1) + PANEL_IDS.length) % PANEL_IDS.length;
       setMobileTab(PANEL_IDS[next]);
-      panelsRoot.scrollIntoView({ behavior: "smooth", block: "start" });
     }, { passive: true });
+    });
   })();
 
   // ── Export ───────────────────────────────────────────────
