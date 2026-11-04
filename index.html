@@ -494,6 +494,15 @@
     padding: 8px 9px;
     outline: none;
   }
+  .note-hint {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+    min-height: 13px;
+  }
+  .note-link-select:disabled, .note-input:disabled { opacity: .55; }
+  .note-add-btn:disabled { opacity: .4; cursor: not-allowed; }
   .note-add-btn {
     flex: none;
     font-family: var(--sans);
@@ -2300,7 +2309,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1052";
+  var BUILD = "2026-11-04-1055";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2439,6 +2448,9 @@
     composeRow.appendChild(select);
     composeRow.appendChild(addBtn);
     compose.appendChild(composeRow);
+    var composeHint = el("div", "note-hint");
+    compose.appendChild(composeHint);
+    select.addEventListener("change", function () { syncComposeState(); });
     panel.appendChild(compose);
 
     var list = el("ul", "note-list");
@@ -2480,18 +2492,42 @@
       refreshNotesUI();
     });
 
+    // A note has to belong to something — an unattached one is a scrap you
+    // never find again. The placeholder is unselectable, so the Add button
+    // stays off until a task is chosen.
     function fillSelect(keepValue) {
       var prev = keepValue !== undefined ? keepValue : select.value;
+      var tasks = openTasks();
       select.textContent = "";
-      var none = el("option", null, "Not linked to a task");
+
+      var none = el("option", null,
+        tasks.length ? "Which task is this about?" : "No open tasks to attach to");
       none.value = "";
+      none.disabled = true;
       select.appendChild(none);
-      openTasks().forEach(function (t) {
+
+      tasks.forEach(function (t) {
         var opt = el("option", null, t.title + " — " + t.text.slice(0, 48));
         opt.value = t.id;
         select.appendChild(opt);
       });
-      if (prev) select.value = prev;
+
+      select.value = (prev && tasks.some(function (t) { return t.id === prev; })) ? prev : "";
+      syncComposeState(tasks.length);
+    }
+
+    function syncComposeState(taskCount) {
+      var has = taskCount === undefined ? openTasks().length : taskCount;
+      var ready = !!select.value;
+      addBtn.disabled = !ready;
+      select.disabled = !has;
+      input.disabled = !has;
+      input.placeholder = has
+        ? "Write a note… each line becomes its own check point"
+        : "Add a task first — every note hangs off one";
+      composeHint.textContent = (has && !ready)
+        ? "Pick the task this note belongs to."
+        : "";
     }
 
     function startEdit(note, textNode) {
@@ -2556,8 +2592,9 @@
       // (or moved, or unlinked) long after it was written
       function openRelink(note, holder) {
         var sel = el("select", "note-relink");
-        var none = el("option", null, "Not linked to a task");
+        var none = el("option", null, "Move to which task?");
         none.value = "";
+        none.disabled = true;
         sel.appendChild(none);
         openTasks().forEach(function (t) {
           var opt = el("option", null, t.title + " — " + t.text.slice(0, 44));
@@ -2570,7 +2607,7 @@
           if (done) return;
           done = true;
           var chosen = sel.value;
-          if ((note.taskId || "") !== chosen) {
+          if (chosen && (note.taskId || "") !== chosen) {
             var all = loadNotes();
             all.forEach(function (n) {
               if (n.id !== note.id) return;
@@ -2730,10 +2767,15 @@
         .map(function (l) { return l.replace(BULLET, "").replace(/^\s*[-*\u2022]\s*/, "").trim(); })
         .filter(function (l) { return l.length > 0; });
       if (lines.length === 0) { input.focus(); return; }
+      if (!select.value) {        // nothing to hang it off — don't lose it
+        composeHint.textContent = "Pick the task this note belongs to.";
+        select.focus();
+        return;
+      }
 
       var all = loadNotes();
       var now = Date.now();
-      var linkTo = select.value || undefined;
+      var linkTo = select.value;
       lines.forEach(function (text, i) {
         // count down so the list keeps the order they were pasted in
         var stamp = now + (lines.length - 1 - i);
