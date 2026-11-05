@@ -2282,6 +2282,7 @@
         persist();
         render();
         outlook(task);
+        if (!task.deleted) cascadeNotesToTask(task.id, !!task.done);
       });
       row.appendChild(circle);
 
@@ -2488,7 +2489,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1027";
+  var BUILD = "2026-11-05-1030";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2531,6 +2532,7 @@
       if (n.done) {
         note.done = true;
         if (typeof n.doneAt === "number") note.doneAt = n.doneAt;
+        if (n.byTask) note.byTask = true;
       }
       if (typeof n.mt === "number") note.mt = n.mt;
       if (n.deleted) {
@@ -2555,6 +2557,38 @@
 
   function liveNotes() {
     return loadNotes().filter(function (n) { return !n.deleted; });
+  }
+
+  // Ticking a task ticks the notes hanging off it — they describe work that
+  // is now finished. The reverse is deliberately not true: a note is a
+  // detail of the task, so finishing one says nothing about the task itself.
+  //
+  // `byTask` remembers that the cascade is what closed a note, so un-ticking
+  // the task reopens exactly those and leaves alone any note the person had
+  // already ticked off by hand.
+  function cascadeNotesToTask(taskId, done) {
+    if (!taskId) return;
+    var all = loadNotes();
+    var changed = false;
+    all.forEach(function (n) {
+      if (n.deleted || n.taskId !== taskId) return;
+      if (done) {
+        if (n.done) return;          // already finished on its own — leave it
+        n.done = true;
+        n.doneAt = Date.now();
+        n.byTask = true;
+      } else {
+        if (!n.done || !n.byTask) return;
+        delete n.done;
+        delete n.doneAt;
+        delete n.byTask;
+      }
+      n.mt = Date.now();
+      changed = true;
+    });
+    if (!changed) return;
+    persistNotes(all);
+    refreshNotesUI();
   }
 
   function notesForTask(taskId) {
@@ -2819,6 +2853,7 @@
             if (n.id !== note.id) return;
             if (n.done) { delete n.done; delete n.doneAt; }
             else { n.done = true; n.doneAt = Date.now(); }
+            delete n.byTask;   // done by hand either way, so the task no longer owns it
             n.mt = Date.now();
           });
           persistNotes(all);
