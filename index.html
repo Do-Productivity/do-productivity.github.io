@@ -441,21 +441,23 @@
   }
 
   /* ── Notes ───────────────────────────────── */
-  /* User-made lists carry their colour as variables rather than a class per
-     list, so adding one needs no new CSS. */
-  .panel.custom { border-top-color: var(--tint); }
-  .panel.custom .dot { color: var(--tint); }
-  .panel.custom .add-input:focus { border-color: var(--tint); }
-  .panel.custom .add-btn { background: var(--tint); }
-  .panel.custom .task-circle { border-color: var(--tint); }
-  .panel.custom .task-circle:hover { background: var(--tint-soft); }
-  .panel.custom .completed-toggle { color: var(--tint); }
-  .panel.custom .count-badge { background: var(--tint-soft); }
-  .picker-tile.custom { border-top-color: var(--tint); }
-  .picker-tile.custom .pt-dot { color: var(--tint); }
-
   .panel.notes { border-top-color: var(--green); }
   .panel.notes .dot { color: var(--green); }
+
+  /* A list carries its colour as variables rather than a class per list, so
+     adding or recolouring one needs no new CSS. These come after the
+     built-in colours above on purpose: a recoloured Personal or Notes panel
+     has to win, and both selectors weigh the same, so order decides. */
+  .panel.themed { border-top-color: var(--tint); }
+  .panel.themed .dot { color: var(--tint); }
+  .panel.themed .add-input:focus { border-color: var(--tint); }
+  .panel.themed .add-btn { background: var(--tint); }
+  .panel.themed .task-circle { border-color: var(--tint); }
+  .panel.themed .task-circle:hover { background: var(--tint-soft); }
+  .panel.themed .completed-toggle { color: var(--tint); }
+  .panel.themed .count-badge { background: var(--tint-soft); }
+  .picker-tile.themed { border-top-color: var(--tint); }
+  .picker-tile.themed .pt-dot { color: var(--tint); }
 
   .note-compose { margin-bottom: 10px; }
   .note-input {
@@ -829,6 +831,22 @@
     border: 2px solid transparent; cursor: pointer; padding: 0;
   }
   .nl-swatch.on { border-color: var(--ink); }
+  .nl-swatches { flex-wrap: wrap; }
+  .tint-custom {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    font-family: var(--sans); font-size: 13px; color: var(--ink-soft);
+    margin: 0 0 14px; cursor: pointer;
+  }
+  .tint-custom input[type="color"] {
+    width: 38px; height: 30px; padding: 0; cursor: pointer;
+    border: 1px solid var(--rule); border-radius: 8px; background: none;
+  }
+  .pt-tint {
+    position: absolute; bottom: 6px; right: 6px;
+    width: 22px; height: 22px; border-radius: 50%; padding: 0;
+    border: 2px solid var(--card); cursor: pointer;
+    box-shadow: 0 0 0 1px var(--rule);
+  }
 
   .picker-tile {
     position: relative;
@@ -1245,8 +1263,10 @@
        — or the pill beneath — for the full grid. */
     .card-fan {
       display: block; position: relative;
-      height: 96px; margin: 0 0 8px;
-      perspective: 760px;
+      /* grows with the screen, so a 430px iPhone gets a genuinely bigger
+         card than a 320px one instead of the same card in more whitespace */
+      height: clamp(104px, 31vw, 132px); margin: 0 0 8px;
+      perspective: 820px;
       perspective-origin: 50% 46%;
       transform-style: preserve-3d;
       /* the browser keeps vertical scrolling; sideways is ours, so a drag
@@ -1256,13 +1276,15 @@
     /* while a thumb is down the cards track it exactly — the easing is for
        the snap afterwards, not for following a finger */
     .card-fan.dragging .fan-card { transition: none; }
-    /* Width and offset are chosen together: at 54%/40% the shoulder cards
-       scale to .84 and still land ~20px inside a 373px screen, so they read
-       as cards behind rather than slabs running off the edge. */
+    /* Width and offset are chosen together. At 66% the front card is as big
+       as it can be while the shoulders — pulled in to 33% and scaled .78 —
+       still land inside a 320px screen, which is the narrowest phone worth
+       fitting. Widen the card without pulling the shoulders in and they run
+       off the edge; that pairing is why the numbers look arbitrary. */
     .fan-card {
       position: absolute; left: 50%; top: 0;
-      width: 54%; max-width: 212px; height: 92px;
-      border: none; border-radius: 13px; padding: 12px 14px;
+      width: 66%; max-width: 268px; height: clamp(100px, 29.5vw, 126px);
+      border: none; border-radius: 15px; padding: clamp(12px, 3.6vw, 16px) clamp(14px, 4.2vw, 18px);
       display: flex; flex-direction: column; justify-content: space-between;
       text-align: left; color: #fff; cursor: pointer;
       box-shadow: 0 6px 18px rgba(43, 38, 32, 0.22);
@@ -1279,13 +1301,16 @@
     .fan-card.business { background: linear-gradient(140deg, #4d82a8, #2b5472); }
     .fan-card.notes    { background: linear-gradient(140deg, #5fa675, #376d46); }
     .fc-head { display: block; }
-    .fc-title { font-family: var(--serif); font-size: 19px; font-weight: 700; }
+    .fc-title { font-family: var(--serif); font-size: clamp(20px, 5.9vw, 25px); font-weight: 700; }
     .fc-dot { opacity: .6; }
     .fc-sub {
-      display: block; font-family: var(--sans); font-size: 7.5px;
-      letter-spacing: 1.6px; opacity: .72; margin-top: 3px;
+      display: block; font-family: var(--sans); font-size: clamp(8px, 2.3vw, 9.5px);
+      letter-spacing: 1.6px; opacity: .72; margin-top: 4px;
     }
-    .fc-count { font-family: var(--sans); font-size: 11px; font-weight: 700; opacity: .93; }
+    .fc-count {
+      font-family: var(--sans); font-size: clamp(11.5px, 3.3vw, 14px);
+      font-weight: 700; opacity: .93;
+    }
     /* The fan deals itself out the first time it draws. Later moves are the
        transition above, so this plays once rather than on every re-render. */
     .card-fan.dealing .fan-card { animation: fan-deal .5s cubic-bezier(.2, .9, .3, 1) backwards; }
@@ -1685,6 +1710,19 @@
   </div>
 </div>
 
+<div class="modal-overlay card-picker" id="tint-modal">
+  <div class="picker-sheet">
+    <div class="picker-head" id="tint-head">Colour</div>
+    <div class="nl-swatches" id="tint-swatches"></div>
+    <label class="tint-custom">
+      <input type="color" id="tint-custom-input">
+      <span>Mix your own</span>
+    </label>
+    <button class="picker-close" id="tint-reset">Back to the original colour</button>
+    <button class="picker-close" id="tint-cancel">Done</button>
+  </div>
+</div>
+
 <div class="ptr-indicator" id="ptr-indicator"><span class="ptr-arrow">↻</span></div>
 <div class="net-banner" id="net-banner" role="status" aria-live="polite">
   <span class="net-dot"></span>
@@ -1717,7 +1755,75 @@
     teal:   { a: "#4fa3a0", b: "#246b69", solid: "#358a87" }
   };
 
-  function tint(name) { return TINTS[name] || TINTS.amber; }
+  // A list's colour is either one of the presets above or a hex the person
+  // mixed themselves. Both end up as the same {a, b, solid} shape, so every
+  // place that paints a card or a panel stays unaware of which it got.
+  function tint(v) {
+    if (typeof v === "string" && v.charAt(0) === "#" && (v.length === 7 || v.length === 4)) {
+      var hex = v.length === 4
+        ? "#" + v[1] + v[1] + v[2] + v[2] + v[3] + v[3]
+        : v;
+      return { a: shade(hex, 0.16), b: shade(hex, -0.28), solid: hex };
+    }
+    return TINTS[v] || TINTS.amber;
+  }
+
+  // amt > 0 lifts the colour towards white, < 0 sinks it towards black —
+  // enough to make the same gradient the presets have.
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16);
+    var c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function (v) {
+      var out = amt > 0 ? v + (255 - v) * amt : v * (1 + amt);
+      return Math.max(0, Math.min(255, Math.round(out)));
+    });
+    return "#" + c.map(function (v) {
+      return (v + 0x100).toString(16).slice(1);
+    }).join("");
+  }
+
+  // ── Colour overrides ─────────────────────────────────────
+  // Recolouring any list — including the two originals and Notes, which have
+  // no entry in the registry — lands here. Each id keeps its own mt so two
+  // devices recolouring two different lists both win, the same way tasks do.
+  var TINT_KEY = "dia_todo_tints_v1";
+
+  function loadTintMap() {
+    try {
+      var m = JSON.parse(localStorage.getItem(TINT_KEY));
+      return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
+    } catch (e) { return {}; }
+  }
+
+  function saveTintMap(m) {
+    localStorage.setItem(TINT_KEY, JSON.stringify(m));
+    scheduleSyncPush();
+  }
+
+  function tintFor(id, fallback) {
+    var e = loadTintMap()[id];
+    return (e && e.v) ? e.v : fallback;
+  }
+
+  function setTintFor(id, value) {
+    var m = loadTintMap();
+    if (value === null) m[id] = { mt: Date.now() };     // tombstone: back to default
+    else m[id] = { v: value, mt: Date.now() };
+    saveTintMap(m);
+  }
+
+  // per-key last write wins
+  function mergeTintMaps(local, remote) {
+    var out = {}, keys = {};
+    Object.keys(local || {}).forEach(function (k) { keys[k] = true; });
+    Object.keys(remote || {}).forEach(function (k) { keys[k] = true; });
+    Object.keys(keys).forEach(function (k) {
+      var a = (local || {})[k], b = (remote || {})[k];
+      if (!a) { out[k] = b; return; }
+      if (!b) { out[k] = a; return; }
+      out[k] = ((b.mt || 0) > (a.mt || 0)) ? b : a;
+    });
+    return out;
+  }
 
   // a pale version of the tint for hover fills and count badges
   function softTint(hex) {
@@ -1765,11 +1871,24 @@
 
   // every live task list, built-ins first then the user's own
   function taskLists() {
-    var out = PANELS.slice();
+    var out = PANELS.slice().map(function (p) {
+      var o = {};
+      Object.keys(p).forEach(function (k) { o[k] = p[k]; });
+      return o;
+    });
     loadCustomLists().forEach(function (l) {
       if (l.deleted) return;
       out.push({ id: l.id, title: l.title, subtitle: l.sub,
                  storageKey: listKey(l.id), tint: l.tint, custom: true });
+    });
+    // `themed` says the person chose this colour, which is what tells a
+    // panel to take its accents from --tint instead of its built-in class.
+    // The map is read once here rather than per list: taskLists() is called
+    // on every snapshot and merge, and this sits in that path.
+    var chosen = loadTintMap();
+    out.forEach(function (l) {
+      var e = chosen[l.id];
+      if (e && e.v) { l.tint = e.v; l.themed = true; }
     });
     return out;
   }
@@ -2059,8 +2178,9 @@
     var tasks = loadTasks(config.storageKey);
     var completedOpen = false;
 
-    var panel = el("section", "panel " + config.id + (config.custom ? " custom" : ""));
-    if (config.custom) {
+    var panel = el("section", "panel " + config.id +
+      ((config.custom || config.themed) ? " themed" : ""));
+    if (config.custom || config.themed) {
       var t = tint(config.tint);
       panel.style.setProperty("--tint", t.solid);
       panel.style.setProperty("--tint-soft", softTint(t.solid));
@@ -2489,7 +2609,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1030";
+  var BUILD = "2026-11-05-1045";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -2630,7 +2750,12 @@
   }
 
   function createNotesPanel() {
-    var panel = el("section", "panel notes");
+    var notesTint = tintFor("notes", null);
+    var panel = el("section", "panel notes" + (notesTint ? " themed" : ""));
+    if (notesTint) {
+      panel.style.setProperty("--tint", tint(notesTint).solid);
+      panel.style.setProperty("--tint-soft", softTint(tint(notesTint).solid));
+    }
 
     var header = el("div", "panel-header");
     var title = el("h2", "panel-title", "Notes");
@@ -3050,11 +3175,16 @@
         sub: (l.subtitle || "").toUpperCase(),
         unit: "to do",
         tint: l.tint || "amber",
-        custom: !!l.custom
+        custom: !!l.custom,
+        themed: !!l.themed
       };
     });
     PANEL_IDS.push("notes");
-    PANEL_META.notes = { title: "Notes", sub: "CONTEXT & DETAIL", unit: "open", tint: "green" };
+    PANEL_META.notes = {
+      title: "Notes", sub: "CONTEXT & DETAIL", unit: "open",
+      tint: tintFor("notes", "green"),
+      themed: !!tintFor("notes", null)
+    };
   }
   rebuildPanelIndex();
 
@@ -3095,9 +3225,9 @@
   // animates in and out instead of popping.
   var FAN_DEPTH = [
     { x: 0,  scale: 1,    opacity: 1,    z: 0,    rotate: 0,  blur: 0 },
-    { x: 40, scale: 0.84, opacity: 0.9,  z: -70,  rotate: 15, blur: 0 },
-    { x: 66, scale: 0.70, opacity: 0.46, z: -140, rotate: 22, blur: 0.6 },
-    { x: 84, scale: 0.62, opacity: 0,    z: -200, rotate: 26, blur: 1.2 }
+    { x: 33, scale: 0.78, opacity: 0.9,  z: -70,  rotate: 15, blur: 0 },
+    { x: 55, scale: 0.65, opacity: 0.46, z: -140, rotate: 22, blur: 0.6 },
+    { x: 70, scale: 0.58, opacity: 0,    z: -200, rotate: 26, blur: 1.2 }
   ];
 
   // d is a distance from the front of the fan and may be fractional, because
@@ -3133,7 +3263,7 @@
     fanRoot.textContent = "";
     PANEL_IDS.forEach(function (id) {
       var meta = PANEL_META[id];
-      var card = el("button", "fan-card " + id + (meta.custom ? " custom" : ""));
+      var card = el("button", "fan-card " + id);
       var t = tint(meta.tint);
       card.style.backgroundImage = "linear-gradient(140deg," + t.a + "," + t.b + ")";
 
@@ -3232,6 +3362,84 @@
 
   setMobileTab(localStorage.getItem(MTAB_KEY) || "personal");
 
+  // ── Recolouring ──────────────────────────────────────────
+  // Panels are built once and own timers, so a colour change repaints in
+  // place rather than reloading the way a new list has to.
+
+  function applyPanelTint(panel, value, themed) {
+    if (!panel) return;
+    panel.classList.toggle("themed", !!themed);
+    if (themed) {
+      var c = tint(value);
+      panel.style.setProperty("--tint", c.solid);
+      panel.style.setProperty("--tint-soft", softTint(c.solid));
+    } else {
+      panel.style.removeProperty("--tint");
+      panel.style.removeProperty("--tint-soft");
+    }
+  }
+
+  function repaintTints() {
+    rebuildPanelIndex();
+    taskLists().forEach(function (l) {
+      applyPanelTint(panelEl(l.id), l.tint, l.custom || l.themed);
+    });
+    var nt = tintFor("notes", null);
+    applyPanelTint(document.querySelector(".panel.notes"), nt || "green", !!nt);
+    if (!fanRoot) return;
+    [].forEach.call(fanRoot.children, function (card) {
+      var meta = PANEL_META[card._id];
+      if (!meta) return;
+      var c = tint(meta.tint);
+      card.style.backgroundImage = "linear-gradient(140deg," + c.a + "," + c.b + ")";
+    });
+  }
+
+  function closeTintSheet() {
+    document.getElementById("tint-modal").classList.remove("show");
+  }
+
+  function applyTint(id, value, redraw) {
+    setTintFor(id, value);
+    repaintTints();
+    if (redraw) openTintSheet(id);
+  }
+
+  function openTintSheet(id) {
+    var meta = PANEL_META[id];
+    if (!meta) return;
+    var current = tintFor(id, meta.tint);
+    document.getElementById("tint-head").textContent = meta.title + " \u2014 colour";
+
+    var box = document.getElementById("tint-swatches");
+    box.textContent = "";
+    Object.keys(TINTS).forEach(function (name) {
+      var b = el("button", "nl-swatch" + (current === name ? " on" : ""));
+      b.style.background = TINTS[name].solid;
+      b.setAttribute("aria-label", name);
+      b.addEventListener("click", function () { applyTint(id, name, true); });
+      box.appendChild(b);
+    });
+
+    var input = document.getElementById("tint-custom-input");
+    input.value = tint(current).solid;
+    // `change` rather than `input`: the native picker fires continuously while
+    // a finger drags, and re-rendering the sheet underneath it would fight the
+    // person for control of the control they are holding.
+    input.onchange = function () { applyTint(id, input.value, false); };
+
+    document.getElementById("tint-reset").onclick = function () { applyTint(id, null, true); };
+    document.getElementById("tint-modal").classList.add("show");
+  }
+
+  document.getElementById("tint-cancel").addEventListener("click", function () {
+    closeTintSheet();
+    openCardPicker();     // back to the grid, to recolour another list
+  });
+  document.getElementById("tint-modal").addEventListener("click", function (e) {
+    if (e.target === this) closeTintSheet();
+  });
+
   // Tapping the open card shows every list at once to pick from, the way
   // iOS 27's Apple Pay sheet opens a grid of your cards.
   function openCardPicker() {
@@ -3242,9 +3450,10 @@
       var meta = PANEL_META[id];
       var panel = panelEl(id);
       var count = panel ? panel.querySelector(".panel-count").textContent : "0";
-      var tile = el("button", "picker-tile " + id + (meta.custom ? " custom" : "") +
+      var tile = el("button", "picker-tile " + id +
+                               ((meta.custom || meta.themed) ? " themed" : "") +
                                (id === current ? " current" : ""));
-      if (meta.custom) tile.style.setProperty("--tint", tint(meta.tint).solid);
+      tile.style.setProperty("--tint", tint(meta.tint).solid);
       var title = el("span", "pt-title", meta.title);
       title.appendChild(el("span", "pt-dot", "."));
       tile.appendChild(title);
@@ -3255,6 +3464,17 @@
         setMobileTab(id);
         panelsRoot.scrollIntoView({ behavior: "smooth", block: "start" });
       });
+      var sw = el("button", "pt-tint");
+      sw.style.background = tint(meta.tint).solid;
+      sw.title = "Change this list's colour";
+      sw.setAttribute("aria-label", "Change the colour of " + meta.title);
+      sw.addEventListener("click", function (e) {
+        e.stopPropagation();
+        closeCardPicker();
+        openTintSheet(id);
+      });
+      tile.appendChild(sw);
+
       // only the user's own lists can be removed; the originals stay
       if (meta.custom) {
         var rm = el("button", "pt-remove", "\u00d7");
@@ -3465,7 +3685,8 @@
       exportedAt: new Date().toISOString(),
       lists: listsSnapshot(),
       customLists: loadCustomLists(),
-      notes: loadNotes()
+      notes: loadNotes(),
+      tints: loadTintMap()
     };
   }
 
@@ -3557,6 +3778,9 @@
       });
     }
     if (Array.isArray(data.notes)) localStorage.setItem(NOTES_KEY, JSON.stringify(data.notes));
+    if (data.tints && typeof data.tints === "object" && !Array.isArray(data.tints)) {
+      localStorage.setItem(TINT_KEY, JSON.stringify(data.tints));
+    }
     // if sync is on, the imported data must win over the remote copy after reload
     localStorage.setItem("dia_todo_import_pending", "1");
     location.reload();
@@ -4089,7 +4313,8 @@
       updatedAt: Date.now(),
       lists: listsSnapshot(),
       customLists: loadCustomLists(),
-      notes: loadNotes()
+      notes: loadNotes(),
+      tints: loadTintMap()
     };
   }
 
@@ -4127,10 +4352,17 @@
     var remoteNotes = normalizeNotes(remoteDoc.notes || []);
     var mergedNotes = mergeTaskLists(loadNotes(), remoteNotes);
 
-    applySyncDoc({ lists: merged, notes: mergedNotes, customLists: mergedCustom });
+    // Colours are per-id last-write-wins rather than an item merge — there is
+    // only ever one colour per list, so there is nothing to reconcile.
+    var remoteTints = (remoteDoc.tints && typeof remoteDoc.tints === "object") ? remoteDoc.tints : {};
+    var mergedTints = mergeTintMaps(loadTintMap(), remoteTints);
+
+    applySyncDoc({ lists: merged, notes: mergedNotes, customLists: mergedCustom,
+                   tints: mergedTints });
     return JSON.stringify(merged) !== JSON.stringify(remoteLists) ||
            JSON.stringify(mergedNotes) !== JSON.stringify(remoteNotes) ||
-           JSON.stringify(mergedCustom) !== JSON.stringify(remoteCustom);
+           JSON.stringify(mergedCustom) !== JSON.stringify(remoteCustom) ||
+           JSON.stringify(mergedTints) !== JSON.stringify(remoteTints);
   }
 
   function applySyncDoc(doc) {
@@ -4140,6 +4372,14 @@
       localStorage.setItem(keyForListId(id), JSON.stringify(doc.lists[id] || []));
     });
     if (doc.notes) localStorage.setItem(NOTES_KEY, JSON.stringify(doc.notes));
+    if (doc.tints) {
+      var tintsAfter = JSON.stringify(doc.tints);
+      if (tintsAfter !== localStorage.getItem(TINT_KEY)) {
+        localStorage.setItem(TINT_KEY, tintsAfter);
+        // a colour needs no reload, unlike a list appearing or leaving
+        if (document.querySelector(".panel")) repaintTints();
+      }
+    }
     // Panels are built once, so a list arriving or leaving needs a rebuild.
     // Reloading is the honest way to do that without orphaning the per-panel
     // timers; the guard stops two devices bouncing reloads off each other.
