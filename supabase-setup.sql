@@ -9,9 +9,11 @@
 
 -- ═══ PART 1 · usage tracker ══════════════════════════════════════════
 -- Records a random id per device, a first-seen, a last-seen, and the
--- account id when that device happens to be signed in (so the tracker can
--- tell your own phone and Mac from everybody else's). No names, no
--- emails, no task text.
+-- account id when that device happens to be signed in — which is what lets
+-- the tracker say whose phone a device is, and tell your own from everyone
+-- else's. The table itself holds no names, no emails and no task text; the
+-- owner-only view below joins the account emails in from Supabase's own
+-- auth table at read time.
 
 create table if not exists public.pings (
   device_id  uuid        primary key,
@@ -42,38 +44,69 @@ $$;
 revoke all on function public.record_visit(uuid) from public;
 grant execute on function public.record_visit(uuid) to anon, authenticated;
 
+-- Only the owner sees the figures. Membership of this one-row table is the
+-- whole check, which keeps the owner's email out of a public repository and
+-- survives an account being recreated — change the row, not the function.
+create table if not exists public.app_owners (user_id uuid primary key);
+alter table public.app_owners enable row level security;   -- no policies, same as pings
+
+-- First run only: whoever signed up first owns the app. If that is ever the
+-- wrong person, replace the row in the Supabase table editor with the right
+-- user id from Authentication → Users.
+insert into public.app_owners (user_id)
+select id from auth.users
+where not exists (select 1 from public.app_owners)
+order by created_at limit 1;
+
 create or replace function public.app_stats()
 returns json
-language sql
+language plpgsql
 security definer
 set search_path = public
 as $$
+declare result json;
+begin
+  -- Emails and the device-to-account links below are only safe to return
+  -- because nobody else can get this far.
+  if not exists (select 1 from public.app_owners o where o.user_id = auth.uid()) then
+    raise exception 'app_stats is for the owner of this app only'
+      using errcode = '42501';
+  end if;
+
   select json_build_object(
     'generated', now(),
     'me',        auth.uid(),
     'people', (
       select coalesce(json_agg(json_build_object(
-        'id', u.id, 'joined', u.created_at, 'last_sync', d.updated_at
+        'id',          u.id,
+        'email',       u.email,
+        'joined',      u.created_at,
+        'last_signin', u.last_sign_in_at,
+        'last_sync',   d.updated_at
       ) order by u.created_at), '[]'::json)
       from auth.users u
       left join public.documents d on d.user_id = u.id
     ),
     'devices', (
       select coalesce(json_agg(json_build_object(
-        'first', first_seen,
-        'last',  last_seen,
-        'hits',  hits,
-        'mine',  coalesce(user_id = auth.uid(), false)
-      ) order by first_seen), '[]'::json)
-      from public.pings
+        'label', left(p.device_id::text, 8),   -- enough to tell two rows apart
+        'first', p.first_seen,
+        'last',  p.last_seen,
+        'hits',  p.hits,
+        'user',  p.user_id,                    -- null until it pings signed in
+        'mine',  coalesce(p.user_id = auth.uid(), false)
+      ) order by p.first_seen), '[]'::json)
+      from public.pings p
     )
-  );
+  ) into result;
+  return result;
+end;
 $$;
 
 -- Supabase grants EXECUTE on new public functions to anon and authenticated
 -- by default, and revoking from PUBLIC does not remove those named grants —
--- so anon has to be revoked explicitly or anyone holding the publishable key
--- can read the account list.
+-- so anon has to be revoked explicitly. Account holders keep the grant and
+-- are turned away by the owner check inside the function.
 revoke all on function public.app_stats() from public, anon;
 grant execute on function public.app_stats() to authenticated;
 

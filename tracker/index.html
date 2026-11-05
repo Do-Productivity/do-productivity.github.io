@@ -116,9 +116,11 @@
       </div>
       <div class="tiles">
         <div class="tile"><div class="n" id="t-devices">&mdash;</div><div class="l">Devices in total, your own included</div></div>
-        <div class="tile"><div class="n" id="t-week">&mdash;</div><div class="l">Other people who opened it in the last 7 days</div></div>
-        <div class="tile"><div class="n" id="t-repeat">&mdash;</div><div class="l">Other people who came back more than once</div></div>
-        <div class="tile"><div class="n" id="t-accounts">&mdash;</div><div class="l">Accounts with sync turned on</div></div>
+        <div class="tile"><div class="n" id="t-mine">&mdash;</div><div class="l">Yours &mdash; devices signed into your account</div></div>
+        <div class="tile"><div class="n" id="t-anon">&mdash;</div><div class="l">Devices that never signed in to anything</div></div>
+        <div class="tile"><div class="n" id="t-week">&mdash;</div><div class="l">Other devices opened in the last 7 days</div></div>
+        <div class="tile"><div class="n" id="t-repeat">&mdash;</div><div class="l">Other devices that came back more than once</div></div>
+        <div class="tile"><div class="n" id="t-accounts">&mdash;</div><div class="l">Accounts created</div></div>
       </div>
     </div>
 
@@ -133,10 +135,26 @@
       </details>
     </div>
 
+    <div class="card hidden" id="upgrade">
+      <h2>One thing is missing</h2>
+      <div class="note" style="margin-bottom:0">The database is still on the older counter, which does not say
+        which account a device belongs to. Run <b>supabase-setup.sql</b> again in the Supabase SQL editor and
+        this page fills in the rest by itself.</div>
+    </div>
+
     <div class="card">
-      <h2>Accounts</h2>
-      <div class="note">No names or emails are stored here &mdash; only when each one joined and last synced.</div>
+      <h2>Who created an account</h2>
+      <div class="note">Everyone who signed up, oldest first, with the number of devices
+        that have opened the app while signed into it.</div>
       <table id="people"></table>
+    </div>
+
+    <div class="card">
+      <h2>Who started using it</h2>
+      <div class="note">One row per device, most recently arrived first. A device is only
+        tied to a name once it has opened the app while signed in &mdash; the rest are people
+        using it without sync, which is most of them.</div>
+      <table id="devices"></table>
     </div>
 
     <div class="card quiet">
@@ -199,15 +217,22 @@
       },
       body: "{}"
     }).then(function (res) {
-      if (res.status === 401 && !retried) {
-        return refreshSession().then(function (ok) {
-          if (!ok) throw new Error("signin");
-          return callStats(true);
-        });
-      }
       if (res.status === 404) throw new Error("The app_stats function isn't installed on the database yet. Run supabase-setup.sql in the Supabase SQL editor.");
-      if (!res.ok) throw new Error("The database said no (HTTP " + res.status + ").");
-      return res.json();
+      if (res.ok) return res.json();
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        // 42501 is the owner check turning someone away, which no amount of
+        // signing in again will fix — only an expired token is worth a retry.
+        if (j && j.code === "42501") {
+          throw new Error("This page is for the owner of the app. You are signed in as somebody else.");
+        }
+        if (res.status === 401 && !retried) {
+          return refreshSession().then(function (ok) {
+            if (!ok) throw new Error("signin");
+            return callStats(true);
+          });
+        }
+        throw new Error("The database said no (HTTP " + res.status + ").");
+      });
     });
   }
 
@@ -311,18 +336,43 @@
 
   // ── render ───────────────────────────────────────────────
 
+  function esc(t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  // The part before the @ is enough to recognise somebody, and it keeps a
+  // long address from shoving the table off a phone screen.
+  function who(person, i) {
+    if (!person) return "account " + (i + 1);
+    if (!person.email) return "account " + (i + 1);
+    return person.email.split("@")[0];
+  }
+
   function render(s) {
     var people = s.people || [], devices = s.devices || [];
     var now = Date.now();
-    var mine = people.filter(function (p) { return p.id === s.me; }).length;
-    var others = Math.max(people.length - mine, 0);
+
+    // The older counter returned devices with no account on them. Say so
+    // rather than quietly printing "no account" against every single row.
+    var linksKnown = !devices.length || devices.some(function (d) {
+      return Object.prototype.hasOwnProperty.call(d, "user");
+    });
+    show($("upgrade"), !linksKnown);
+
+    var byId = {};
+    people.forEach(function (p) { byId[p.id] = p; });
+
+    var mine = devices.filter(function (d) { return d.mine; });
     var theirs = devices.filter(function (d) { return !d.mine; });
+    var anon = devices.filter(function (d) { return linksKnown && !d.user; });
     var week = theirs.filter(function (d) { return now - new Date(d.last).getTime() < 7 * DAY; }).length;
     var repeat = theirs.filter(function (d) { return d.hits > 1; }).length;
 
     // Devices are the honest measure of use: an account only exists for the
     // handful who switch sync on. Fall back to accounts until the first ping
     // lands, so a freshly installed counter still says something true.
+    var others = Math.max(people.length - people.filter(function (p) { return p.id === s.me; }).length, 0);
     $("hero-n").textContent = devices.length ? theirs.length : others;
     $("hero-cap").innerHTML = devices.length
       ? (theirs.length === 1
@@ -332,28 +382,61 @@
                       : "people besides you have accounts");
 
     $("t-devices").textContent = devices.length || "—";
+    $("t-mine").textContent = devices.length ? mine.length : "—";
+    $("t-anon").textContent = linksKnown && devices.length ? anon.length : "—";
     $("t-week").textContent = devices.length ? week : "—";
     $("t-repeat").textContent = devices.length ? repeat : "—";
     $("t-accounts").textContent = people.length;
 
     drawChart(weekBuckets(theirs, 8));
 
-    var rows = ["<tr><th>#</th><th>Joined</th><th>Last synced</th></tr>"];
-    people.forEach(function (p, i) {
-      var me = (p.id === s.me) ? ' <span class="me">you</span>' : "";
-      rows.push("<tr><td class=\"who\">" + (i + 1) + me + "</td><td>" +
-        shortDate(p.joined) + "</td><td>" + ago(p.last_sync) + "</td></tr>");
+    // ── who created an account, and how many devices each one uses ──
+    var perPerson = {};
+    devices.forEach(function (d) {
+      if (!d.user) return;
+      var e = perPerson[d.user] || (perPerson[d.user] = { n: 0, last: 0 });
+      e.n++;
+      e.last = Math.max(e.last, new Date(d.last).getTime());
     });
-    if (!people.length) rows.push('<tr><td colspan="3">No accounts yet.</td></tr>');
+
+    var rows = ["<tr><th>Who</th><th>Joined</th><th>Devices</th><th>Last synced</th></tr>"];
+    people.forEach(function (p, i) {
+      var tag = (p.id === s.me) ? ' <span class="me">you</span>' : "";
+      var seat = perPerson[p.id];
+      var count = !linksKnown ? "—" : (seat ? seat.n : 0);
+      rows.push('<tr><td class="who" title="' + esc(p.email || p.id) + '">' +
+        esc(who(p, i)) + tag + "</td><td>" + shortDate(p.joined) + "</td><td>" +
+        count + "</td><td>" + ago(p.last_sync) + "</td></tr>");
+    });
+    if (!people.length) rows.push('<tr><td colspan="4">No accounts yet.</td></tr>');
     $("people").innerHTML = rows.join("");
 
-    var first = devices.length ? devices[0].first : null;
+    // ── every device, newest arrival first ──
+    var byArrival = devices.slice().sort(function (a, b) {
+      return new Date(b.first).getTime() - new Date(a.first).getTime();
+    });
+    var drows = ["<tr><th>Who</th><th>Started</th><th>Last seen</th><th>Visits</th></tr>"];
+    byArrival.forEach(function (d, i) {
+      var label;
+      if (!linksKnown) label = "device " + (d.label || i + 1);
+      else if (d.user) label = esc(who(byId[d.user], 0)) + (d.mine ? ' <span class="me">you</span>' : "");
+      else label = '<span style="color:var(--faint)">no account</span>';
+      drows.push('<tr><td class="who" title="' + esc(d.label || "") + '">' + label +
+        "</td><td>" + shortDate(d.first) + "</td><td>" + ago(d.last) +
+        "</td><td>" + d.hits + "</td></tr>");
+    });
+    if (!devices.length) drows.push('<tr><td colspan="4">No devices counted yet.</td></tr>');
+    $("devices").innerHTML = drows.join("");
+
+    var first = devices.length ? byArrival[byArrival.length - 1].first : null;
     $("foot").innerHTML =
       "<b>Counted:</b> every device that opens the app, whether or not the person made an account. " +
-      "A random id per device &mdash; no names, no emails, never any task text.<br><br>" +
-      "<b>Rough edges:</b> one person on a phone and a laptop counts twice, clearing browser " +
-      "data makes a device look new, and your own devices only drop out of the count once " +
-      "they have been signed in." +
+      "A random id per device &mdash; never any task text.<br><br>" +
+      "<b>How a device gets a name:</b> only by opening the app while signed in. It keeps that " +
+      "name afterwards, even if the person signs out, and a device two people sign into shows " +
+      "the last one.<br><br>" +
+      "<b>Rough edges:</b> one person on a phone and a laptop counts as two devices, and clearing " +
+      "browser data makes an old device look new." +
       (first ? "<br><br><b>Counting since</b> " + shortDate(first) + "." : "");
 
     $("stamp").textContent = "Updated " + new Date(s.generated).toLocaleTimeString(undefined,
