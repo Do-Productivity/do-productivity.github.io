@@ -366,6 +366,40 @@
     padding: 6px 8px;
     outline: none;
   }
+  /* What a typed date phrase was understood to mean, shown while typing so
+     a wrong guess is caught before the task exists. */
+  .smart-due {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--sans);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--blue);
+    background: var(--blue-soft);
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin: 0 0 8px;
+  }
+  .smart-due.show { display: flex; }
+  .smart-due .sd-text { flex: 1; min-width: 0; }
+  .smart-due .sd-from { color: var(--ink-soft); }
+  .smart-due .sd-off {
+    flex: none;
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 4px 7px;
+    cursor: pointer;
+  }
+  /* The one-time hint, which is advice rather than a decision */
+  .smart-due.tip { color: var(--ink-faint); background: none; padding: 2px 0 6px; }
+  body.nl-tip-done .smart-due.tip { display: none !important; }
+
   .task-due { cursor: pointer; }
   .task-due.today { color: #b3701f; font-weight: 700; }
   .task-due.overdue { color: var(--red); font-weight: 700; }
@@ -1157,6 +1191,7 @@
     .panel.collapsed .divider,
     .panel.collapsed .add-row,
     .panel.collapsed .due-row,
+    .panel.collapsed .smart-due,
     .panel.collapsed .task-list,
     .panel.collapsed .note-compose,
     .panel.collapsed .note-filter,
@@ -1226,6 +1261,7 @@
     .due-row { gap: 6px; margin-bottom: 4px; }
     .due-label { font-size: 9px; letter-spacing: 0.5px; }
     .due-input { font-size: 16px; padding: 5px 8px; border-radius: 7px; }
+    .smart-due { font-size: 11px; gap: 6px; margin-bottom: 6px; }
     .task-row { gap: 11px; padding: 13px 0; }
     .task-circle { width: 22px; height: 22px; border-width: 2px; margin-top: 0; }
     .task-text { font-family: var(--sans); font-size: 15px; line-height: 1.5; }
@@ -1440,6 +1476,8 @@
     .due-row { gap: 4px; margin-bottom: 3px; }
     .due-label { font-size: 8px; letter-spacing: 0.3px; }
     .due-input { font-size: 13px; padding: 4px 6px; }
+    .smart-due { font-size: 10px; gap: 4px; padding: 4px 6px; margin-bottom: 4px; }
+    .smart-due .sd-off { font-size: 9px; padding: 3px 5px; }
     .task-row { gap: 7px; padding: 8px 0; }
     .task-circle { width: 18px; height: 18px; }
     .task-text { font-size: 14px; line-height: 1.45; }
@@ -1494,7 +1532,7 @@
   /* ── Print ───────────────────────────────── */
   @media print {
     html, body { background: #fff; }
-    .toolbar-btn, .add-row, .due-row, .task-delete, .task-datebtn, .due-bell, .clear-completed, .status-msg, .modal-overlay, .ptr-indicator, .mobile-tabs, .completed-section.trash { display: none !important; }
+    .toolbar-btn, .add-row, .due-row, .smart-due, .task-delete, .task-datebtn, .due-bell, .clear-completed, .status-msg, .modal-overlay, .ptr-indicator, .mobile-tabs, .completed-section.trash { display: none !important; }
     .panels .panel { display: block !important; } /* print both lists even from the tab view */
     .panel { box-shadow: none; border: 1px solid var(--rule); break-inside: avoid; }
     .panels { gap: 16px; }
@@ -1996,6 +2034,375 @@
       da.getDate() === db.getDate();
   }
 
+  // The typed-date hint is shown once per device, until a date is actually
+  // read from someone's text — at which point they plainly know about it.
+  var NL_TIP_KEY = "dia_todo_nldue_tip";
+  function nlTipDone() {
+    try { return localStorage.getItem(NL_TIP_KEY) === "1"; } catch (e) { return true; }
+  }
+  function markNlTipDone() {
+    if (nlTipDone()) return;
+    try { localStorage.setItem(NL_TIP_KEY, "1"); } catch (e) {}
+    // Every list has its own copy of the hint, and only one of them was
+    // clicked, so the rest are retired with a class rather than a redraw.
+    document.body.classList.add("nl-tip-done");
+  }
+
+  // ── Natural-language due dates ───────────────────────────
+  // "call mum tomorrow 6pm" should set its own date. parseNaturalDue finds the
+  // date/time phrase, hands back the task text without it, and the add row
+  // shows what it resolved to — so a wrong guess is visible before the task
+  // exists, rather than discovered later by an alarm that never rang.
+  //
+  // Deliberately conservative about numbers: a bare one is never a time, so
+  // "buy 2 apples" has no 2 o'clock in it. A time needs a colon, an am/pm, or
+  // a leading "at". Each pattern carries its own optional "on/by/due/at/the"
+  // prefix, so the preposition leaves with the phrase and the remaining text
+  // still reads as English.
+
+  var NL_WEEKDAYS = {
+    monday: 1, mon: 1, tuesday: 2, tue: 2, tues: 2, wednesday: 3, wed: 3, weds: 3,
+    thursday: 4, thu: 4, thur: 4, thurs: 4, friday: 5, fri: 5,
+    saturday: 6, sunday: 0
+  };
+  // "sat" and "sun" are missing above on purpose: they are a verb and a noun
+  // far more often than they are days ("i sat down", "walk in the sun"). They
+  // are read as days only in the two guarded forms further down, where a
+  // preposition or a clock time sits next to them.
+  var NL_MONTHS = {
+    jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+    may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7,
+    sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10,
+    dec: 11, december: 11
+  };
+  // A time of day named in words. The four meals stay in the task text —
+  // "lunch with ali" is what the task is called — while the purely temporal
+  // ones are removed like any other date phrase.
+  var NL_TIMEWORDS = {
+    breakfast: [8, 0, true], morning: [9, 0], noon: [12, 0], midday: [12, 0],
+    lunchtime: [13, 0, true], lunch: [13, 0, true], afternoon: [14, 0],
+    eod: [18, 0], evening: [18, 0], dinner: [19, 0, true], midnight: [23, 59]
+  };
+
+  function parseNaturalDue(raw, now) {
+    if (!raw) return null;
+    if (now === undefined) now = Date.now();
+
+    var original = raw.toLowerCase();
+    var masked = original;    // matched phrases blanked out as we go
+    var spans = [];
+
+    function overlaps(a, b) {
+      return spans.some(function (s) { return a < s[1] && b > s[0]; });
+    }
+
+    // Searches the text with everything matched so far blanked out, so a
+    // date's own digits can never be read a second time as a clock. Pass
+    // fromOriginal when a pattern needs to see words that are already gone
+    // (only the sat/sun guards do).
+    function take(re, use, fromOriginal) {
+      var m = re.exec(fromOriginal ? original : masked);
+      if (!m) return false;
+      var start = m.index, end = m.index + m[0].length;
+      if (fromOriginal && overlaps(start, end)) return false;
+      // A repeat is not a due date, and this app has no recurring tasks, so
+      // "standup every monday" must not quietly become one Monday.
+      if (/\b(?:every|each)(?:\s+other)?\s*$/.test(original.slice(0, start))) return false;
+      if (use(m) === false) return false;
+      spans.push([start, end]);
+      masked = masked.slice(0, start) +
+        new Array(end - start + 1).join(" ") +
+        masked.slice(end);
+      return true;
+    }
+
+    var dayStart = null;     // local midnight of the target day
+    var time = null;         // [hours, minutes]
+    var exact = null;        // a whole timestamp, for "in 20 minutes"
+
+    function today() {
+      var d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    function plusDays(n) {
+      var d = today();
+      d.setDate(d.getDate() + n);
+      return d;
+    }
+    function setCalendar(day, month, year) {
+      var y = year ? +year : new Date(now).getFullYear();
+      var d = new Date(y, month, day);
+      if (d.getMonth() !== month || d.getDate() !== day) return false;   // 31 Feb
+      // A bare "6 nov" already gone by means next year, not eleven months ago.
+      if (!year && d.getTime() < today().getTime()) d.setFullYear(y + 1);
+      dayStart = d;
+    }
+    function nextWeekday(target) {
+      var d = today(), delta = (target - d.getDay() + 7) % 7;
+      // Same weekday as today: today only if the stated time is still ahead,
+      // which is why the clock is read before the day.
+      if (delta === 0) {
+        if (time) {
+          var at = new Date(now);
+          at.setHours(time[0], time[1], 0, 0);
+          if (at.getTime() > now + 6e4) return d;
+        }
+        delta = 7;
+      }
+      return plusDays(delta);
+    }
+    // The same weekday in the week that starts after this one.
+    function weekdayOfNextWeek(target) {
+      var toMonday = (8 - today().getDay()) % 7 || 7;
+      var d = plusDays(toMonday);
+      d.setDate(d.getDate() + (target + 6) % 7);   // Monday 0 … Sunday 6
+      return d;
+    }
+    function setClock(hStr, min, ampm) {
+      var h = +hStr;
+      if (min > 59) return false;
+      if (ampm) {
+        if (h < 1 || h > 12) return false;
+        h = h % 12 + (/^p/.test(ampm) ? 12 : 0);
+      } else {
+        if (h > 23) return false;
+        // "04:30" is someone writing 24-hour time, so a leading zero is taken
+        // at its word and never shifted into the afternoon.
+        var literal = hStr.length === 2 && hStr.charAt(0) === "0";
+        if (!literal && h >= 1 && h <= 11) {
+          // Nobody means five in the morning by "at 5" — but "dinner at 8" is
+          // not breakfast either, so the rest of the sentence gets a say.
+          var pm = /\b(?:tonight|evening|dinner|supper|night|drinks)\b/.test(original);
+          var am = /\b(?:breakfast|morning|sunrise)\b/.test(original);
+          if (h <= 7) { if (!am || pm) h += 12; }
+          else if (pm && !am) h += 12;
+        }
+      }
+      time = [h, min];
+    }
+
+    // ── the clock, before the day ──
+    // "friday 6pm" on a Friday morning means today; "friday 6am" means next
+    // week. nextWeekday can only tell those apart if the time is known first.
+    var timeRules = [
+      // "6:30", "18.00", "6:30 pm" — the lookahead keeps a dotted date like
+      // "6.11.2026" from being read as 6:11.
+      function () {
+        return take(/\b(?:at|@|by|around|from)?\s*(\d{1,2})[:.](\d{2})\s*(a\.?m\.?|p\.?m\.?)?(?![\d:.])/,
+          function (m) { return setClock(m[1], +m[2], m[3]); });
+      },
+      // "6pm", "6 PM"
+      function () {
+        return take(/\b(?:at|@|by|around|from)?\s*(\d{1,2})\s*(a\.?m\.?|p\.?m\.?)\b/,
+          function (m) { return setClock(m[1], 0, m[2]); });
+      },
+      // "at 6" — the preposition is the only thing making this a time
+      function () {
+        return take(/\b(?:at|@)\s*(\d{1,2})\b(?!\s*(?:am|pm|:|\.\d))/,
+          function (m) { return setClock(m[1], 0, null); });
+      }
+    ];
+    for (var t = 0; t < timeRules.length; t++) if (timeRules[t]()) break;
+
+    // A time named in words, if no clock was given.
+    if (!time) {
+      var words = Object.keys(NL_TIMEWORDS);
+      var wre = new RegExp("\\b(?:in\\s+the\\s+|at\\s+|by\\s+|after\\s+)?(" + words.join("|") + ")\\b");
+      var wm = wre.exec(masked);
+      if (wm) {
+        var spec = NL_TIMEWORDS[wm[1]];
+        time = [spec[0], spec[1]];
+        // The meals keep their place in the task text; only the purely
+        // temporal words are taken out of it.
+        if (!spec[2]) {
+          spans.push([wm.index, wm.index + wm[0].length]);
+          masked = masked.slice(0, wm.index) +
+            new Array(wm[0].length + 1).join(" ") +
+            masked.slice(wm.index + wm[0].length);
+        }
+      }
+    }
+
+    if (time) {
+      take(/\b(?:in\s+the|at|during\s+the)\s+(?:morning|afternoon|evening|night)\b/, function () {});
+    }
+
+    // ── the day ──
+    var ON = "(?:\\b(?:on|by|due|before|around|starting|starts|start|from)\\s+)?(?:the\\s+)?";
+    var MONTH = Object.keys(NL_MONTHS).join("|");
+
+    var dateRules = [
+      // "in 20 minutes", "in 3 days", "in a week"
+      function () {
+        return take(/\b(?:in|within)\s+(a|an|one|\d{1,3})\s*(minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?)\b/, function (m) {
+          var n = /^\d/.test(m[1]) ? parseInt(m[1], 10) : 1;
+          var u = m[2];
+          if (/^m(?:in|ins|inute|inutes)$/.test(u)) { exact = now + n * 6e4; return; }
+          if (/^h/.test(u)) { exact = now + n * 36e5; return; }
+          if (/^d/.test(u)) { dayStart = plusDays(n); return; }
+          if (/^w/.test(u)) { dayStart = plusDays(n * 7); return; }
+          var d = today();
+          d.setMonth(d.getMonth() + n);
+          dayStart = d;
+        });
+      },
+      // 2026-11-06
+      function () {
+        return take(new RegExp(ON + "\\b(\\d{4})-(\\d{1,2})-(\\d{1,2})\\b"), function (m) {
+          return setCalendar(+m[3], +m[2] - 1, m[1]);
+        });
+      },
+      // "6 nov", "6th of November 2026"
+      function () {
+        return take(new RegExp(ON + "\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(" + MONTH +
+          ")\\b\\.?(?:,?\\s+(\\d{4}))?"), function (m) {
+            return setCalendar(+m[1], NL_MONTHS[m[2]], m[3]);
+          });
+      },
+      // "nov 6", "November 6th, 2026"
+      function () {
+        return take(new RegExp(ON + "\\b(" + MONTH +
+          ")\\b\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s+(\\d{4}))?"), function (m) {
+            return setCalendar(+m[2], NL_MONTHS[m[1]], m[3]);
+          });
+      },
+      // "6/11", "6-11-2026" — day first, the way it is written outside the US
+      function () {
+        return take(new RegExp(ON + "\\b(\\d{1,2})[\\/-](\\d{1,2})(?:[\\/-](\\d{2,4}))?\\b"), function (m) {
+          var year = m[3];
+          if (year && year.length === 2) year = "20" + year;
+          return setCalendar(+m[1], +m[2] - 1, year);
+        });
+      },
+      // "6.11.2026" — all three parts required, so "version 1.5" is not a date
+      function () {
+        return take(new RegExp(ON + "\\b(\\d{1,2})\\.(\\d{1,2})\\.(\\d{2,4})\\b"), function (m) {
+          var year = m[3];
+          if (year.length === 2) year = "20" + year;
+          return setCalendar(+m[1], +m[2] - 1, year);
+        });
+      },
+      // "day after tomorrow" has to be tried before "tomorrow"
+      function () {
+        return take(/\b(?:the\s+)?day\s+after\s+tomorrow\b/, function () { dayStart = plusDays(2); });
+      },
+      function () {
+        return take(/\btomorrow\b|\btomorow\b|\btommorow\b|\btmrw?\b|\btmw\b/, function () { dayStart = plusDays(1); });
+      },
+      function () {
+        return take(/\btonight\b|\bthis\s+evening\b/, function () {
+          dayStart = today();
+          if (!time) time = [20, 0];
+        });
+      },
+      function () {
+        return take(/\btoday\b|\bthis\s+(?:morning|afternoon)\b/, function (m) {
+          dayStart = today();
+          if (!time && /morning/.test(m[0])) time = [9, 0];
+          if (!time && /afternoon/.test(m[0])) time = [14, 0];
+        });
+      },
+      // "end of the week" → Friday; "end of the month" → its last day
+      function () {
+        return take(/\b(?:eow|end\s+of\s+(?:the\s+)?week)\b/, function () {
+          var day = today().getDay();
+          dayStart = plusDays(day === 5 ? 0 : (5 - day + 7) % 7 || 7);
+        });
+      },
+      function () {
+        return take(/\b(?:eom|end\s+of\s+(?:the\s+)?month)\b/, function () {
+          var d = today();
+          dayStart = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        });
+      },
+      function () {
+        return take(/\b(?:this|next)\s+weekend\b/, function () {
+          dayStart = plusDays((6 - today().getDay() + 7) % 7 || 7);
+        });
+      },
+      function () {
+        return take(/\bnext\s+week\b/, function () { dayStart = plusDays(7); });
+      },
+      function () {
+        return take(/\bnext\s+month\b/, function () {
+          var d = today();
+          d.setMonth(d.getMonth() + 1);
+          dayStart = d;
+        });
+      },
+      // Weekday names. Plain "friday" is the next one to come round; "next
+      // friday" is the Friday of the following week, which is what it means
+      // to most people said on a Thursday. Either way the chip prints the
+      // date it settled on.
+      function () {
+        return take(new RegExp("\\b(on|by|due|before|around|from|next|this|coming)?\\s*\\b(" +
+          Object.keys(NL_WEEKDAYS).join("|") + ")\\b"), function (m) {
+            var day = NL_WEEKDAYS[m[2]];
+            dayStart = m[1] === "next" ? weekdayOfNextWeek(day) : nextWeekday(day);
+          });
+      },
+      // sat/sun, only where the sentence leaves no doubt. Both read the
+      // untouched text, since the clock beside them has already been blanked.
+      function () {
+        return take(/\b(?:on|next|this|coming)\s+(sat|sun)\b/, function (m) {
+          dayStart = nextWeekday(m[1] === "sat" ? 6 : 0);
+        }, true);
+      },
+      function () {
+        return take(/\b(sat|sun)\b(?=\s+(?:at\s+)?\d)/, function (m) {
+          dayStart = nextWeekday(m[1] === "sat" ? 6 : 0);
+        }, true);
+      }
+    ];
+    for (var i = 0; i < dateRules.length; i++) if (dateRules[i]()) break;
+
+    // ── put it together ──
+    if (exact !== null && dayStart) exact = null;   // a stated day beats "in 2 hours"
+    var due;
+    if (exact !== null) {
+      due = Math.round(exact / 6e4) * 6e4;
+    } else {
+      if (!dayStart && !time) return null;
+      var d = dayStart ? new Date(dayStart.getTime()) : new Date(now);
+      if (time) {
+        d.setHours(time[0], time[1], 0, 0);
+        // A time with no day means the next time it comes round.
+        if (!dayStart && d.getTime() < now + 6e4) d.setDate(d.getDate() + 1);
+      } else {
+        d.setHours(9, 0, 0, 0);
+        // Nine has already gone by, so use the next full hour rather than hand
+        // out a due date that is born overdue.
+        if (d.getTime() < now + 6e4) {
+          d = new Date(now + 36e5);
+          d.setMinutes(0, 0, 0);
+          if (d.getTime() < now + 6e4) d = new Date(d.getTime() + 36e5);
+        }
+      }
+      due = d.getTime();
+    }
+
+    // ── the text, without the phrase ──
+    spans.sort(function (a, b) { return a[0] - b[0]; });
+    var phrase = spans.map(function (s) { return raw.slice(s[0], s[1]).trim(); })
+      .filter(Boolean).join(" ").replace(/\s{2,}/g, " ").trim();
+    var out = "", at = 0;
+    spans.forEach(function (s) { out += raw.slice(at, s[0]); at = s[1]; });
+    out += raw.slice(at);
+    out = out.replace(/\s{2,}/g, " ").trim();
+    // What a removed phrase leaves behind: punctuation, and the occasional
+    // dangling preposition no pattern happened to swallow.
+    for (var c = 0; c < 2; c++) {
+      out = out.replace(/[\s,;:·–—-]+$/, "").trim();
+      out = out.replace(/\b(?:due|by|at|@|before|around|from|the|is)$/i, "").trim();
+    }
+    out = out.replace(/[\s,;:·–—-]+$/, "").trim();
+    out = out.replace(/^[\s,;:·–—-]+/, "").replace(/^(?:due|by|at|@|on)\s+/i, "").trim();
+    if (!out) out = raw.trim();   // "tomorrow 6pm" on its own is still the task's name
+
+    return { due: due, text: out, phrase: phrase };
+  }
+
   function ensureNotifyPermission() {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
@@ -2217,6 +2624,59 @@
     dueRow.appendChild(dueInput);
     panel.appendChild(dueRow);
 
+    // Reads a date out of what is being typed. It only ever proposes: the
+    // chip states the date it would set and offers to drop it, so nothing
+    // is decided behind the typist's back.
+    var smartRow = el("div", "smart-due");
+    var smartText = el("span", "sd-text");
+    var smartOff = el("button", "sd-off", "Not a date");
+    smartRow.appendChild(smartText);
+    smartRow.appendChild(smartOff);
+    panel.appendChild(smartRow);
+
+    var smart = null;        // the current reading of the add box, if any
+    var smartWaved = "";     // a phrase waved off, so it stays off while typing
+
+    function showSmartTip() {
+      if (nlTipDone()) return false;
+      smartText.textContent = "Tip: type a time into the task — \u201ccall mum tomorrow 6pm\u201d \u2014 and the date sets itself.";
+      smartOff.textContent = "Got it";
+      smartRow.className = "smart-due tip show";
+      return true;
+    }
+
+    function refreshSmart() {
+      var raw = addInput.value;
+      // An explicitly picked date is a decision already made; leave it alone.
+      smart = dueInput.value ? null : parseNaturalDue(raw);
+      if (smart && smart.phrase.toLowerCase() === smartWaved) smart = null;
+      if (!smart) {
+        smartRow.className = "smart-due";
+        if (!raw.trim()) showSmartTip();
+        return;
+      }
+      smartText.textContent = "";
+      smartText.appendChild(el("span", null, "Due " + formatDateTime(smart.due) + " "));
+      smartText.appendChild(el("span", "sd-from", "\u2014 from \u201c" + smart.phrase + "\u201d"));
+      smartOff.textContent = "Not a date";
+      smartRow.className = "smart-due show";
+    }
+
+    smartOff.addEventListener("click", function () {
+      if (smartRow.classList.contains("tip")) {
+        markNlTipDone();
+        smartRow.className = "smart-due";
+        return;
+      }
+      if (smart) smartWaved = smart.phrase.toLowerCase();
+      smart = null;
+      smartRow.className = "smart-due";
+      addInput.focus();
+    });
+    addInput.addEventListener("input", refreshSmart);
+    dueInput.addEventListener("change", refreshSmart);
+    showSmartTip();
+
     // Active list
     var activeList = el("ul", "task-list");
     panel.appendChild(activeList);
@@ -2280,16 +2740,30 @@
         id: "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         mt: Date.now()
       };
+      var read = dueInput.value ? null : smart;
       if (dueInput.value) {
         var ts = new Date(dueInput.value).getTime();
         if (!isNaN(ts)) task.due = ts;
+      } else if (read) {
+        task.text = read.text;      // the phrase has done its job
+        task.due = read.due;
+        // The alarm is the point of a due date, so ask for permission at the
+        // moment one is first set this way rather than while typing.
+        ensureNotifyPermission();
+        markNlTipDone();
       }
       tasks.push(task);
       addInput.value = "";
       dueInput.value = "";
+      smartWaved = "";
+      smart = null;
+      refreshSmart();
       persist();
       render();
       if (task.due) outlook(task);
+      if (read) {
+        flashStatus("Due " + formatDateTime(read.due) + " \u2014 read from \u201c" + read.phrase + "\u201d");
+      }
       addInput.focus();
     }
 
@@ -2609,7 +3083,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1117";
+  var BUILD = "2026-11-05-1331";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
