@@ -1542,6 +1542,30 @@
         </div>
         <button class="modal-btn primary" id="cloud-sync-now">🔄 Sync now</button>
         <p class="modal-hint" id="cloud-status-line"></p>
+        <div id="cloud-cal" style="display:none">
+          <hr class="cloud-rule">
+          <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task you give a date to appears in Apple Calendar by itself &mdash; alerts included, nothing else to do, ever.</p>
+          <a class="modal-btn primary" id="cloud-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
+          <p class="modal-hint">iPhone shows &ldquo;Subscribe to calendar?&rdquo; &mdash; tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
+          <details class="modal-details">
+            <summary>Important: make new tasks arrive quickly</summary>
+            <ol>
+              <li>iPhone <b>Settings</b> → <b>Apps</b> → <b>Calendar</b> → <b>Calendar Accounts</b> → <b>Fetch New Data</b>.</li>
+              <li>Set the schedule to <b>Every 15 minutes</b>.</li>
+              <li>Also tap the subscribed calendar there and make sure <b>Remove Alerts</b> is <b>OFF</b> — if it is on, iOS strips the reminder and nothing rings.</li>
+            </ol>
+            <p class="modal-hint">Then any task dated 20+ minutes ahead arrives in time and rings to the second. For something due sooner, use ⏰ on the task itself to add it to Calendar instantly.</p>
+          </details>
+          <details class="modal-details">
+            <summary>Subscribe on a computer, or in Outlook</summary>
+            <p class="modal-hint">Paste this address into Apple Calendar (File → New Calendar Subscription), Google Calendar (Other calendars → From URL) or Outlook on the web (Add calendar → Subscribe from web). Microsoft refreshes slowly, so treat Outlook as visibility rather than reminders.</p>
+            <input class="sync-token" id="cloud-feed-box" readonly>
+            <p class="modal-hint">Anyone holding this address can read your dated tasks, so keep it to yourself. Signing out of every device and back in is what changes it.</p>
+          </details>
+          <p class="modal-hint" id="cloud-cal-wait" style="display:none">Your calendar address appears here after the first sync &mdash; tap <b>Sync now</b>.</p>
+          <p class="modal-hint" id="cloud-cal-bad" style="display:none">The calendar feed isn&rsquo;t switched on for this app yet, so there is nothing to subscribe to. Your tasks still sync normally, and you can add any single dated task to your calendar with the ⏰ button on the task itself.</p>
+        </div>
+        <hr class="cloud-rule">
         <button class="modal-btn" id="cloud-signout-btn">Sign out of this device</button>
         <p class="modal-hint">Signing out leaves your tasks on this device but stops them syncing.</p>
       </div>
@@ -1553,7 +1577,7 @@
       <p class="modal-hint">This device is running build <b id="build-text">…</b>. Tasks and notes arrive even on an old build, so stale code still looks alive — if the number is behind, tap here.</p>
       <button class="modal-btn" id="force-update-btn">⬇️ Force update now</button>
       <hr class="cloud-rule">
-      <p class="modal-hint">The GitHub-token route below predates accounts. It is only needed for the home screen widget and the Apple Calendar feed, and it keeps publishing both once an account holds the real data.</p>
+      <p class="modal-hint">The GitHub-token route below predates accounts. With an account, the calendar feed comes from the account itself (just above) &mdash; this is now only needed for the home screen widget, and it keeps publishing to it once an account holds the real data.</p>
     <div id="sync-off-view">
       <p>Keep your iPhone and Mac showing the same lists, live. Your tasks are stored in a <b>secret Gist</b> on your own GitHub account — nothing new to sign up for.</p>
       <ol>
@@ -2464,7 +2488,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-0953";
+  var BUILD = "2026-11-05-1000";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3560,9 +3584,55 @@
 
   function clearCloudSession() {
     localStorage.removeItem(CLOUD_SESSION_KEY);
+    localStorage.removeItem("dia_todo_feed_token");
   }
 
   function cloudSignedIn() { return !!loadCloudSession(); }
+
+  // The calendar feed address. Apple polls it with no headers we control,
+  // so the key travels as a query parameter and the token identifies the
+  // account — row level security never sees a login here, which is why the
+  // database function behind it returns one person's calendar and nothing
+  // else.
+  var FEED_TOKEN_KEY = "dia_todo_feed_token";
+
+  function rememberFeedToken(tok) {
+    if (!tok || localStorage.getItem(FEED_TOKEN_KEY) === tok) return;
+    localStorage.setItem(FEED_TOKEN_KEY, tok);
+    refreshCloudAccount();
+  }
+
+  function feedToken() {
+    return cloudSignedIn() ? localStorage.getItem(FEED_TOKEN_KEY) : null;
+  }
+
+  // Whether the database is actually answering that address with a real
+  // calendar. The feed depends on a function being installed server side,
+  // and a Subscribe button that leads nowhere is worse than no button:
+  // the phone keeps retrying a subscription that will never parse.
+  var feedChecked = null;   // null = not established yet, false = not a calendar
+
+  function verifyFeed() {
+    var path = feedPath();
+    if (!path || feedChecked !== null) return;
+    fetch("https://" + path, { cache: "no-store" }).then(function (res) {
+      var ct = (res.headers.get("content-type") || "").toLowerCase();
+      if (res.ok && ct.indexOf("text/calendar") === 0) feedChecked = true;
+      else feedChecked = false;
+      refreshCloudAccount();
+    }).catch(function () {
+      // Offline, or a blocked request. Nothing proven either way, so leave
+      // it unknown and keep showing the button.
+    });
+  }
+
+  function feedPath() {
+    var tok = feedToken();
+    if (!tok) return null;
+    return CLOUD_URL.replace(/^https?:\/\//, "") +
+      "/rest/v1/rpc/feed?t=" + encodeURIComponent(tok) +
+      "&apikey=" + encodeURIComponent(CLOUD_KEY);
+  }
 
   // Which backend owns the data right now. Cloud wins when signed in; the
   // gist stays available on its own for anyone who never makes an account.
@@ -3775,7 +3845,7 @@
     if (!cloudSignedIn()) return;
     if (syncState.dirty) { cloudPush(); return; }
     if (document.querySelector(".task-edit, .due-edit-row")) return;
-    cloudFetch("/rest/v1/documents?select=doc,updated_at").then(function (res) {
+    cloudFetch("/rest/v1/documents?select=doc,updated_at,feed_token").then(function (res) {
       if (res.status === 401) {
         syncState.lastError = "session expired — sign in again";
         setSyncDot("bad");
@@ -3785,6 +3855,9 @@
       return res.json();
     }).then(function (rows) {
       if (!rows) return;
+      // Grab the feed token before any of the early returns below — the
+      // calendar button needs it even on a tick that changes nothing.
+      if (rows.length && rows[0].feed_token) rememberFeedToken(rows[0].feed_token);
       // No row yet: this account is brand new, so what is on this device
       // becomes its starting point.
       if (!rows.length || !rows[0].doc || !rows[0].doc.lists) { scheduleSyncPush(); return; }
@@ -3805,10 +3878,11 @@
   function cloudPush() {
     var s = loadCloudSession();
     if (!s) return;
-    cloudFetch("/rest/v1/documents?select=doc,updated_at").then(function (res) {
+    cloudFetch("/rest/v1/documents?select=doc,updated_at,feed_token").then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     }).then(function (rows) {
+      if (rows && rows.length && rows[0].feed_token) rememberFeedToken(rows[0].feed_token);
       var remoteDoc = (rows && rows.length) ? rows[0].doc : null;
       // Merge before overwriting, exactly as the gist path does — another
       // device may have pushed since this one last looked.
@@ -3834,6 +3908,9 @@
         body: JSON.stringify({
           user_id: s.uid,
           doc: doc,
+          // The finished calendar rides along, so the account's feed is
+          // rendered by the same proven code as the gist one.
+          ics: buildRemindersICS(),
           updated_at: new Date().toISOString()
         })
       }).then(function (res) {
@@ -3864,6 +3941,9 @@
         body: JSON.stringify({
           user_id: s.uid,
           doc: doc,
+          // The finished calendar rides along, so the account's feed is
+          // rendered by the same proven code as the gist one.
+          ics: buildRemindersICS(),
           updated_at: new Date().toISOString()
         })
       });
@@ -4354,6 +4434,20 @@
       document.getElementById("cloud-avatar").textContent =
         (s.email || "?").charAt(0).toUpperCase();
       setCloudStatusLine();
+      var cal = document.getElementById("cloud-cal");
+      var path = feedPath();
+      if (cal) {
+        cal.style.display = "";
+        var feedOk = feedChecked !== false;
+        document.getElementById("cloud-subscribe-link").style.display = (path && feedOk) ? "" : "none";
+        document.getElementById("cloud-cal-wait").style.display = path ? "none" : "";
+        document.getElementById("cloud-cal-bad").style.display = (path && !feedOk) ? "" : "none";
+        if (path) verifyFeed();
+        if (path) {
+          document.getElementById("cloud-subscribe-link").href = "webcal://" + path;
+          document.getElementById("cloud-feed-box").value = "https://" + path;
+        }
+      }
     }
   }
 

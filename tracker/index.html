@@ -205,7 +205,7 @@
           return callStats(true);
         });
       }
-      if (res.status === 404) throw new Error("The app_stats function isn't installed on the database yet. Run tracker/setup.sql in the Supabase SQL editor.");
+      if (res.status === 404) throw new Error("The app_stats function isn't installed on the database yet. Run supabase-setup.sql in the Supabase SQL editor.");
       if (!res.ok) throw new Error("The database said no (HTTP " + res.status + ").");
       return res.json();
     });
