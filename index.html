@@ -1075,6 +1075,15 @@
     background: #e0a33f; flex: 0 0 auto;
   }
   .net-banner.syncing .net-dot { background: #6fb98a; }
+  .modal-btn.quiet {
+    background: none;
+    border: none;
+    color: var(--blue);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: underline;
+    padding: 6px 0 2px;
+  }
   .cloud-rule {
     border: none;
     border-top: 1px solid var(--rule);
@@ -1582,6 +1591,13 @@
     <h2>Sync across devices</h2>
 
     <div id="cloud-account">
+      <div id="cloud-reset" style="display:none">
+        <p><b>Choose a new password.</b> You opened a reset link, so this is the one moment you can set it without knowing the old one.</p>
+        <input type="password" class="sync-token" id="cloud-newpass-input" placeholder="New password — at least 8 characters" autocomplete="new-password">
+        <button class="modal-btn primary" id="cloud-newpass-btn">Save it and sign me in</button>
+        <p class="modal-hint" id="cloud-reset-msg"></p>
+        <p class="modal-hint">Your tasks are untouched by this. The password only controls who can reach the synced copy.</p>
+      </div>
       <div id="cloud-signed-out">
         <p><b>Use the same list on your phone and your computer.</b> Make an account and your list follows you to any device you sign in on.</p>
         <input type="email" class="sync-token" id="cloud-email-input" placeholder="you@example.com" autocomplete="email" inputmode="email">
@@ -1590,6 +1606,7 @@
         <button class="modal-btn" id="cloud-signin-btn">I already have one — sign in</button>
         <div class="cloud-or" id="cloud-or" style="display:none">or</div>
         <button class="modal-btn cloud-google" id="cloud-google-btn" style="display:none"><span class="g">G</span> Continue with Google</button>
+        <button class="modal-btn quiet" id="cloud-forgot-btn">Forgotten your password?</button>
         <p class="modal-hint" id="cloud-auth-msg"></p>
         <p class="modal-hint">Your list stays private to your account — nobody else can read it, not even from another account on the same app.</p>
         <details class="modal-details">
@@ -3083,7 +3100,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1627";
+  var BUILD = "2026-11-05-1652";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4528,6 +4545,47 @@
       });
   }
 
+  // Password recovery. GoTrue answers 200 whether or not the address has an
+  // account, which is deliberate — it stops the form being used to find out
+  // who has signed up — so the wording back to the person has to be the same
+  // either way.
+  function cloudRequestReset(email) {
+    return fetch(CLOUD_URL + "/auth/v1/recover?redirect_to=" +
+      encodeURIComponent(cloudRedirectTarget()), {
+      method: "POST",
+      headers: { apikey: CLOUD_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email })
+    }).then(function (res) {
+      if (res.ok) return true;
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        throw new Error(cloudAuthError(j, res.status));
+      });
+    });
+  }
+
+  // The recovery link signs the person in with a short-lived token. That
+  // token is the only authority for changing the password, so this has to
+  // happen while it is still in hand.
+  function cloudSetPassword(password) {
+    var s = loadCloudSession();
+    if (!s || !s.access_token) {
+      return Promise.reject(new Error("That reset link has expired. Ask for a new one."));
+    }
+    return fetch(CLOUD_URL + "/auth/v1/user", {
+      method: "PUT",
+      headers: {
+        apikey: CLOUD_KEY, "Content-Type": "application/json",
+        Authorization: "Bearer " + s.access_token
+      },
+      body: JSON.stringify({ password: password })
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        if (!res.ok) throw new Error(cloudAuthError(j, res.status));
+        return true;
+      });
+    });
+  }
+
   function cloudSignOut() {
     var s = loadCloudSession();
     clearCloudSession();
@@ -4548,9 +4606,13 @@
     var frag = location.hash || "";
     if (frag.indexOf("access_token=") < 0 && frag.indexOf("error=") < 0) return Promise.resolve(false);
     var q = new URLSearchParams(frag.replace(/^#/, ""));
+    var recovery = q.get("type") === "recovery";
     history.replaceState(null, "", location.pathname + location.search);
     if (q.get("error")) {
+      // An expired or already-used reset link lands here. The message is
+      // useless behind a closed modal, so open it.
       cloudAuthMessage(q.get("error_description") || q.get("error"));
+      showSyncModal();
       return Promise.resolve(false);
     }
     var tokens = {
@@ -4567,6 +4629,7 @@
       return res.json();
     }).then(function (u) {
       storeCloudTokens(tokens, { uid: u.id, email: u.email });
+      if (recovery) cloudResetMode = true;
       return true;
     }).catch(function () {
       cloudAuthMessage("Signed in, but the account couldn't be read. Try again.");
@@ -5166,11 +5229,30 @@
     line.textContent = parts.join(" · ");
   }
 
+  // True only between opening a reset link and saving the new password.
+  var cloudResetMode = false;
+
+  function showSyncModal() {
+    var m = document.getElementById("sync-modal");
+    if (m) m.classList.add("show");
+    refreshCloudAccount();
+  }
+
   function refreshCloudAccount() {
     var out = document.getElementById("cloud-signed-out");
     var inn = document.getElementById("cloud-signed-in");
     var un = document.getElementById("cloud-unconfigured");
+    var reset = document.getElementById("cloud-reset");
     if (!out || !inn || !un) return;
+    // A recovery token signs you in, so without this the person would be
+    // shown the ordinary signed-in panel and never get to set a password.
+    if (reset) reset.style.display = cloudResetMode ? "" : "none";
+    if (cloudResetMode) {
+      out.style.display = "none";
+      inn.style.display = "none";
+      un.style.display = "none";
+      return;
+    }
     if (!cloudConfigured()) {
       out.style.display = "none";
       inn.style.display = "none";
@@ -5672,6 +5754,60 @@
       }, "Signing in…");
     });
 
+    var forgotBtn = document.getElementById("cloud-forgot-btn");
+    if (forgotBtn) forgotBtn.addEventListener("click", function () {
+      var email = (mailIn.value || "").trim();
+      if (!email || email.indexOf("@") < 1) {
+        cloudAuthMessage("Type your email address first, then tap this again.");
+        mailIn.focus();
+        return;
+      }
+      forgotBtn.disabled = true;
+      cloudAuthMessage("Sending a reset link…");
+      cloudRequestReset(email).then(function () {
+        forgotBtn.disabled = false;
+        cloudAuthMessage("If " + email + " has an account, a reset link is on its way. " +
+          "It lasts an hour, and it has to be opened on a device you want to sign in on.");
+      }).catch(function (err) {
+        forgotBtn.disabled = false;
+        cloudAuthMessage((err && err.message) || "Couldn't send it.");
+      });
+    });
+
+    var newPass = document.getElementById("cloud-newpass-input");
+    var newPassBtn = document.getElementById("cloud-newpass-btn");
+    function resetMsg(t) {
+      var n = document.getElementById("cloud-reset-msg");
+      if (n) n.textContent = t;
+    }
+    function saveNewPassword() {
+      var pass = newPass.value || "";
+      if (pass.length < 8) {
+        resetMsg("Make it at least 8 characters — this is the one protecting your list.");
+        newPass.focus();
+        return;
+      }
+      newPassBtn.disabled = true;
+      resetMsg("Saving…");
+      cloudSetPassword(pass).then(function () {
+        newPass.value = "";
+        newPassBtn.disabled = false;
+        cloudResetMode = false;
+        refreshCloudAccount();
+        setSyncDot("busy");
+        startSyncLoop();
+        syncPullNow();
+        flashStatus("Password changed — you are signed in.");
+      }).catch(function (err) {
+        newPassBtn.disabled = false;
+        resetMsg((err && err.message) || "Couldn't save it.");
+      });
+    }
+    if (newPassBtn) newPassBtn.addEventListener("click", saveNewPassword);
+    if (newPass) newPass.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); saveNewPassword(); }
+    });
+
     if (mailBtn) mailBtn.addEventListener("click", sendLink);
     if (mailIn) mailIn.addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); passIn.focus(); }
@@ -5759,6 +5895,11 @@
 
   captureCloudRedirect().then(function (justSignedIn) {
     refreshCloudAccount();
+    if (cloudResetMode) {
+      showSyncModal();
+      var np = document.getElementById("cloud-newpass-input");
+      if (np) np.focus();
+    }
     if (!syncActive()) {
       localStorage.removeItem("dia_todo_import_pending");
       return;
