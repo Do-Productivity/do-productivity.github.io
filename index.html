@@ -3083,7 +3083,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1331";
+  var BUILD = "2026-11-05-1627";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -5706,8 +5706,13 @@
   // The throttle lives on the device, so anything that clears the table
   // server side leaves every device thinking it has already checked in.
   // Half an hour is short enough that the count recovers on its own.
+  //
+  // It runs on waking as well as on load, the same way the update check
+  // does. This app is a pinned tab and a home-screen icon — it can sit
+  // open for days — and a boot-only ping made those devices invisible to
+  // the counter precisely because they were the ones in constant use.
 
-  (function () {
+  function usagePing() {
     if (!cloudConfigured()) return;
     var ID_KEY = "dia_todo_device_id";
     var AT_KEY = "dia_todo_pinged_at";
@@ -5744,7 +5749,13 @@
         if (res.ok) localStorage.setItem(AT_KEY, String(Date.now()));
       }).catch(function () { /* offline — it pings on a later open */ });
     } catch (e) { /* storage blocked, so there is nothing to count with */ }
-  })();
+  }
+
+  usagePing();
+  window.addEventListener("focus", usagePing);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) usagePing();
+  });
 
   captureCloudRedirect().then(function (justSignedIn) {
     refreshCloudAccount();
