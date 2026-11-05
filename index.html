@@ -2609,7 +2609,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1052";
+  var BUILD = "2026-11-05-1117";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -5227,13 +5227,17 @@
   // One random id per device, so the tracker page can count how many
   // people actually opened the app — including everyone who never makes
   // an account. Nothing identifying travels with it: no email, no task
-  // text, just the id and a timestamp. Once every six hours at most.
+  // text, just the id and a timestamp. Twice an hour at most.
+  //
+  // The throttle lives on the device, so anything that clears the table
+  // server side leaves every device thinking it has already checked in.
+  // Half an hour is short enough that the count recovers on its own.
 
   (function () {
     if (!cloudConfigured()) return;
     var ID_KEY = "dia_todo_device_id";
     var AT_KEY = "dia_todo_pinged_at";
-    var EVERY = 6 * 36e5;
+    var EVERY = 30 * 6e4;
 
     function uuidFallback() {
       var b = new Uint8Array(16);
@@ -5248,7 +5252,10 @@
     }
 
     try {
-      if (Date.now() - (+localStorage.getItem(AT_KEY) || 0) < EVERY) return;
+      // a stored time in the future means a clock moved; treat it as stale
+      var last = +localStorage.getItem(AT_KEY) || 0;
+      var since = Date.now() - last;
+      if (since >= 0 && since < EVERY) return;
       var id = localStorage.getItem(ID_KEY);
       if (!id) {
         id = (crypto.randomUUID ? crypto.randomUUID() : uuidFallback());
