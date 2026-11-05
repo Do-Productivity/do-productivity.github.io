@@ -1322,6 +1322,22 @@
     /* while a thumb is down the cards track it exactly — the easing is for
        the snap afterwards, not for following a finger */
     .card-fan.dragging .fan-card { transition: none; }
+    /* Shown once, while the cards demonstrate themselves. It is pushed
+       toward the viewer rather than given a z-index: inside a preserve-3d
+       parent it is depth that decides what covers what. The scale cancels
+       the enlargement that being nearer would otherwise cause. */
+    .fan-hint {
+      position: absolute; left: 50%; bottom: 1px;
+      transform: translateX(-50%) translateZ(60px) scale(.93);
+      background: rgba(247, 243, 233, .94);
+      border-radius: 999px; padding: 4px 11px;
+      font-family: var(--sans); font-size: 9.5px; font-weight: 700;
+      letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-soft);
+      box-shadow: 0 2px 10px rgba(43, 38, 32, .16);
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity .35s ease;
+    }
+    .fan-hint.on { opacity: 1; }
     /* Width and offset are chosen together, and the sum is fixed: a shoulder
        card's far edge sits at width × (offset + scale/2), which has to stay
        under half the column or it runs off the screen. At 78/26/.74 that
@@ -3121,7 +3137,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1712";
+  var BUILD = "2026-11-05-1723";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3706,6 +3722,7 @@
 
   function setMobileTab(id) {
     if (PANEL_IDS.indexOf(id) === -1) id = "personal";
+    cancelFanHint();              // a pending nudge would fight the new card
     panelsRoot.className = "panels show-" + id;
     PANEL_IDS.forEach(function (t) {
       var el2 = panelEl(t);
@@ -3800,6 +3817,58 @@
     // the deal plays once; leaving the class on would let a later change of
     // animation-delay restart it mid-swipe
     setTimeout(function () { fanRoot.classList.remove("dealing"); }, 900);
+    // and only once the cards have settled is there anything to demonstrate
+    setTimeout(function () { playFanHint(localStorage.getItem(MTAB_KEY) || PANEL_IDS[0]); }, 1050);
+  }
+
+  // ── First run: show that the cards turn ─────────────────
+  // A fan of cards doesn't announce that it is a carousel — the shoulders
+  // read as decoration until something moves. Once, on the first phone
+  // visit, the next card is drawn part of the way forward and let go,
+  // twice. Motion is the only honest way to teach a gesture; a label would
+  // sit there forever describing one.
+  var FAN_HINT_KEY = "dia_todo_fan_hint_v1";
+  var fanHintTimers = [];
+
+  function fanHintSeen() {
+    try { return localStorage.getItem(FAN_HINT_KEY) === "1"; } catch (e) { return true; }
+  }
+
+  function cancelFanHint() {
+    if (!fanHintTimers.length) return;
+    fanHintTimers.forEach(clearTimeout);
+    fanHintTimers = [];
+    var c = fanRoot.querySelector(".fan-hint");
+    if (c) c.parentNode.removeChild(c);
+  }
+
+  function playFanHint(activeId) {
+    if (fanHintSeen() || PANEL_IDS.length < 2) return;
+    // Built on every layout, visible only on a phone — and the hint has no
+    // meaning where the cards are not on screen.
+    if (fanRoot.offsetParent === null) return;
+    try { localStorage.setItem(FAN_HINT_KEY, "1"); } catch (e) {}
+    // Somebody who has asked for less motion is not shown more of it, and
+    // is not given a still caption as a consolation prize either.
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    var caption = el("div", "fan-hint", "swipe to change list");
+    fanRoot.appendChild(caption);
+
+    // A negative offset is the direction a thumb travels to bring the next
+    // card forward — the same sign the drag handler uses.
+    var frames = [
+      [0,    function () { caption.classList.add("on"); nudge(-0.36); }],
+      [620,  function () { nudge(0); }],
+      [1180, function () { nudge(-0.36); }],
+      [1800, function () { nudge(0); }],
+      [2250, function () { caption.classList.remove("on"); }],
+      [2700, function () { cancelFanHint(); }]
+    ];
+    function nudge(offset) { positionFan(activeId, offset); }
+    frames.forEach(function (f) {
+      fanHintTimers.push(setTimeout(f[1], f[0]));
+    });
   }
 
   function fanCountText(id) {
@@ -3818,7 +3887,7 @@
     var n = PANEL_IDS.length;
     var at = PANEL_IDS.indexOf(activeId);
     if (at < 0) at = 0;
-    [].forEach.call(fanRoot.children, function (card, i) {
+    [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card, i) {
       var d = fanDistance(i, at, n) + (offset || 0);
       card.classList.toggle("pos-active", Math.round(d) === 0);
       card.style.animationDelay = (Math.abs(d) * 70) + "ms";
@@ -3829,7 +3898,7 @@
   function renderFan(activeId) {
     var sig = PANEL_IDS.join(",");
     if (sig !== fanBuilt) { buildFanCards(); fanBuilt = sig; }
-    [].forEach.call(fanRoot.children, function (card) {
+    [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card) {
       card.setAttribute("aria-label", PANEL_META[card._id].title + ", " + fanCountText(card._id));
       card.querySelector(".fc-count").textContent = fanCountText(card._id);
     });
@@ -3844,7 +3913,7 @@
       if (pending) return;
       pending = requestAnimationFrame(function () {
         pending = null;
-        [].forEach.call(fanRoot.children, function (card) {
+        [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card) {
           card.querySelector(".fc-count").textContent = fanCountText(card._id);
         });
       });
@@ -4120,6 +4189,7 @@
       startT = Date.now();
       dx = 0; axis = "";
       step = stepWidth();
+      cancelFanHint();            // they are already doing it
       fanRoot.classList.add("dragging");
     }, { passive: true });
 
