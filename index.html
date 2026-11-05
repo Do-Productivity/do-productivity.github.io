@@ -2488,7 +2488,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1000";
+  var BUILD = "2026-11-05-1027";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -3615,7 +3615,14 @@
   function verifyFeed() {
     var path = feedPath();
     if (!path || feedChecked !== null) return;
-    fetch("https://" + path, { cache: "no-store" }).then(function (res) {
+    // Ask the way a calendar app asks. PostgREST decides what to send from
+    // the Accept header, and a bare */* gets a JSON-quoted string back —
+    // checking with the default Accept would condemn a feed that Apple
+    // itself would read perfectly.
+    fetch("https://" + path, {
+      cache: "no-store",
+      headers: { Accept: "text/calendar, */*;q=0.8" }
+    }).then(function (res) {
       var ct = (res.headers.get("content-type") || "").toLowerCase();
       if (res.ok && ct.indexOf("text/calendar") === 0) feedChecked = true;
       else feedChecked = false;
