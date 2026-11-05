@@ -219,6 +219,20 @@
     letter-spacing: 0.5px;
   }
   .panel-title .dot { font-weight: 700; }
+  /* The open-task count. It was only ever styled inside the phone query, so
+     on a wide screen it rendered as a bare digit welded to the title. */
+  .panel-count {
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--paper);
+    border-radius: 10px;
+    padding: 2px 9px;
+    margin-left: 10px;
+    vertical-align: 7px;
+  }
   .panel.personal .dot { color: var(--red); }
   .panel.business .dot { color: var(--blue); }
   .panel-header .panel-subtitle {
@@ -1460,20 +1474,35 @@
     }
     .panel-footer { margin-top: auto; }
 
-    .panel { padding: 13px 12px 8px; border-radius: 12px; }
+    .panel { padding: 13px 12px 5px; border-radius: 12px; }
     .panel-header .panel-title { font-size: 18px; }
     .panel-header .panel-subtitle { font-size: 7.5px; letter-spacing: 1.2px; margin-top: 1px; }
-    .panel-header .divider { margin: 7px 0 8px; }
-    .panel-count { display: none; }          /* the footer already counts */
+    .panel-header .divider { margin: 6px 0 7px; }
+    /* The count moves into the header so the footer can stop being a
+       whole line of its own — on a 594px-tall screen that line was worth
+       most of a task. */
+    .panel-count {
+      display: inline-block;
+      font-family: var(--sans);
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      background: var(--paper);
+      border-radius: 9px;
+      padding: 1px 7px;
+      margin-left: 7px;
+      vertical-align: 3px;
+    }
     .panel-peek { display: none; }           /* nothing is collapsed here */
-    .add-row { gap: 5px; margin-bottom: 5px; }
-    .add-input, .task-edit { font-size: 13.5px; padding: 6px 8px; }
-    .add-btn { padding: 0 10px; font-size: 9.5px; letter-spacing: 0.5px; }
+    .add-row { gap: 7px; margin-bottom: 6px; }
+    .add-input, .task-edit { font-size: 16px; padding: 11px 12px; border-radius: 8px; }
+    .add-btn { padding: 0 16px; font-size: 10.5px; letter-spacing: 1px; border-radius: 8px; }
     .due-row { gap: 4px; margin-bottom: 3px; }
     .due-label { font-size: 8px; letter-spacing: 0.3px; }
     .due-input { font-size: 13px; padding: 4px 6px; }
-    .smart-due { font-size: 10px; gap: 4px; padding: 4px 6px; margin-bottom: 4px; }
+    .smart-due { font-size: 9.5px; line-height: 1.35; gap: 4px; padding: 3px 6px; margin-bottom: 4px; }
     .smart-due .sd-off { font-size: 9px; padding: 3px 5px; }
+    .smart-due.tip { padding: 1px 0 3px; }
     .task-row { gap: 7px; padding: 8px 0; }
     .task-circle { width: 18px; height: 18px; }
     .task-text { font-size: 14px; line-height: 1.45; }
@@ -1489,8 +1518,16 @@
     .note-chip, .note-linkbtn { font-size: 9.5px; padding: 2px 7px; }
     .note-date { font-size: 9.5px; }
     .note-group-head { font-size: 9px; }
-    .completed-toggle { font-size: 9px; letter-spacing: 1.2px; }
-    .panel-footer, .clear-completed { font-size: 10.5px; }
+    .completed-section { margin-top: 4px; }
+    .completed-toggle { font-size: 9px; letter-spacing: 1.2px; gap: 6px; padding: 6px 2px; }
+    .completed-toggle .count-badge { font-size: 8.5px; padding: 1px 6px; }
+    .panel-footer {
+      margin-top: 2px;
+      padding: 6px 2px 0;
+      justify-content: flex-end;     /* the "to do" count lives in the header now */
+    }
+    .panel-footer > span:first-child { display: none; }
+    .panel-footer, .clear-completed { font-size: 10px; }
   }
 
   /* Phone held sideways: width is plentiful, height is the scarce resource,
@@ -1511,6 +1548,10 @@
     .panels { gap: 10px; }
     .task-row { padding: 6px 0; }
     .note-input { min-height: 38px; }
+    /* The roomier add box earns its height on the unfolded screen; on a
+       390px-tall phone held sideways it would eat the list instead. */
+    .add-input, .task-edit { font-size: 15px; padding: 8px 10px; }
+    .add-row { margin-bottom: 5px; }
   }
 
   /* Landscape / short screens: don't force a full-height card that pushes the
@@ -3072,7 +3113,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1656";
+  var BUILD = "2026-11-05-1708";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
