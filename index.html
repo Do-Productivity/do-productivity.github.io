@@ -965,19 +965,6 @@
     color: var(--ink-soft);
     margin-bottom: 14px;
   }
-  .modal textarea {
-    width: 100%;
-    height: 220px;
-    font-family: Menlo, Consolas, monospace;
-    font-size: 12px;
-    color: var(--ink);
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 12px;
-    resize: vertical;
-    outline: none;
-  }
   .modal .modal-actions {
     display: flex;
     justify-content: flex-end;
@@ -1557,8 +1544,6 @@
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
-    <button class="toolbar-btn" id="export-btn">Export backup</button>
-    <button class="toolbar-btn" id="import-btn">Import backup</button>
   </div>
 
   <div class="mobile-tabs" id="mobile-tabs">
@@ -1572,19 +1557,6 @@
   <div class="panels" id="panels"></div>
 
 </div>
-
-<div class="modal-overlay" id="export-modal">
-  <div class="modal">
-    <h2>Backup JSON</h2>
-    <p>Copy the text below and save it somewhere safe. You can paste it back later with “Import backup”.</p>
-    <textarea id="export-json" readonly></textarea>
-    <div class="modal-actions">
-      <button class="toolbar-btn" id="export-modal-close">Close</button>
-    </div>
-  </div>
-</div>
-
-<input type="file" id="import-file" accept="application/json,.json" style="display:none">
 
 <div class="modal-overlay" id="sync-modal">
   <div class="modal">
@@ -3100,7 +3072,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1652";
+  var BUILD = "2026-11-05-1656";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4168,134 +4140,6 @@
   })();
 
   // ── Export ───────────────────────────────────────────────
-
-  function buildBackup() {
-    return {
-      app: "dia-todo",
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      lists: listsSnapshot(),
-      customLists: loadCustomLists(),
-      notes: loadNotes(),
-      tints: loadTintMap()
-    };
-  }
-
-  function tryDownload(json, filename) {
-    try {
-      var blob = new Blob([json], { type: "application/json" });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function showExportModal(json) {
-    var overlay = document.getElementById("export-modal");
-    var textarea = document.getElementById("export-json");
-    textarea.value = json;
-    overlay.classList.add("show");
-    textarea.focus();
-    textarea.select();
-  }
-
-  document.getElementById("export-modal-close").addEventListener("click", function () {
-    document.getElementById("export-modal").classList.remove("show");
-  });
-
-  document.getElementById("export-btn").addEventListener("click", function () {
-    var json = JSON.stringify(buildBackup(), null, 2);
-    var d = new Date();
-    var filename = "todo-backup-" + d.getFullYear() + "-" +
-      String(d.getMonth() + 1).padStart(2, "0") + "-" +
-      String(d.getDate()).padStart(2, "0") + ".json";
-
-    var downloaded = tryDownload(json, filename);
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(json).then(function () {
-        flashStatus(downloaded ? "Backup downloaded and copied to clipboard." : "Backup copied to clipboard.");
-      }, function () {
-        if (!downloaded) showExportModal(json);
-        else flashStatus("Backup downloaded.");
-      });
-    } else if (downloaded) {
-      flashStatus("Backup downloaded.");
-    } else {
-      showExportModal(json);
-    }
-  });
-
-  // ── Import ───────────────────────────────────────────────
-
-  function applyImport(text) {
-    var data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      alert("That doesn't look like valid JSON. Import cancelled.");
-      return;
-    }
-    if (!data || typeof data !== "object" || !data.lists || typeof data.lists !== "object") {
-      alert("Invalid backup: missing a \"lists\" object. Import cancelled.");
-      return;
-    }
-    var personal = Array.isArray(data.lists.personal) ? data.lists.personal : [];
-    var business = Array.isArray(data.lists.business) ? data.lists.business : [];
-    var total = personal.length + business.length;
-
-    var ok = confirm(
-      "Import " + total + " task" + (total === 1 ? "" : "s") +
-      " (" + personal.length + " personal, " + business.length + " business)?\n\n" +
-      "Warning: this REPLACES your current lists."
-    );
-    if (!ok) return;
-
-    localStorage.setItem("dia_todo_personal_v1", JSON.stringify(personal));
-    localStorage.setItem("dia_todo_business_v1", JSON.stringify(business));
-    if (Array.isArray(data.customLists)) {
-      saveCustomLists(normalizeLists(data.customLists));
-      normalizeLists(data.customLists).forEach(function (l) {
-        if (!l.deleted) localStorage.setItem(listKey(l.id),
-          JSON.stringify(normalizeTasks((data.lists || {})[l.id] || [])));
-      });
-    }
-    if (Array.isArray(data.notes)) localStorage.setItem(NOTES_KEY, JSON.stringify(data.notes));
-    if (data.tints && typeof data.tints === "object" && !Array.isArray(data.tints)) {
-      localStorage.setItem(TINT_KEY, JSON.stringify(data.tints));
-    }
-    // if sync is on, the imported data must win over the remote copy after reload
-    localStorage.setItem("dia_todo_import_pending", "1");
-    location.reload();
-  }
-
-  var importFileInput = document.getElementById("import-file");
-  importFileInput.addEventListener("change", function () {
-    var file = importFileInput.files[0];
-    importFileInput.value = "";
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () { applyImport(String(reader.result)); };
-    reader.readAsText(file);
-  });
-
-  document.getElementById("import-btn").addEventListener("click", function () {
-    var useFile = confirm("Import backup:\n\nOK — choose a backup file\nCancel — paste the JSON text instead");
-    if (useFile) {
-      importFileInput.click();
-    } else {
-      var text = prompt("Paste your backup JSON here:");
-      if (text) applyImport(text);
-    }
-  });
 
   // ── Cloud accounts ───────────────────────────────────────
   // Everyone who signs in gets their own private copy of the data. Rows are
@@ -5900,19 +5744,11 @@
       var np = document.getElementById("cloud-newpass-input");
       if (np) np.focus();
     }
-    if (!syncActive()) {
-      localStorage.removeItem("dia_todo_import_pending");
-      return;
-    }
+    if (!syncActive()) return;
     setSyncDot("busy");
     startSyncLoop();
     if (justSignedIn) flashStatus("Signed in — syncing your lists…");
-    if (localStorage.getItem("dia_todo_import_pending")) {
-      localStorage.removeItem("dia_todo_import_pending");
-      scheduleSyncPush();
-    } else {
-      syncPullNow();
-    }
+    syncPullNow();
   });
 
   // ── Pull-to-refresh (touch devices) ──────────────────────
