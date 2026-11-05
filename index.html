@@ -3113,7 +3113,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1708";
+  var BUILD = "2026-11-05-1710";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -5735,6 +5735,11 @@
 
   function usagePing() {
     if (!cloudConfigured()) return;
+    // A copy being worked on is not a person using the app. Without this,
+    // every local test run adds a device to the count and the figure that
+    // is meant to say "how many people" quietly measures development too.
+    if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ||
+        /\.(localhost|test|local)$/.test(location.hostname)) return;
     var ID_KEY = "dia_todo_device_id";
     var AT_KEY = "dia_todo_pinged_at";
     var EVERY = 30 * 6e4;
