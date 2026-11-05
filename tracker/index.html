@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>To Do &mdash; Usage</title>
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<style>
+  :root {
+    --paper:#f7f3e9; --card:#fffdf7; --ink:#2b2620; --soft:#6b6259;
+    --faint:#a89f93; --rule:#d9d2c2; --red:#c8553d; --blue:#3d6b8c;
+    --serif:"Iowan Old Style",ui-serif,Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--paper);
+    background-image:radial-gradient(circle,#e6dfd0 1px,transparent 1px);
+    background-size:22px 22px;
+    color:var(--ink); font-family:var(--sans);
+    padding:calc(18px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto}
+
+  h1{font-family:var(--serif);font-size:clamp(26px,7vw,32px);margin-bottom:4px}
+  h1 .dot{color:var(--red)}
+  .sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-bottom:20px}
+
+  .card{background:var(--card);border-radius:12px;border-top:3px solid var(--red);
+        box-shadow:0 2px 12px rgba(43,38,32,.1);padding:20px 18px;margin-bottom:16px}
+  .card.quiet{border-top-color:var(--rule)}
+
+  /* hero number — the headline figure, no plot */
+  .hero{text-align:center;padding:8px 0 4px}
+  .hero .n{font-family:var(--serif);font-size:clamp(56px,18vw,76px);line-height:1;color:var(--red)}
+  .hero .cap{font-size:13.5px;color:var(--soft);margin-top:8px;line-height:1.5}
+
+  /* stat tiles */
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);
+         border-radius:10px;overflow:hidden;margin-top:18px}
+  .tile{background:var(--card);padding:14px 12px}
+  .tile .n{font-family:var(--serif);font-size:26px;line-height:1.1}
+  .tile .l{font-size:11px;color:var(--faint);margin-top:4px;line-height:1.45}
+
+  h2{font-family:var(--serif);font-size:18px;margin-bottom:2px}
+  .note{font-size:12px;color:var(--faint);line-height:1.6;margin-bottom:14px}
+
+  /* column chart: one series, thin marks, recessive baseline */
+  .chart{position:relative;display:flex;align-items:flex-end;gap:2px;height:132px;
+         border-bottom:1px solid var(--rule);margin-top:18px}
+  .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+       height:100%;position:relative;cursor:default}
+  .bar{width:60%;max-width:34px;min-height:2px;background:var(--red);
+       border-radius:4px 4px 0 0;transition:opacity .12s}
+  .col:hover .bar{opacity:.72}
+  .col .vl{position:absolute;top:-16px;font-size:11px;color:var(--soft);font-variant-numeric:tabular-nums}
+  .xaxis{display:flex;gap:2px;margin-top:6px}
+  .xaxis div{flex:1;text-align:center;font-size:9.5px;color:var(--faint);
+             overflow:hidden;white-space:nowrap}
+  .tip{position:absolute;z-index:5;background:var(--ink);color:#fff;font-size:11.5px;
+       line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;
+       opacity:0;transform:translate(-50%,-6px);transition:opacity .1s;
+       max-width:100%;text-align:center}
+  .tip.on{opacity:1}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;
+     color:var(--faint);font-weight:700;padding:0 4px 7px;border-bottom:1px solid var(--rule)}
+  td{padding:9px 4px;border-bottom:1px solid var(--rule);color:var(--soft);
+     font-variant-numeric:tabular-nums}
+  td.who{color:var(--ink)}
+  tr:last-child td{border-bottom:none}
+  .me{font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--blue)}
+
+  button{font-family:var(--sans);font-size:14px;font-weight:700;letter-spacing:.3px;
+         color:#fff;background:var(--red);border:none;border-radius:10px;padding:14px;
+         cursor:pointer;width:100%}
+  button.ghost{background:transparent;color:var(--blue);font-weight:600;padding:10px}
+  input{width:100%;font-family:var(--sans);font-size:15px;color:var(--ink);
+        background:var(--paper);border:1px solid var(--rule);border-radius:9px;
+        padding:13px;margin-bottom:10px}
+  .err{font-size:12.5px;color:var(--red);line-height:1.6;margin-bottom:10px}
+  .foot{font-size:11.5px;color:var(--faint);line-height:1.75;margin-top:4px}
+  .foot b{color:var(--soft)}
+  a{color:var(--blue)}
+  details{margin-top:14px}
+  summary{font-size:12px;color:var(--blue);cursor:pointer}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Who&rsquo;s using it<span class="dot">.</span></h1>
+  <div class="sub" id="stamp">My To Do List</div>
+
+  <!-- sign in -->
+  <div class="card hidden" id="gate">
+    <h2>Sign in to see the numbers</h2>
+    <div class="note">Same email and password as the app. It only ever shows totals &mdash; never anybody&rsquo;s tasks.</div>
+    <div class="err hidden" id="gate-err"></div>
+    <input type="email" id="email" placeholder="you@example.com" autocomplete="email" inputmode="email">
+    <input type="password" id="pass" placeholder="Password" autocomplete="current-password">
+    <button id="go">Show me</button>
+  </div>
+
+  <!-- loading / problem -->
+  <div class="card quiet hidden" id="msg"><div class="note" id="msg-text"></div></div>
+
+  <!-- the numbers -->
+  <div id="out" class="hidden">
+    <div class="card">
+      <div class="hero">
+        <div class="n" id="hero-n">&mdash;</div>
+        <div class="cap" id="hero-cap"></div>
+      </div>
+      <div class="tiles">
+        <div class="tile"><div class="n" id="t-devices">&mdash;</div><div class="l">Devices in total, your own included</div></div>
+        <div class="tile"><div class="n" id="t-week">&mdash;</div><div class="l">Other people who opened it in the last 7 days</div></div>
+        <div class="tile"><div class="n" id="t-repeat">&mdash;</div><div class="l">Other people who came back more than once</div></div>
+        <div class="tile"><div class="n" id="t-accounts">&mdash;</div><div class="l">Accounts with sync turned on</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>New people each week</h2>
+      <div class="note">A device the counter had never seen before, yours excluded.</div>
+      <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+      <div class="xaxis" id="xaxis"></div>
+      <details>
+        <summary>Show as a table</summary>
+        <table id="weeks-table" style="margin-top:10px"></table>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Accounts</h2>
+      <div class="note">No names or emails are stored here &mdash; only when each one joined and last synced.</div>
+      <table id="people"></table>
+    </div>
+
+    <div class="card quiet">
+      <div class="foot" id="foot"></div>
+      <button class="ghost" id="refresh">Refresh</button>
+      <button class="ghost" id="out-btn">Sign out of this page</button>
+    </div>
+  </div>
+
+  <div class="foot" style="text-align:center">
+    <a href="../">&larr; back to the app</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CLOUD_URL = "https://mxlbafuzdbnypexhgptw.supabase.co";
+  var CLOUD_KEY = "sb_publishable_vG0EHaoQQAXvZ6i1cOJXlQ_OkIKML6A";
+  // Same key the app uses, so a browser already signed into the app on this
+  // origin lands straight on the numbers.
+  var SESSION_KEY = "dia_todo_cloud_session_v1";
+
+  var $ = function (id) { return document.getElementById(id); };
+  function show(el, on) { el.classList[on ? "remove" : "add"]("hidden"); }
+  function say(text) { $("msg-text").textContent = text; show($("msg"), !!text); }
+
+  function session() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SESSION_KEY));
+      return (s && s.access_token) ? s : null;
+    } catch (e) { return null; }
+  }
+
+  function refreshSession() {
+    var s = session();
+    if (!s || !s.refresh_token) return Promise.resolve(false);
+    return fetch(CLOUD_URL + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers: { apikey: CLOUD_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: s.refresh_token })
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (!j || !j.access_token) return false;
+      s.access_token = j.access_token;
+      if (j.refresh_token) s.refresh_token = j.refresh_token;
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+      return true;
+    }).catch(function () { return false; });
+  }
+
+  function callStats(retried) {
+    var s = session();
+    if (!s) return Promise.reject(new Error("signin"));
+    return fetch(CLOUD_URL + "/rest/v1/rpc/app_stats", {
+      method: "POST", cache: "no-store",
+      headers: {
+        apikey: CLOUD_KEY, "Content-Type": "application/json",
+        Authorization: "Bearer " + s.access_token
+      },
+      body: "{}"
+    }).then(function (res) {
+      if (res.status === 401 && !retried) {
+        return refreshSession().then(function (ok) {
+          if (!ok) throw new Error("signin");
+          return callStats(true);
+        });
+      }
+      if (res.status === 404) throw new Error("The app_stats function isn't installed on the database yet. Run tracker/setup.sql in the Supabase SQL editor.");
+      if (!res.ok) throw new Error("The database said no (HTTP " + res.status + ").");
+      return res.json();
+    });
+  }
+
+  // ── formatting ───────────────────────────────────────────
+
+  var DAY = 864e5;
+  function ago(ts) {
+    if (!ts) return "never";
+    var m = Math.round((Date.now() - new Date(ts).getTime()) / 6e4);
+    if (m < 2) return "just now";
+    if (m < 60) return m + " min ago";
+    var h = Math.round(m / 60);
+    if (h < 24) return h + (h === 1 ? " hour ago" : " hours ago");
+    var d = Math.round(h / 24);
+    if (d < 30) return d + (d === 1 ? " day ago" : " days ago");
+    return new Date(ts).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  }
+  function shortDate(ts) {
+    return new Date(ts).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+
+  // ── the chart: 8 weekly buckets, one series ──────────────
+
+  function weekBuckets(devices, weeks) {
+    var now = new Date();
+    now.setHours(23, 59, 59, 999);
+    var out = [];
+    for (var i = weeks - 1; i >= 0; i--) {
+      var end = new Date(now.getTime() - i * 7 * DAY);
+      var start = new Date(end.getTime() - 7 * DAY + 1);
+      out.push({ start: start, end: end, n: 0 });
+    }
+    devices.forEach(function (d) {
+      var t = new Date(d.first).getTime();
+      for (var i = 0; i < out.length; i++) {
+        if (t >= out[i].start.getTime() && t <= out[i].end.getTime()) { out[i].n++; return; }
+      }
+    });
+    return out;
+  }
+
+  function drawChart(buckets) {
+    var chart = $("chart"), xaxis = $("xaxis"), tip = $("tip");
+    chart.querySelectorAll(".col").forEach(function (n) { n.remove(); });
+    xaxis.innerHTML = "";
+
+    var max = Math.max.apply(null, buckets.map(function (b) { return b.n; }));
+    var top = Math.max(max, 1);
+    var last = buckets.length - 1;
+    // Label the busiest week and the current one only — a number on every
+    // bar is noise, and the tooltip carries the rest.
+    var labelled = {};
+    buckets.forEach(function (b, i) { if (b.n === max && max > 0) labelled[i] = true; });
+    if (buckets[last].n > 0) labelled[last] = true;
+
+    buckets.forEach(function (b, i) {
+      var col = document.createElement("div");
+      col.className = "col";
+      if (labelled[i]) {
+        var vl = document.createElement("div");
+        vl.className = "vl";
+        vl.textContent = b.n;
+        vl.style.bottom = "calc(" + (b.n / top * 100) + "% + 2px)";
+        vl.style.top = "auto";
+        col.appendChild(vl);
+      }
+      var bar = document.createElement("div");
+      bar.className = "bar";
+      bar.style.height = (b.n === 0 ? 2 : Math.max(4, b.n / top * 112)) + "px";
+      if (b.n === 0) bar.style.background = "var(--rule)";
+      col.appendChild(bar);
+
+      function place() {
+        tip.textContent = plural(b.n, "new person", "new people") +
+          " · " + shortDate(b.start) + "–" + shortDate(b.end);
+        tip.classList.add("on");
+        var r = col.getBoundingClientRect(), c = chart.getBoundingClientRect();
+        // Keep it inside the card: the end columns would hang off otherwise.
+        var half = tip.offsetWidth / 2;
+        var x = r.left - c.left + r.width / 2;
+        tip.style.left = Math.max(half, Math.min(c.width - half, x)) + "px";
+        tip.style.bottom = (c.height - (r.bottom - c.top) + 18) + "px";
+      }
+      col.addEventListener("mouseenter", place);
+      col.addEventListener("touchstart", place, { passive: true });
+      col.addEventListener("mouseleave", function () { tip.classList.remove("on"); });
+      chart.appendChild(col);
+
+      var x = document.createElement("div");
+      x.textContent = (i === last) ? "now" : shortDate(b.start);
+      xaxis.appendChild(x);
+    });
+
+    var rows = ["<tr><th>Week of</th><th>New people</th></tr>"];
+    buckets.forEach(function (b) {
+      rows.push("<tr><td>" + shortDate(b.start) + "</td><td>" + b.n + "</td></tr>");
+    });
+    $("weeks-table").innerHTML = rows.join("");
+  }
+
+  // ── render ───────────────────────────────────────────────
+
+  function render(s) {
+    var people = s.people || [], devices = s.devices || [];
+    var now = Date.now();
+    var mine = people.filter(function (p) { return p.id === s.me; }).length;
+    var others = Math.max(people.length - mine, 0);
+    var theirs = devices.filter(function (d) { return !d.mine; });
+    var week = theirs.filter(function (d) { return now - new Date(d.last).getTime() < 7 * DAY; }).length;
+    var repeat = theirs.filter(function (d) { return d.hits > 1; }).length;
+
+    // Devices are the honest measure of use: an account only exists for the
+    // handful who switch sync on. Fall back to accounts until the first ping
+    // lands, so a freshly installed counter still says something true.
+    $("hero-n").textContent = devices.length ? theirs.length : others;
+    $("hero-cap").innerHTML = devices.length
+      ? (theirs.length === 1
+          ? "device besides your own has opened the app"
+          : "devices besides your own have opened the app")
+      : (others === 1 ? "person besides you has an account"
+                      : "people besides you have accounts");
+
+    $("t-devices").textContent = devices.length || "—";
+    $("t-week").textContent = devices.length ? week : "—";
+    $("t-repeat").textContent = devices.length ? repeat : "—";
+    $("t-accounts").textContent = people.length;
+
+    drawChart(weekBuckets(theirs, 8));
+
+    var rows = ["<tr><th>#</th><th>Joined</th><th>Last synced</th></tr>"];
+    people.forEach(function (p, i) {
+      var me = (p.id === s.me) ? ' <span class="me">you</span>' : "";
+      rows.push("<tr><td class=\"who\">" + (i + 1) + me + "</td><td>" +
+        shortDate(p.joined) + "</td><td>" + ago(p.last_sync) + "</td></tr>");
+    });
+    if (!people.length) rows.push('<tr><td colspan="3">No accounts yet.</td></tr>');
+    $("people").innerHTML = rows.join("");
+
+    var first = devices.length ? devices[0].first : null;
+    $("foot").innerHTML =
+      "<b>Counted:</b> every device that opens the app, whether or not the person made an account. " +
+      "A random id per device &mdash; no names, no emails, never any task text.<br><br>" +
+      "<b>Rough edges:</b> one person on a phone and a laptop counts twice, clearing browser " +
+      "data makes a device look new, and your own devices only drop out of the count once " +
+      "they have been signed in." +
+      (first ? "<br><br><b>Counting since</b> " + shortDate(first) + "." : "");
+
+    $("stamp").textContent = "Updated " + new Date(s.generated).toLocaleTimeString(undefined,
+      { hour: "numeric", minute: "2-digit" });
+
+    show($("gate"), false);
+    say("");
+    show($("out"), true);
+  }
+
+  // ── flow ─────────────────────────────────────────────────
+
+  function load() {
+    if (!session()) { show($("out"), false); say(""); show($("gate"), true); return; }
+    if ($("out").classList.contains("hidden")) say("Counting…");
+    callStats().then(render).catch(function (err) {
+      show($("out"), false);
+      if (err.message === "signin") { say(""); show($("gate"), true); return; }
+      show($("gate"), false);
+      say(err.message);
+    });
+  }
+
+  $("go").addEventListener("click", function () {
+    var email = $("email").value.trim(), pass = $("pass").value;
+    var err = $("gate-err");
+    if (!email || !pass) {
+      err.textContent = "Both fields, please."; show(err, true); return;
+    }
+    show(err, false);
+    this.textContent = "Signing in…";
+    var btn = this;
+    fetch(CLOUD_URL + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { apikey: CLOUD_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: pass })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok || !j.access_token) throw new Error("Wrong email or password.");
+        return j;
+      });
+    }).then(function (j) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        access_token: j.access_token, refresh_token: j.refresh_token,
+        uid: j.user && j.user.id, email: j.user && j.user.email
+      }));
+      $("pass").value = "";
+      btn.textContent = "Show me";
+      load();
+    }).catch(function (e) {
+      btn.textContent = "Show me";
+      err.textContent = e.message; show(err, true);
+    });
+  });
+
+  $("pass").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") $("go").click();
+  });
+
+  $("refresh").addEventListener("click", load);
+  $("out-btn").addEventListener("click", function () {
+    localStorage.removeItem(SESSION_KEY);
+    show($("out"), false);
+    show($("gate"), true);
+  });
+
+  window.addEventListener("focus", function () { if (session()) load(); });
+  load();
+})();
+</script>
+</body>
+</html>

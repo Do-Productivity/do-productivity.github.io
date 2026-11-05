@@ -2464,7 +2464,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-04-1615";
+  var BUILD = "2026-11-05-0953";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4846,6 +4846,48 @@
   // otherwise the loop starts before the session exists and the first pull
   // is wasted.
   if (!navigator.onLine) setNetBanner(true);
+
+  // ── Usage ping ───────────────────────────────────────────
+  // One random id per device, so the tracker page can count how many
+  // people actually opened the app — including everyone who never makes
+  // an account. Nothing identifying travels with it: no email, no task
+  // text, just the id and a timestamp. Once every six hours at most.
+
+  (function () {
+    if (!cloudConfigured()) return;
+    var ID_KEY = "dia_todo_device_id";
+    var AT_KEY = "dia_todo_pinged_at";
+    var EVERY = 6 * 36e5;
+
+    function uuidFallback() {
+      var b = new Uint8Array(16);
+      crypto.getRandomValues(b);
+      b[6] = (b[6] & 0x0f) | 0x40;
+      b[8] = (b[8] & 0x3f) | 0x80;
+      var h = [];
+      for (var i = 0; i < 16; i++) h.push((b[i] + 0x100).toString(16).slice(1));
+      return h.slice(0, 4).join("") + "-" + h.slice(4, 6).join("") + "-" +
+             h.slice(6, 8).join("") + "-" + h.slice(8, 10).join("") + "-" +
+             h.slice(10, 16).join("");
+    }
+
+    try {
+      if (Date.now() - (+localStorage.getItem(AT_KEY) || 0) < EVERY) return;
+      var id = localStorage.getItem(ID_KEY);
+      if (!id) {
+        id = (crypto.randomUUID ? crypto.randomUUID() : uuidFallback());
+        localStorage.setItem(ID_KEY, id);
+      }
+      // Through cloudFetch so a signed-in device sends its token too, which
+      // is how the tracker tells this person's own devices from everyone's.
+      cloudFetch("/rest/v1/rpc/record_visit", {
+        method: "POST",
+        body: JSON.stringify({ device: id })
+      }).then(function (res) {
+        if (res.ok) localStorage.setItem(AT_KEY, String(Date.now()));
+      }).catch(function () { /* offline — it pings on a later open */ });
+    } catch (e) { /* storage blocked, so there is nothing to count with */ }
+  })();
 
   captureCloudRedirect().then(function (justSignedIn) {
     refreshCloudAccount();
