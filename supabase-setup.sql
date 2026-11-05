@@ -70,7 +70,11 @@ as $$
   );
 $$;
 
-revoke all on function public.app_stats() from public;
+-- Supabase grants EXECUTE on new public functions to anon and authenticated
+-- by default, and revoking from PUBLIC does not remove those named grants —
+-- so anon has to be revoked explicitly or anyone holding the publishable key
+-- can read the account list.
+revoke all on function public.app_stats() from public, anon;
 grant execute on function public.app_stats() to authenticated;
 
 -- ═══ PART 2 · a calendar feed per account ════════════════════════════
@@ -86,22 +90,29 @@ alter table public.documents
 create unique index if not exists documents_feed_token_key
   on public.documents (feed_token);
 
--- A domain named after a media type is how PostgREST is told to answer
--- with real text/calendar instead of a JSON-quoted string. Calendar apps
--- send no headers we control, so this is the part that makes them accept
--- the response.
+-- PostgREST picks the response format from the request's Accept header, and
+-- a domain named after a media type is how it is taught a new one. A plain
+-- "text/calendar" domain only answers clients that ask for a calendar by
+-- name; "*/*" is the catch-all, and the function sets the real Content-Type
+-- itself, so every client gets a calendar no matter what it asks for.
 do $$ begin
-  create domain "text/calendar" as text;
+  create domain "*/*" as text;
 exception when duplicate_object then null;
 end $$;
 
+drop function if exists public.feed(uuid);
+
 create or replace function public.feed(t uuid)
-returns "text/calendar"
-language sql
+returns "*/*"
+language plpgsql
 security definer
 stable
 set search_path = public
 as $$
+declare body text;
+begin
+  perform set_config('response.headers',
+    '[{"Content-Type": "text/calendar; charset=utf-8"}]', true);
   -- Always one row: an account that has never synced gets a valid but
   -- empty calendar rather than an error the phone would keep retrying.
   select coalesce(
@@ -111,7 +122,9 @@ as $$
     'PRODID:-//dia-todo//EN' || chr(13) || chr(10) ||
     'X-WR-CALNAME:My To Do List' || chr(13) || chr(10) ||
     'END:VCALENDAR'   || chr(13) || chr(10)
-  )::"text/calendar";
+  ) into body;
+  return body;
+end;
 $$;
 
 -- Readable by anyone holding the token, which is the whole point of a
