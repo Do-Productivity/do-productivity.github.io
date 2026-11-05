@@ -1456,7 +1456,15 @@
       flex-direction: column;
       padding-left: clamp(20px, env(safe-area-inset-left, 0px), 28px);
       padding-right: clamp(20px, env(safe-area-inset-right, 0px), 28px);
+      /* The base layout keeps 28/52 top and bottom, which suits a page that
+         scrolls. This one does not scroll — the cards are the window — so
+         that padding was just 80px of paper nobody can use. Clamped rather
+         than taken from env() outright, because this device reports insets
+         far larger than the glass it is actually protecting. */
+      padding-top: clamp(10px, env(safe-area-inset-top, 0px), 20px);
+      padding-bottom: clamp(8px, env(safe-area-inset-bottom, 0px), 18px);
     }
+    .toolbar { margin-bottom: 10px; }   /* 22px is a scrolling page's gap */
     /* Unfolded: all three side by side, like the desktop. */
     .panels { flex: 1; min-height: 0; align-items: stretch; gap: 12px;
               grid-auto-columns: minmax(195px, 1fr); }
@@ -3113,7 +3121,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1710";
+  var BUILD = "2026-11-05-1712";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
