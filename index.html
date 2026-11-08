@@ -296,6 +296,7 @@
 
   /* ── Task list ───────────────────────────── */
   .task-list { list-style: none; flex: 1; }
+  .run-list { flex: 1; }
   .task-row {
     display: flex;
     align-items: flex-start;
@@ -1402,7 +1403,8 @@
       box-shadow: 0 4px 16px rgba(43, 38, 32, 0.13);
     }
     .panel.expanded .task-list,
-    .panel.expanded .note-list { flex: 1; }
+    .panel.expanded .note-list,
+    .panel.expanded .run-list { flex: 1; }
     .panel.expanded .panel-footer { margin-top: auto; }
     .note-text, .note-input, .note-edit { font-family: var(--sans); font-size: 15px; }
     .note-input, .note-edit { font-size: 16px; }   /* no iOS zoom-jump */
@@ -1606,7 +1608,7 @@
     }
     .panels { flex: 1; min-height: 0; align-items: stretch; }
     .panel { display: flex; flex-direction: column; min-height: 0; }
-    .task-list, .note-list {
+    .task-list, .note-list, .run-list {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
@@ -1631,6 +1633,13 @@
       flex-direction: column;
       padding-left: clamp(20px, env(safe-area-inset-left, 0px), 28px);
       padding-right: clamp(20px, env(safe-area-inset-right, 0px), 28px);
+      /* The base layout keeps 28/52 top and bottom, which suits a page that
+         scrolls. This one does not scroll — the cards are the window — so
+         that padding was just 80px of paper nobody can use. Clamped rather
+         than taken from env() outright, because this device reports insets
+         far larger than the glass it is actually protecting. */
+      padding-top: clamp(10px, env(safe-area-inset-top, 0px), 20px);
+      padding-bottom: clamp(8px, env(safe-area-inset-bottom, 0px), 18px);
     }
     /* The device draws its clock and signal down the RIGHT edge and reports
        an inset wider than the 28px the content is capped at. The cards can
@@ -1639,13 +1648,6 @@
     .toolbar {
       padding-left: max(0px, calc(env(safe-area-inset-left, 0px) - 28px));
       padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 28px));
-      /* The base layout keeps 28/52 top and bottom, which suits a page that
-         scrolls. This one does not scroll — the cards are the window — so
-         that padding was just 80px of paper nobody can use. Clamped rather
-         than taken from env() outright, because this device reports insets
-         far larger than the glass it is actually protecting. */
-      padding-top: clamp(10px, env(safe-area-inset-top, 0px), 20px);
-      padding-bottom: clamp(8px, env(safe-area-inset-bottom, 0px), 18px);
     }
     .toolbar { margin-bottom: 10px; }   /* 22px is a scrolling page's gap */
     /* Unfolded: all three side by side, like the desktop. */
@@ -1656,7 +1658,7 @@
        width pushed the columns wider than their track and overflowed */
     .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
     .add-input, .due-input { min-width: 0; }
-    .task-list, .note-list {
+    .task-list, .note-list, .run-list {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
@@ -3806,7 +3808,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1244";
+  var BUILD = "2026-11-08-1253";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
