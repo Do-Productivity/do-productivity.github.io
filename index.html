@@ -1419,6 +1419,20 @@
       padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 20px));
     }
     .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+    /* The folded Duo paints its clock, signal and wifi over the page at the
+       right-hand edge. The toolbar already steps aside; the cards below it
+       did not, so the glyphs sat on top of the card's own right-hand
+       furniture — the delete crosses, the date buttons, the counts.
+       The LAYOUT still only pays 20px of that inset, because paying all of
+       it down the whole column costs about a fifth of a 373px screen. The
+       card keeps its full width, and moves its CONTENTS clear instead:
+       whatever the inset asks for beyond the 20px already paid, capped at
+       22px so a device reporting a huge inset cannot eat the card.
+       --glyph-gutter is 0 on every phone that does not overlay anything. */
+    .layout { --glyph-gutter: min(22px, max(0px, calc(env(safe-area-inset-right, 0px) - 20px))); }
+    /* the fan carries the gutter in its own margin shorthand further down —
+       a separate rule here would lose to it on source order */
     .toolbar h1 { font-size: 11px; letter-spacing: 2.5px; }
     .toolbar-btn { padding: 9px 11px; font-size: 9px; letter-spacing: 1px; border-radius: 7px; }
 
@@ -1456,7 +1470,7 @@
        they give back goes to the open card. */
     .panel.collapsed {
       flex: none;
-      padding: 10px 14px 11px;
+      padding: 10px calc(14px + var(--glyph-gutter, 0px)) 11px 14px;
       margin-top: -7px;                 /* the overlap */
       border-radius: 14px;
       border-top-width: 3px;
@@ -1542,7 +1556,8 @@
     .note-input, .note-edit { font-size: 16px; }   /* no iOS zoom-jump */
     .note-link-select { font-size: 16px; }
     .panel {
-      padding: 14px 15px 8px;
+      /* right side carries the glyph gutter — see --glyph-gutter above */
+      padding: 14px calc(15px + var(--glyph-gutter, 0px)) 8px 15px;
       min-height: 0;
       min-width: 0;
       border-radius: 14px;
@@ -1602,7 +1617,11 @@
       display: block; position: relative;
       /* grows with the screen, so a 430px iPhone gets a genuinely bigger
          card than a 320px one instead of the same card in more whitespace */
-      height: clamp(126px, 37vw, 162px); margin: 0 0 8px;
+      height: clamp(126px, 37vw, 162px);
+      /* margin, not padding: the cards are absolutely positioned from this
+         box's padding box, which padding does not move — only shrinking
+         the box itself slides them clear of the glyph strip. */
+      margin: 0 var(--glyph-gutter, 0px) 8px 0;
       perspective: 820px;
       perspective-origin: 50% 46%;
       transform-style: preserve-3d;
@@ -1720,7 +1739,7 @@
     .toolbar { gap: 3px; }
     .toolbar-btn { padding: 7px 5px; font-size: 8px; letter-spacing: 0.2px; }
     .build-stamp { display: none; }
-    .panel { padding: 13px 10px 7px; }
+    .panel { padding: 13px calc(10px + var(--glyph-gutter, 0px)) 7px 10px; }
     .add-input, .task-edit { font-size: 16px; }
     .task-text { font-size: 14.5px; }
     .mobile-tab { font-size: 15px; }
@@ -1743,7 +1762,7 @@
     .build-stamp { font-size: 8px; letter-spacing: 0.5px; }
     .layout { padding-left: clamp(6px, env(safe-area-inset-left, 0px), 20px);
               padding-right: clamp(6px, env(safe-area-inset-right, 0px), 20px); }
-    .panel { padding: 15px 12px 8px; }
+    .panel { padding: 15px calc(12px + var(--glyph-gutter, 0px)) 8px 12px; }
     .mobile-tab { font-size: 16px; padding: 10px 6px 8px; }
   }
 
@@ -4065,7 +4084,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1749";
+  var BUILD = "2026-11-08-1755";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
