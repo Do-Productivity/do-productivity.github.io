@@ -10,7 +10,7 @@
  * old code for hours is structurally impossible here.
  */
 
-var BUILD = "2026-11-08-1720";
+var BUILD = "2026-11-08-1729";
 var CACHE = "dia-todo-" + BUILD;
 
 /* Everything needed to open the app cold, offline. */
@@ -88,6 +88,23 @@ self.addEventListener("fetch", function (event) {
             "<h1>Offline</h1><p>Open the app once while online and it will work offline after that.</p>",
             { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
           );
+        });
+      })
+    );
+    return;
+  }
+
+  /* A query string is how everything here asks for a fresh copy (?cb=…), and
+     the cache lookup below ignores the search on purpose so an icon matches
+     whatever the page asks for. Together those two made a cache-busted URL
+     return the stale copy anyway — it served an old test script three runs
+     in a row. If the caller bothered to put a query on it, go to the network
+     and keep the cached copy only as the offline floor. */
+  if (url.search) {
+    event.respondWith(
+      fetch(req).catch(function () {
+        return caches.open(CACHE).then(function (c) {
+          return c.match(req, { ignoreSearch: true });
         });
       })
     );

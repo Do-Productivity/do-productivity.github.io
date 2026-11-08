@@ -4042,7 +4042,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1720";
+  var BUILD = "2026-11-08-1729";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -5107,24 +5107,28 @@
       out.forEach(function (r) { if (r.id) taskText[r.id] = r.text; });
 
       loadNotes().forEach(function (n) {
+        // a deleted note is rendered nowhere — there is no notes trash — so
+        // offering it would be a result that cannot be landed on
+        if (n.deleted) return;
         out.push({
           kind: "note", text: n.text, id: n.id, listId: "notes", listTitle: "Notes",
-          state: n.deleted ? "deleted" : (n.done ? "done" : "open"),
+          state: n.done ? "done" : "open",
           parent: n.taskId ? taskText[n.taskId] : null
         });
       });
 
       loadScheduled().forEach(function (w) {
+        if (w.deleted) return;       // same: nothing renders a deleted one
         out.push({
           kind: "sched", text: w.name, id: w.id, listId: "runs", listTitle: "Scheduled",
-          state: w.deleted ? "deleted" : (wsFinished(w) ? "done" : "open"),
+          state: wsFinished(w) ? "done" : "open",
           due: w.dueAt || null
         });
         (w.steps || []).forEach(function (st) {
           out.push({
             kind: "step", text: st.text, id: st.id, schedId: w.id,
             listId: "runs", listTitle: "Scheduled",
-            state: w.deleted ? "deleted" : (st.done ? "done" : "open"),
+            state: st.done ? "done" : "open",
             parent: w.name
           });
         });
@@ -5250,6 +5254,13 @@
         applyRunsVisibility();
       }
       if (document.body.classList.contains("view-today")) showToday(false);
+      // Notes can be filtered down to a single task by the badge on a task
+      // row. A note from any other task is then not rendered, so drop the
+      // filter before going looking for it.
+      if (r.kind === "note" && noteFilterTaskId) {
+        noteFilterTaskId = null;
+        refreshNotesUI();
+      }
       if (phoneLayout()) setMobileTab(r.listId);
 
       setTimeout(function () {
