@@ -3792,7 +3792,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1234";
+  var BUILD = "2026-11-08-1241";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4815,12 +4815,19 @@
   // morning is overdue by lunchtime, and the task rows have always said so.
   function todayGroups(now) {
     var tomorrow = startOfDay(now, 1), after = startOfDay(now, 2);
-    var g = { overdue: [], today: [], tomorrow: [], later: 0 };
+    var g = { overdue: [], today: [], tomorrow: [], underway: [], later: 0 };
     datedTasks(now).forEach(function (item) {
       var due = item.task.due;
       if (due < now) g.overdue.push(item);
       else if (due < tomorrow) g.today.push(item);
       else if (due < after) g.tomorrow.push(item);
+      // A scheduled task whose window has opened is work for now, even
+      // though its deadline is days off — that is what giving it a start
+      // date meant. Without this the start date decided nothing and the
+      // thing stayed invisible until the day before it was due.
+      else if (item.sched && item.sched.startAt && item.sched.startAt <= now) {
+        g.underway.push(item);
+      }
       else g.later++;
     });
     return g;
@@ -4917,8 +4924,9 @@
     if (g.overdue.length) scroll.appendChild(todayGroup("Overdue", g.overdue, now, true));
     if (g.today.length) scroll.appendChild(todayGroup("Today", g.today, now));
     if (g.tomorrow.length) scroll.appendChild(todayGroup("Tomorrow", g.tomorrow, now));
+    if (g.underway.length) scroll.appendChild(todayGroup("Underway", g.underway, now));
 
-    if (!g.overdue.length && !g.today.length && !g.tomorrow.length) {
+    if (!g.overdue.length && !g.today.length && !g.tomorrow.length && !g.underway.length) {
       scroll.appendChild(el("div", "today-empty", g.later
         ? "Nothing until later in the week."
         : "Nothing due. Give a task a date and it turns up here."));
