@@ -1800,23 +1800,50 @@
     .panel-footer, .clear-completed { font-size: 10px; }
   }
 
-  /* Four columns stop working long before they stop fitting. At 900px wide
-     each one is 202px: "Surprise treatment through CX for good customers"
-     breaks over four lines, the add box reads "What ne" and the date field
-     is cut off mid-format. Below ~980 the cards go two by two instead —
-     420px of line length beats four cramped ribbons. A second row needs the
-     height for it, hence min-height; a short window keeps the single row and
-     lets the lists scroll inside. */
-  @media (min-width: 721px) and (max-width: 980px) and (min-height: 560px) {
-    .panels {
-      grid-auto-flow: row;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      /* both rows share the window; the lists scroll inside their cards */
-      grid-auto-rows: minmax(0, 1fr);
-      gap: 12px;
-    }
-    .panel.notes { grid-column: auto; }
+  /* Narrow windows and the unfolded Duo keep their columns side by side —
+     that IS the layout — so the room has to come out of the type and the
+     paddings, not out of the arrangement. Gutters drop to 12px, the gap to
+     8, "DUE / REMIND" shortens to "DUE" (it was costing 80px of a 226px
+     row) and the running text steps down a point. The Scheduled column can
+     be put away with its toolbar button on top of that, which hands about
+     70px to each of the three columns that remain. */
+  @media (min-width: 721px) and (max-width: 980px) {
+    .layout { padding-left: clamp(12px, env(safe-area-inset-left, 0px), 20px);
+              padding-right: clamp(12px, env(safe-area-inset-right, 0px), 20px); }
+    .panels { gap: 8px; }
+    .panel { padding: 11px 10px 5px; }
+    .panel-header .panel-title { font-size: 16px; }
+    .panel-header .panel-subtitle { font-size: 7px; letter-spacing: 1px; }
+    .panel-header .divider { margin: 5px 0 6px; }
+    .panel-count { font-size: 9px; padding: 1px 6px; margin-left: 5px; }
+    .add-row { gap: 5px; margin-bottom: 5px; }
+    .add-input, .task-edit { font-size: 15px; padding: 9px 10px; }
+    .add-btn { padding: 0 11px; font-size: 9.5px; letter-spacing: 0.5px; }
+    .due-row { gap: 4px; margin-bottom: 3px; }
+    .due-label { font-size: 0; }
+    .due-label::after { content: "DUE"; font-size: 8px; letter-spacing: 0.5px; }
+    .due-input { font-size: 12px; padding: 4px 5px; }
+    .task-row { gap: 6px; padding: 7px 0; }
+    .task-circle { width: 17px; height: 17px; }
+    .task-text, .run-step-text { font-size: 13px; line-height: 1.4; }
+    .task-meta { font-size: 10px; }
+    .note-text, .note-input, .note-edit { font-size: 13px; }
+    .note-chip, .note-linkbtn, .note-date { font-size: 9px; }
+    .run-name { font-size: 14px; }
+    .run-add-step { font-size: 13px; }
+    .run-window { font-size: 10px; }
   }
+
+  /* The Scheduled column, put away. Phones never hide it — there it is one
+     tap on the tab row or the card fan, and nothing is competing for width. */
+  @media (min-width: 721px) {
+    body.hide-runs .panels > .panel.runs { display: none; }
+  }
+  @media (max-width: 720px) {
+    #runs-btn { display: none; }
+  }
+  .toolbar-btn.on { color: var(--ink); border-color: var(--ink-faint); }
+  .toolbar-btn.off { color: var(--ink-faint); }
 
   /* Phone held sideways: width is plentiful, height is the scarce resource,
      so spend the savings vertically — drop the subtitle line, thin the
@@ -1873,6 +1900,7 @@
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
     <button class="toolbar-btn" id="today-btn">Today</button>
+    <button class="toolbar-btn" id="runs-btn" title="Show or hide the Scheduled tasks column">Scheduled</button>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
   </div>
 
@@ -3898,7 +3926,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1453";
+  var BUILD = "2026-11-08-1459";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4844,7 +4872,11 @@
   // The column floor is chosen from the width actually available and the
   // number of columns, so a panel arriving never pushes the row off screen.
   function fitPanelTracks() {
-    var n = PANEL_IDS.length;
+    // the visible ones: the Scheduled column can be put away, and the three
+    // that remain should take its width rather than leave a gap
+    var n = [].filter.call(panelsRoot.querySelectorAll(".panel"), function (p) {
+      return getComputedStyle(p).display !== "none";
+    }).length;
     if (!n) return;
     var w = panelsRoot.clientWidth;
     if (!w) return;
@@ -4858,6 +4890,48 @@
   function panelEl(id) {
     return panelsRoot.querySelector(".panel." + id);
   }
+
+  // ── The Scheduled column is optional ─────────────────────
+  // Four columns in a 900px window are 202px each and every task breaks over
+  // four lines. Stacking them two by two fixed the width and ruined the
+  // layout, so the width comes from here instead: put Scheduled away and the
+  // other three get about 70px each. Only above 720px — on a phone one card
+  // is open at a time anyway, and hiding it would just make it unreachable.
+  var RUNS_KEY = "dia_todo_showruns_v1";
+
+  function runsShown() {
+    var saved = localStorage.getItem(RUNS_KEY);
+    if (saved === null) return window.innerWidth > 980;   // narrow: away by default
+    return saved === "1";
+  }
+
+  function applyRunsVisibility() {
+    var on = runsShown();
+    document.body.classList.toggle("hide-runs", !on);
+    var btn = document.getElementById("runs-btn");
+    if (btn) {
+      btn.classList.toggle("on", on);
+      btn.classList.toggle("off", !on);
+      btn.title = on ? "Hide the Scheduled tasks column"
+                     : "Show the Scheduled tasks column";
+    }
+    fitPanelTracks();
+  }
+
+  (function () {
+    var btn = document.getElementById("runs-btn");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        localStorage.setItem(RUNS_KEY, runsShown() ? "0" : "1");
+        applyRunsVisibility();
+      });
+    }
+    applyRunsVisibility();
+    // a window dragged wider than 980 with no saved preference should show it
+    window.addEventListener("resize", function () {
+      if (localStorage.getItem(RUNS_KEY) === null) applyRunsVisibility();
+    });
+  })();
 
   function setMobileTab(id) {
     if (PANEL_IDS.indexOf(id) === -1) id = "personal";
