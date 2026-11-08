@@ -187,6 +187,54 @@
       check("note lands and flashes",
         !!(landed && landed.hit && /note-row/.test(landed.hit.className)), "");
 
+      // a completed note, then a deleted one — both have to stay findable
+      var liveRow = $$(".note-row").filter(function (r) {
+        return r.textContent.indexOf(TAG) !== -1;
+      })[0];
+      if (liveRow) {
+        $(".note-circle", liveRow).click();
+        await sleep(220);
+        await search(TAG + " note");
+        check("completed note is found", $$(".sr-item").length >= 1, "");
+        check("completed note is labelled",
+          /is-done/.test(($(".sr-item") || {}).className || ""), "");
+        landed = await pickFirst();
+        check("completed note lands and flashes",
+          !!(landed && landed.hit && /note-row/.test(landed.hit.className)), "");
+
+        var doneRow = $$(".note-row").filter(function (r) {
+          return r.textContent.indexOf(TAG) !== -1;
+        })[0];
+        if (doneRow && $(".task-delete", doneRow)) {
+          $(".task-delete", doneRow).click();
+          await sleep(240);
+          await search(TAG + " note");
+          check("deleted note is found", $$(".sr-item").length >= 1, "");
+          check("deleted note is labelled",
+            /is-deleted/.test(($(".sr-item") || {}).className || ""), "");
+          landed = await pickFirst();
+          var ntrash = $$(".completed-section.trash", panel("notes"))[0];
+          check("notes trash drawer opens",
+            !!ntrash && ntrash.classList.contains("open"), "");
+          check("deleted note lands and flashes",
+            !!(landed && landed.hit && /note-row/.test(landed.hit.className)), "");
+
+          // and it can be put back
+          var trashRow = $$(".note-row", ntrash).filter(function (r) {
+            return r.textContent.indexOf(TAG) !== -1;
+          })[0];
+          if (trashRow) {
+            $(".note-circle", trashRow).click();
+            await sleep(240);
+            var back = $$(".note-row").filter(function (r) {
+              return r.textContent.indexOf(TAG) !== -1 &&
+                     !r.closest(".completed-section.trash");
+            })[0];
+            check("a deleted note can be restored", !!back, "");
+          }
+        }
+      }
+
       // now narrow Notes to a DIFFERENT task and search again
       var otherBadge = $$(".task-notebtn")[0];   // the note count on a task row
       if (otherBadge) {

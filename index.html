@@ -4042,7 +4042,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1729";
+  var BUILD = "2026-11-08-1738";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4242,6 +4242,25 @@
     doneSection.appendChild(doneList);
     panel.appendChild(doneSection);
 
+    // Deleted notes were already kept for thirty days — normalizeNotes only
+    // purges them after that — but nothing on screen ever showed them, so a
+    // note deleted by mistake was gone as far as anyone could tell, and a
+    // search result pointing at one had nowhere to land. Same drawer the
+    // task lists have.
+    var trashOpen = false;
+    var trashSection = el("div", "completed-section trash");
+    var trashToggle = el("button", "completed-toggle");
+    trashToggle.appendChild(el("span", "arrow", "\u25B6"));
+    trashToggle.appendChild(el("span", null, "Recently deleted"));
+    var trashBadge = el("span", "count-badge", "0");
+    trashToggle.appendChild(trashBadge);
+    trashSection.appendChild(trashToggle);
+    var trashEmpty = el("div", "empty-state", "Nothing deleted in the last 30 days.");
+    var trashList = el("ul", "completed-list");
+    trashSection.appendChild(trashEmpty);
+    trashSection.appendChild(trashList);
+    panel.appendChild(trashSection);
+
     var footer = el("div", "panel-footer");
     var countLabel = el("span", null, "0 notes");
     var clearDone = el("button", "clear-completed", "Clear completed");
@@ -4251,6 +4270,11 @@
 
     doneToggle.addEventListener("click", function () {
       doneOpen = !doneOpen;
+      refreshNotesUI();
+    });
+
+    trashToggle.addEventListener("click", function () {
+      trashOpen = !trashOpen;
       refreshNotesUI();
     });
     clearDone.addEventListener("click", function () {
@@ -4397,7 +4421,8 @@
       }
 
       function buildNoteRow(note) {
-        var row = el("li", "note-row" + (note.done ? " done" : ""));
+        var row = el("li", "note-row" + (note.done ? " done" : "") +
+                                        (note.deleted ? " deleted" : ""));
         row.dataset.noteId = note.id || "";
         if (!seenNoteIds[note.id]) {
           seenNoteIds[note.id] = true;
@@ -4405,12 +4430,16 @@
         }
 
         var circle = el("button", "note-circle");
-        circle.title = note.done ? "Mark as not done" : "Mark as done";
+        circle.title = note.deleted ? "Restore note"
+                                    : (note.done ? "Mark as not done" : "Mark as done");
         circle.addEventListener("click", function () {
           var all = loadNotes();
           all.forEach(function (n) {
             if (n.id !== note.id) return;
-            if (n.done) { delete n.done; delete n.doneAt; }
+            if (note.deleted) {            // out of the drawer, back where it was
+              delete n.deleted;
+              delete n.deletedAt;
+            } else if (n.done) { delete n.done; delete n.doneAt; }
             else { n.done = true; n.doneAt = Date.now(); }
             delete n.byTask;   // done by hand either way, so the task no longer owns it
             n.mt = Date.now();
@@ -4447,6 +4476,8 @@
                                    : formatDateTime(note.created)));
         body.appendChild(foot);
         row.appendChild(body);
+
+        if (note.deleted) return row;   // nothing to delete twice
 
         var del = el("button", "task-delete", "×");
         del.title = "Delete note";
@@ -4511,6 +4542,17 @@
       doneEmpty.classList.toggle("visible", doneNotes.length === 0);
       doneBadge.textContent = String(doneNotes.length);
       doneSection.classList.toggle("open", doneOpen);
+
+      // The trash ignores the one-task filter on purpose: you come here to
+      // find something you lost, and narrowing it is the opposite of that.
+      var deletedNotes = loadNotes().filter(function (n) { return n.deleted; })
+        .sort(function (a, b) { return (b.deletedAt || 0) - (a.deletedAt || 0); });
+      trashList.textContent = "";
+      deletedNotes.forEach(function (note) { trashList.appendChild(buildNoteRow(note)); });
+      trashEmpty.classList.toggle("visible", deletedNotes.length === 0);
+      trashBadge.textContent = String(deletedNotes.length);
+      trashSection.classList.toggle("open", trashOpen);
+      trashSection.style.display = deletedNotes.length === 0 && !trashOpen ? "none" : "";
 
       var all = liveNotes();
       var openCount = all.filter(function (n) { return !n.done; }).length;
@@ -5107,12 +5149,9 @@
       out.forEach(function (r) { if (r.id) taskText[r.id] = r.text; });
 
       loadNotes().forEach(function (n) {
-        // a deleted note is rendered nowhere — there is no notes trash — so
-        // offering it would be a result that cannot be landed on
-        if (n.deleted) return;
         out.push({
           kind: "note", text: n.text, id: n.id, listId: "notes", listTitle: "Notes",
-          state: n.done ? "done" : "open",
+          state: n.deleted ? "deleted" : (n.done ? "done" : "open"),
           parent: n.taskId ? taskText[n.taskId] : null
         });
       });
