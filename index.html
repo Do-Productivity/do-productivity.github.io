@@ -352,6 +352,35 @@
     margin-top: 4px;
   }
 
+  /* ── Runbooks ────────────────────────────── */
+  .runbook-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 0; border-bottom: 1px solid var(--rule);
+  }
+  .runbook-item:last-child { border-bottom: none; }
+  .runbook-main { flex: 1; min-width: 0; }
+  .runbook-name { font-family: var(--sans); font-size: 14px; font-weight: 700; color: var(--ink); }
+  .runbook-meta { font-family: var(--sans); font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
+  .runbook-act {
+    flex: none; font-family: var(--sans); font-size: 10px; font-weight: 700;
+    letter-spacing: .5px; text-transform: uppercase;
+    background: none; border: 1px solid var(--rule); border-radius: 5px;
+    padding: 6px 9px; cursor: pointer; color: var(--ink-soft);
+  }
+  .runbook-act.go { border-color: var(--green); color: var(--green); }
+  .runbook-act.kill { border: none; font-size: 15px; padding: 4px 6px; color: var(--ink-faint); }
+  .runbook-steps {
+    width: 100%; min-height: 128px; resize: vertical;
+    font-family: var(--sans); font-size: 14px; line-height: 1.55; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 9px;
+    padding: 11px 12px; margin-bottom: 10px; outline: none;
+  }
+  .runbook-empty {
+    font-family: var(--serif); font-style: italic; color: var(--ink-faint);
+    padding: 14px 0 4px;
+  }
+  #runbook-modal .rep-select { margin-bottom: 10px; }
+
   /* ── Today ───────────────────────────────── */
   /* One screen that answers "what now": overdue, then today, then tomorrow,
      across every list. It replaces the lists rather than sitting beside
@@ -1503,6 +1532,10 @@
   }
 
   @media (max-width: 440px) {
+    /* A runbook name squeezed into a third of a 320px screen wraps to
+       three lines; give it the full width and put the buttons below. */
+    .runbook-item { flex-wrap: wrap; }
+    .runbook-main { flex: 1 1 100%; margin-bottom: 4px; }
     .toolbar { flex-wrap: nowrap; gap: 5px; }
     .toolbar h1 { font-size: 0; letter-spacing: 0; }
     .toolbar h1::after {
@@ -1694,6 +1727,7 @@
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
     <button class="toolbar-btn" id="today-btn">Today</button>
+    <button class="toolbar-btn" id="runbooks-btn">Runbooks</button>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
   </div>
 
@@ -1709,6 +1743,35 @@
   <button class="fan-more" id="fan-more">&#x229E;&nbsp; All Lists</button>
   <div class="panels" id="panels"></div>
 
+</div>
+
+<div class="modal-overlay" id="runbook-modal">
+  <div class="modal">
+    <h2>Runbooks</h2>
+    <p>A procedure you repeat, written down once. Running one creates a task
+       with its steps as a checklist hanging off it.</p>
+
+    <div id="runbook-list"></div>
+
+    <button class="modal-btn primary" id="runbook-new">+ New runbook</button>
+
+    <div id="runbook-editor" style="display:none">
+      <hr class="cloud-rule">
+      <input class="sync-token" id="runbook-name" placeholder="Name — e.g. Month close">
+      <select class="rep-select" id="runbook-listid"></select>
+      <textarea class="runbook-steps" id="runbook-steps"
+                placeholder="One step per line, in the order you do them"></textarea>
+      <select class="rep-select" id="runbook-rep"></select>
+      <p class="modal-hint">A repeat here is given to the task when you run it, so
+         the next one arrives by itself — checklist and all.</p>
+      <button class="modal-btn primary" id="runbook-save">Save runbook</button>
+      <button class="modal-btn" id="runbook-cancel">Cancel</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="toolbar-btn" id="runbook-modal-close">Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="sync-modal">
@@ -2217,6 +2280,117 @@
     };
   }
 
+  // ── Runbooks ─────────────────────────────────────────────
+  // A procedure you repeat — a month close, a weekly review — is a sequence
+  // of steps in a fixed order. Running one creates a single task and hangs
+  // the steps off it as notes, because this app already has checkable notes
+  // grouped by task, and ticking a task already ticks them. A runbook is
+  // therefore not a new kind of object in the app; it is a recipe for two
+  // kinds it already has.
+
+  var RUNBOOK_KEY = "dia_todo_runbooks_v1";
+
+  function normalizeRunbooks(parsed) {
+    if (!Array.isArray(parsed)) return [];
+    var purgeBefore = Date.now() - 30 * 24 * 3600 * 1000;
+    return parsed.filter(function (r) {
+      return r && typeof r.id === "string" && typeof r.name === "string";
+    }).map(function (r) {
+      var out = { id: r.id, name: r.name };
+      if (typeof r.listId === "string") out.listId = r.listId;
+      out.steps = Array.isArray(r.steps)
+        ? r.steps.filter(function (t) { return typeof t === "string" && t.trim(); })
+                 .map(function (t) { return t.trim(); })
+        : [];
+      var rr = normalizeRep(r.rep);
+      if (rr) out.rep = rr;
+      if (typeof r.mt === "number") out.mt = r.mt;
+      if (r.deleted) {
+        out.deleted = true;
+        if (typeof r.deletedAt === "number") out.deletedAt = r.deletedAt;
+      }
+      return out;
+    }).filter(function (r) {
+      return !(r.deleted && r.deletedAt && r.deletedAt < purgeBefore);
+    });
+  }
+
+  function loadRunbooks() {
+    try { return normalizeRunbooks(JSON.parse(localStorage.getItem(RUNBOOK_KEY) || "[]")); }
+    catch (e) { return []; }
+  }
+
+  function saveRunbooks(arr) {
+    localStorage.setItem(RUNBOOK_KEY, JSON.stringify(arr));
+    scheduleSyncPush();
+  }
+
+  function liveRunbooks() {
+    return loadRunbooks().filter(function (r) { return !r.deleted; });
+  }
+
+  // The notes a runbook hangs off one task. Their ids are derived from the
+  // task's, so a repeat regenerating the checklist on two devices at once
+  // produces the same notes rather than two sets of them.
+  function runbookNotes(book, taskId, now) {
+    return book.steps.map(function (step, i) {
+      return {
+        text: step,
+        id: "rn" + textHash(taskId + "#" + i + step),
+        taskId: taskId,
+        created: now + i,          // keeps them in the order they were written
+        mt: now
+      };
+    });
+  }
+
+  function addRunbookNotes(book, taskId) {
+    if (!book || !book.steps.length) return;
+    var now = Date.now();
+    var all = loadNotes();
+    var byId = {};
+    all.forEach(function (n) { byId[n.id] = n; });
+    var changed = false;
+    runbookNotes(book, taskId, now).forEach(function (n) {
+      var have = byId[n.id];
+      if (!have) { all.push(n); changed = true; return; }
+      // The ids are derived, so a checklist withdrawn with its task earlier
+      // is the same checklist now. Revive it rather than quietly skipping
+      // it and leaving the task with no steps at all.
+      if (have.deleted) {
+        delete have.deleted;
+        delete have.deletedAt;
+        delete have.done;
+        delete have.doneAt;
+        delete have.byTask;
+        have.mt = now;
+        changed = true;
+      }
+    });
+    if (changed) persistNotes(all);
+  }
+
+  // Has anyone actually started the checklist on this task? A step ticked
+  // by hand counts; one closed by the cascade does not, since that was the
+  // task being completed rather than the work being done.
+  function checklistStarted(taskId) {
+    return loadNotes().some(function (n) {
+      return n.taskId === taskId && !n.deleted && n.done && !n.byTask;
+    });
+  }
+
+  function withdrawNotesFor(taskId, now) {
+    var all = loadNotes(), changed = false;
+    all.forEach(function (n) {
+      if (n.taskId !== taskId || n.deleted) return;
+      n.deleted = true;
+      n.deletedAt = now;
+      n.mt = now;
+      changed = true;
+    });
+    if (changed) persistNotes(all);
+  }
+
   // Ticking a task off is no longer a one-liner — a repeat has to be carried
   // forward, and taking the tick back has to withdraw it again. It happens
   // from two places now, the list and the Today view, so it lives in one.
@@ -2233,12 +2407,18 @@
       // nobody has touched it since — otherwise you are left with two open
       // copies and no way to tell which one counts.
       if (task.spawned) {
-        tasks.forEach(function (t) {
-          if (t.id !== task.spawned || t.done || t.deleted) return;
-          t.deleted = true;
-          t.deletedAt = now;
-          t.mt = now;
-        });
+        // Not if someone has started working through its checklist — that
+        // is progress, and withdrawing the task would take it with them.
+        if (!checklistStarted(task.spawned)) {
+          tasks.forEach(function (t) {
+            if (t.id !== task.spawned || t.done || t.deleted) return;
+            t.deleted = true;
+            t.deletedAt = now;
+            t.mt = now;
+            // its checklist goes with it, or the notes outlive their task
+            withdrawNotesFor(t.id, now);
+          });
+        }
         delete task.spawned;
       }
     } else {
@@ -2248,9 +2428,31 @@
       if (next) {
         // the id is derived, so a copy may already be here from another
         // device that ticked this off first
-        var already = tasks.some(function (t) { return t.id === next.id; });
-        if (!already) tasks.push(next);
+        // Same reasoning as the notes: the id is derived, so an existing
+        // copy may be one this very task withdrew on an earlier un-tick.
+        // Skipping it would mean the repeat silently never came back.
+        var existing = null;
+        tasks.forEach(function (t) { if (t.id === next.id) existing = t; });
+        if (!existing) {
+          tasks.push(next);
+        } else if (existing.deleted || existing.done) {
+          delete existing.deleted;
+          delete existing.deletedAt;
+          delete existing.done;
+          delete existing.completedAt;
+          existing.due = next.due;
+          existing.mt = now;
+        }
         task.spawned = next.id;
+        // A monthly close that came back without its checklist would be a
+        // title and nothing else, so the steps are written out again.
+        if (task.tpl) {
+          next.tpl = task.tpl;
+          var book = loadRunbooks().filter(function (b) {
+            return b.id === task.tpl && !b.deleted;
+          })[0];
+          if (book) addRunbookNotes(book, next.id);
+        }
       }
     }
     task.mt = now;
@@ -2275,6 +2477,8 @@
       if (typeof t.msEventId === "string") task.msEventId = t.msEventId;
       var r = normalizeRep(t.rep);
       if (r) task.rep = r;
+      // which runbook wrote this task, so a repeat can rewrite its checklist
+      if (typeof t.tpl === "string") task.tpl = t.tpl;
       // which copy this one spawned, so un-ticking can take it back again
       if (typeof t.spawned === "string") task.spawned = t.spawned;
       return task;
@@ -3509,7 +3713,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1202";
+  var BUILD = "2026-11-08-1209";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4261,6 +4465,191 @@
     // A due time passing changes which group a task belongs in, so keep it
     // honest while it is on screen rather than only when something is ticked.
     setInterval(function () { if (todayOpen) renderToday(); }, 60000);
+  })();
+
+  // ── Runbooks: the screen ─────────────────────────────────
+
+  var editingBook = null;      // the id being edited, "" for a new one, null for none
+
+  function runbookRunCount(book) {
+    return book.steps.length + (book.steps.length === 1 ? " step" : " steps");
+  }
+
+  function renderRunbooks() {
+    var wrap = document.getElementById("runbook-list");
+    if (!wrap) return;
+    wrap.textContent = "";
+    var books = liveRunbooks();
+    if (!books.length) {
+      wrap.appendChild(el("div", "runbook-empty",
+        "Nothing written down yet. A runbook is worth making the second time you do something."));
+      return;
+    }
+    var titles = {};
+    taskLists().forEach(function (l) { titles[l.id] = l.title; });
+
+    books.forEach(function (book) {
+      var item = el("div", "runbook-item");
+      var main = el("div", "runbook-main");
+      main.appendChild(el("div", "runbook-name", book.name));
+      var bits = [titles[book.listId] || "no list", runbookRunCount(book)];
+      if (book.rep) bits.push(repLabel(book.rep));
+      main.appendChild(el("div", "runbook-meta", bits.join(" · ")));
+      item.appendChild(main);
+
+      var run = el("button", "runbook-act go", "Run");
+      run.addEventListener("click", function () { runRunbook(book); });
+      item.appendChild(run);
+
+      var edit = el("button", "runbook-act", "Edit");
+      edit.addEventListener("click", function () { openRunbookEditor(book); });
+      item.appendChild(edit);
+
+      var kill = el("button", "runbook-act kill", "\u00d7");
+      kill.title = "Delete this runbook";
+      kill.addEventListener("click", function () {
+        if (!confirm("Delete the runbook \u201c" + book.name + "\u201d?\n\n" +
+          "Tasks you have already created from it are not touched.")) return;
+        var all = loadRunbooks();
+        all.forEach(function (b) {
+          if (b.id !== book.id) return;
+          b.deleted = true;
+          b.deletedAt = Date.now();
+          b.mt = Date.now();
+        });
+        saveRunbooks(all);
+        renderRunbooks();
+      });
+      item.appendChild(kill);
+      wrap.appendChild(item);
+    });
+  }
+
+  function openRunbookEditor(book) {
+    editingBook = book ? book.id : "";
+    var ed = document.getElementById("runbook-editor");
+    var listSel = document.getElementById("runbook-listid");
+    var repSel = document.getElementById("runbook-rep");
+
+    listSel.textContent = "";
+    taskLists().forEach(function (l) {
+      var o = el("option", null, l.title);
+      o.value = l.id;
+      listSel.appendChild(o);
+    });
+    repSel.textContent = "";
+    REP_CHOICES.forEach(function (c) {
+      var o = el("option", null, c[0] === "" ? "Does not repeat" : c[1]);
+      o.value = c[0];
+      repSel.appendChild(o);
+    });
+
+    document.getElementById("runbook-name").value = book ? book.name : "";
+    document.getElementById("runbook-steps").value = book ? book.steps.join("\n") : "";
+    listSel.value = (book && book.listId) || taskLists()[0].id;
+    repSel.value = book ? repKey(book.rep) : "";
+    if (repSel.value === "other") repSel.value = "";
+    ed.style.display = "";
+    document.getElementById("runbook-name").focus();
+  }
+
+  function closeRunbookEditor() {
+    editingBook = null;
+    document.getElementById("runbook-editor").style.display = "none";
+  }
+
+  function saveRunbookFromEditor() {
+    var name = document.getElementById("runbook-name").value.trim();
+    var steps = document.getElementById("runbook-steps").value
+      .split("\n").map(function (t) { return t.trim(); }).filter(Boolean);
+    if (!name) { document.getElementById("runbook-name").focus(); return; }
+    if (!steps.length) { document.getElementById("runbook-steps").focus(); return; }
+
+    var picked = null, choice = document.getElementById("runbook-rep").value;
+    REP_CHOICES.forEach(function (c) { if (c[0] === choice) picked = c[2]; });
+
+    var now = Date.now();
+    var all = loadRunbooks();
+    var book = all.filter(function (b) { return b.id === editingBook; })[0];
+    if (!book) {
+      book = { id: "b" + now.toString(36) + Math.random().toString(36).slice(2, 6) };
+      all.push(book);
+    }
+    book.name = name;
+    book.steps = steps;
+    book.listId = document.getElementById("runbook-listid").value;
+    if (picked) {
+      book.rep = { unit: picked.unit };
+      if (picked.n) book.rep.n = picked.n;
+    } else {
+      delete book.rep;
+    }
+    delete book.deleted;
+    delete book.deletedAt;
+    book.mt = now;
+    saveRunbooks(all);
+    closeRunbookEditor();
+    renderRunbooks();
+  }
+
+  // Running one writes a task and its checklist, then puts you in front of
+  // the list it landed in — a runbook you cannot see having run is just a
+  // button that appears to do nothing.
+  function runRunbook(book) {
+    var now = Date.now();
+    var listId = book.listId;
+    if (!taskLists().some(function (l) { return l.id === listId; })) listId = taskLists()[0].id;
+    var key = keyForListId(listId);
+    var arr = loadTasks(key);
+
+    var task = {
+      text: book.name,
+      done: false,
+      id: "t" + now.toString(36) + Math.random().toString(36).slice(2, 6),
+      due: defaultDue(now),
+      tpl: book.id,
+      mt: now
+    };
+    if (book.rep) {
+      task.rep = { unit: book.rep.unit };
+      if (book.rep.n) task.rep.n = book.rep.n;
+      if (task.rep.unit === "month" || task.rep.unit === "year") {
+        task.rep.day = new Date(task.due).getDate();
+      }
+    }
+    arr.push(task);
+    saveTasks(key, arr);
+    scheduleSyncPush();
+    addRunbookNotes(book, task.id);
+
+    document.getElementById("runbook-modal").classList.remove("show");
+    closeRunbookEditor();
+    panelReloaders.forEach(function (r) { r(); });
+    refreshNotesUI();
+    renderToday();
+    showToday(false);
+    setMobileTab(listId);
+    flashStatus("\u201c" + book.name + "\u201d started \u2014 " +
+      book.steps.length + " steps on its checklist.");
+  }
+
+  (function () {
+    var open = document.getElementById("runbooks-btn");
+    var modal = document.getElementById("runbook-modal");
+    if (!open || !modal) return;
+    open.addEventListener("click", function () {
+      closeRunbookEditor();
+      renderRunbooks();
+      modal.classList.add("show");
+    });
+    document.getElementById("runbook-modal-close").addEventListener("click", function () {
+      modal.classList.remove("show");
+    });
+    document.getElementById("runbook-new").addEventListener("click", function () {
+      openRunbookEditor(null);
+    });
+    document.getElementById("runbook-save").addEventListener("click", saveRunbookFromEditor);
+    document.getElementById("runbook-cancel").addEventListener("click", closeRunbookEditor);
   })();
 
   // ── Wallet fan ───────────────────────────────────────────
@@ -5340,7 +5729,8 @@
       lists: listsSnapshot(),
       customLists: loadCustomLists(),
       notes: loadNotes(),
-      tints: loadTintMap()
+      tints: loadTintMap(),
+      runbooks: loadRunbooks()
     };
   }
 
@@ -5378,17 +5768,22 @@
     var remoteNotes = normalizeNotes(remoteDoc.notes || []);
     var mergedNotes = mergeTaskLists(loadNotes(), remoteNotes);
 
+    // and so do runbooks — id, mt, and a tombstone instead of a removal
+    var remoteBooks = normalizeRunbooks(remoteDoc.runbooks || []);
+    var mergedBooks = mergeTaskLists(loadRunbooks(), remoteBooks);
+
     // Colours are per-id last-write-wins rather than an item merge — there is
     // only ever one colour per list, so there is nothing to reconcile.
     var remoteTints = (remoteDoc.tints && typeof remoteDoc.tints === "object") ? remoteDoc.tints : {};
     var mergedTints = mergeTintMaps(loadTintMap(), remoteTints);
 
     applySyncDoc({ lists: merged, notes: mergedNotes, customLists: mergedCustom,
-                   tints: mergedTints });
+                   tints: mergedTints, runbooks: mergedBooks });
     return JSON.stringify(merged) !== JSON.stringify(remoteLists) ||
            JSON.stringify(mergedNotes) !== JSON.stringify(remoteNotes) ||
            JSON.stringify(mergedCustom) !== JSON.stringify(remoteCustom) ||
-           JSON.stringify(mergedTints) !== JSON.stringify(remoteTints);
+           JSON.stringify(mergedTints) !== JSON.stringify(remoteTints) ||
+           JSON.stringify(mergedBooks) !== JSON.stringify(remoteBooks);
   }
 
   function applySyncDoc(doc) {
@@ -5398,6 +5793,7 @@
       localStorage.setItem(keyForListId(id), JSON.stringify(doc.lists[id] || []));
     });
     if (doc.notes) localStorage.setItem(NOTES_KEY, JSON.stringify(doc.notes));
+    if (doc.runbooks) localStorage.setItem(RUNBOOK_KEY, JSON.stringify(doc.runbooks));
     if (doc.tints) {
       var tintsAfter = JSON.stringify(doc.tints);
       if (tintsAfter !== localStorage.getItem(TINT_KEY)) {
