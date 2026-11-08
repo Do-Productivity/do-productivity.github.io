@@ -1955,6 +1955,16 @@
     #runs-btn { display: none; }
   }
   .toolbar-btn.on { color: var(--ink); border-color: var(--ink-faint); }
+  /* Esc is not a key a phone has. Opening a drawer is the one thing search
+     leaves behind, so while one is open there is a visible way to put it
+     back, in the toolbar where the eye already is. */
+  .toolbar-btn.undo-drawer {
+    color: var(--red);
+    border-color: var(--red);
+    background: #fdf1ee;
+  }
+  .toolbar-btn.undo-drawer:hover { color: var(--red); border-color: var(--red); }
+  .toolbar-btn[hidden] { display: none; }
   .toolbar-btn.off { color: var(--ink-faint); }
 
   /* Phone held sideways: width is plentiful, height is the scarce resource,
@@ -2011,6 +2021,7 @@
     <span class="build-stamp" id="build-stamp" title="Which version this device is running"></span>
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
+    <button class="toolbar-btn undo-drawer" id="undo-drawer" hidden>× Close Completed</button>
     <button class="toolbar-btn" id="search-btn" title="Search everything (press / )">Search</button>
     <button class="toolbar-btn" id="today-btn">Today</button>
     <button class="toolbar-btn" id="runs-btn" title="Show or hide the Scheduled tasks column">Scheduled</button>
@@ -4054,7 +4065,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1745";
+  var BUILD = "2026-11-08-1749";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -5303,19 +5314,29 @@
     // search did — it looks like the app broke. Remember which one, say so,
     // and let Escape put it back.
     var lastOpened = null;
+    var undoBtn = document.getElementById("undo-drawer");
+
+    function showUndo(opened) {
+      lastOpened = opened;
+      if (!undoBtn) return;
+      undoBtn.hidden = !opened;
+      if (opened) undoBtn.textContent = "\u00d7 Close " + opened.label;
+    }
 
     function closeLastDrawer() {
       if (!lastOpened) return false;
       var p = panelEl(lastOpened.listId);
       var sec = p && p.querySelector(lastOpened.trash
         ? ".completed-section.trash" : ".completed-section:not(.trash)");
-      lastOpened = null;
+      showUndo(null);
       if (!sec || !sec.classList.contains("open")) return false;
       var toggle = sec.querySelector(".completed-toggle");
       if (!toggle) return false;
       toggle.click();
       return true;
     }
+
+    if (undoBtn) undoBtn.addEventListener("click", function () { closeLastDrawer(); });
 
     function find(panel, attr, id) {
       return panel.querySelector("[data-" + attr + '="' + id + '"]');
@@ -5349,8 +5370,10 @@
         if (!node) { flashStatus("Opened " + r.listTitle + " \u2014 the row has moved."); return; }
         var opened = openDrawerFor(node, r.listId);
         if (opened) {
-          lastOpened = opened;
-          flashStatus("Opened " + opened.label + " \u2014 press Esc to close it again.");
+          // the chip says what happened and undoes it; a status line as well
+          // was just noise, and on a phone its flex:1 wrapped the toolbar
+          // onto a second row
+          showUndo(opened);
           // the drawer re-rendered, so the row object is a new one
           setTimeout(function () { flash(find(panel, attr, r.id)); }, 90);
           return;
@@ -5361,6 +5384,7 @@
 
     // ── open / close ──
     function open() {
+      closeLastDrawer();     // one search, one drawer — they must not pile up
       modal.classList.add("show");
       input.value = "";
       results = [];

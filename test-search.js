@@ -176,9 +176,31 @@
       !!dl && dl.scrollHeight <= dl.clientHeight + 2 ? true : !!dl && dl.clientHeight < dl.scrollHeight,
       dl ? dl.clientHeight + "/" + dl.scrollHeight : "no list");
 
-    // and Escape puts back what the search opened
+    // A phone has no Escape key, so the way back has to be visible and
+    // tappable: a chip in the toolbar, on screen, saying what it will undo.
+    var chip = document.getElementById("undo-drawer");
+    check("a visible undo appears", !!chip && !chip.hidden,
+      chip ? chip.textContent : "no chip");
+    if (chip && !chip.hidden) {
+      var cb = chip.getBoundingClientRect();
+      check("the undo is on screen", cb.top >= 0 && cb.bottom <= window.innerHeight,
+        Math.round(cb.top) + ".." + Math.round(cb.bottom));
+      chip.click();
+      await sleep(300);
+      drawer = $$(".completed-section", panel("personal")).filter(function (s) {
+        return !s.classList.contains("trash");
+      })[0];
+      check("tapping the undo closes the drawer",
+        !!drawer && !drawer.classList.contains("open"), "");
+      check("the undo goes away with it", chip.hidden, "");
+    }
+
+    // ...and Escape does the same, for a keyboard. Land on it again first,
+    // since the chip just put the drawer back.
+    await search(TAG + " open");
+    await pickFirst();
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    await sleep(260);
+    await sleep(300);
     drawer = $$(".completed-section", panel("personal")).filter(function (s) {
       return !s.classList.contains("trash");
     })[0];
