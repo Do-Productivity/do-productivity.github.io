@@ -261,7 +261,12 @@
     margin-bottom: 8px;
   }
   .add-input {
+    /* flex items refuse to shrink below their intrinsic width unless told:
+       an <input> asks for ~180px, which on a 230px column pushed ADD clean
+       off the card and over the next one. Same reason .due-input has it. */
     flex: 1;
+    min-width: 0;
+    max-width: 100%;
     font-family: var(--serif);
     font-style: italic;
     font-size: 16px;
@@ -277,6 +282,8 @@
   .panel.business .add-input:focus { border-color: var(--blue); }
   .add-input::placeholder { color: var(--ink-faint); font-style: italic; }
   .add-btn {
+    /* the input gives way, never the button: a squeezed ADD loses its label */
+    flex: 0 0 auto;
     font-family: var(--sans);
     font-size: 12px;
     font-weight: 700;
@@ -499,7 +506,9 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
+    max-width: 100%;
   }
+  .add-row { max-width: 100%; }
   .due-label {
     font-family: var(--sans);
     font-size: 10px;
@@ -512,6 +521,9 @@
   .due-input {
     flex: 1;
     min-width: 0;
+    /* min-width alone trusts the flex algorithm; a date field is a UA widget
+       whose reported width varies by platform, so cap it outright */
+    max-width: 100%;
     font-family: var(--sans);
     font-size: 12px;
     color: var(--ink-soft);
@@ -1623,9 +1635,30 @@
     .mobile-tab { font-size: 16px; padding: 10px 6px 8px; }
   }
 
+  /* A laptop window dragged narrower than a phone is still a laptop: it has a
+     mouse, a scroll wheel and no status strip to dodge. The accordion is a
+     good use of a narrow window, so it stays — but the phone's furniture is
+     not. The 3-D card fan is a touch toy, and binding the page to the window
+     (overflow:hidden + 100dvh) took the wheel away entirely, which is what
+     broke a half-screen window today. pointer:fine is the test, so phones
+     and tablets (coarse) keep the layout built for them. */
+  @media (max-width: 720px) and (pointer: fine) {
+    html, body { height: auto; overflow: visible; }
+    .layout { height: auto; min-height: 100vh; min-height: 100dvh; }
+    .card-fan, .fan-more { display: none; }
+    .mobile-tabs { display: flex; }
+    /* the page scrolls again, so the open card grows with its list instead
+       of trapping it behind an inner scrollbar */
+    .panel.expanded .task-list,
+    .panel.expanded .note-list,
+    .panel.expanded .run-list { flex: none; overflow-y: visible; }
+    /* sized by its content, not by the free space: the page is what scrolls */
+    .panel.expanded { flex: 0 0 auto; }
+  }
+
   /* Desktop: equal-height cards that reach the bottom of the window, rather
      than three ragged cards with dead space beneath them. */
-  @media (min-width: 1101px) and (min-height: 520px) {
+  @media (min-width: 1201px) and (min-height: 520px) {
     html, body { height: 100%; }
     .layout {
       height: 100vh;
@@ -1650,8 +1683,13 @@
   /* Unfolded phones and tablets (and narrow laptop windows): keep the two
      columns, but let them fill the screen instead of sitting in the top third,
      and lift the type for the larger display. */
-  @media (min-width: 721px) and (max-width: 1100px) and (min-height: 340px),
-         (min-width: 1101px) and (min-height: 340px) and (max-height: 519px) {
+  /* Up to 1200, not 1100: four columns out of 1114px (an unfolded Duo) are
+     244px wide, and at the desktop's type size an input in a 244px column
+     shows "What nee" with the date field squeezed to "dd/mm/...". The cut is
+     really about column width — under ~280px the compact set reads better —
+     and with four panels that lands at about 1200px of window. */
+  @media (min-width: 721px) and (max-width: 1200px) and (min-height: 340px),
+         (min-width: 1201px) and (min-height: 340px) and (max-height: 519px) {
     html, body { height: 100%; }
     .layout {
       height: 100vh;
@@ -1677,6 +1715,12 @@
       padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 28px));
     }
     .toolbar { margin-bottom: 10px; }   /* 22px is a scrolling page's gap */
+    /* The clock and signal sit in the top-right CORNER, and the card under
+       them cannot move without surrendering a column — but its title can.
+       Indent the last card's header only; the list below keeps full width. */
+    .panels > .panel:last-child .panel-header {
+      padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 28px));
+    }
     /* Unfolded: all three side by side, like the desktop. */
     .panels { flex: 1; min-height: 0; align-items: stretch; gap: 12px;
               grid-auto-columns: minmax(var(--track-min, 195px), 1fr); }
@@ -1818,6 +1862,7 @@
     <button class="mobile-tab personal" id="tab-personal">Personal<span class="dot">.</span><span class="tab-count" id="tab-count-personal">0</span></button>
     <button class="mobile-tab business" id="tab-business">Business<span class="dot">.</span><span class="tab-count" id="tab-count-business">0</span></button>
     <button class="mobile-tab notes" id="tab-notes">Notes<span class="dot">.</span><span class="tab-count" id="tab-count-notes">0</span></button>
+    <button class="mobile-tab runs" id="tab-runs">Scheduled<span class="dot">.</span><span class="tab-count" id="tab-count-runs">0</span></button>
   </div>
 
   <div class="today" id="today"></div>
@@ -3835,7 +3880,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1307";
+  var BUILD = "2026-11-08-1450";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -5100,7 +5145,11 @@
   // never more than one tap away even if the list no longer scrolls.
   (function () {
     var tucked = false;
-    function isPhone() { return window.matchMedia("(max-width: 720px)").matches; }
+    // pointer:coarse as well as width: a narrow laptop window shows the
+    // tab row instead of the fan, and has nothing to tuck.
+    function isPhone() {
+      return window.matchMedia("(max-width: 720px) and (pointer: coarse)").matches;
+    }
 
     function listFrom(node) {
       while (node && node !== panelsRoot) {
