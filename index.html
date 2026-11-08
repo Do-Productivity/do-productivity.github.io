@@ -1283,9 +1283,11 @@
        column surrendered about a fifth of the Duo's screen to empty paper.
        Clamp the content, and let the toolbar alone clear the full strip. */
     .layout {
+      /* The bottom was 52px of paper nobody can use now that the card is
+         bounded by the screen; it was there for a page that scrolled. */
       padding: calc(10px + env(safe-area-inset-top, 0px))
                clamp(8px, env(safe-area-inset-left, 0px), 20px)
-               calc(52px + env(safe-area-inset-bottom, 0px))
+               calc(10px + env(safe-area-inset-bottom, 0px))
                clamp(8px, env(safe-area-inset-right, 0px), 20px);
     }
     .toolbar {
@@ -1404,7 +1406,13 @@
     }
     .panel.expanded .task-list,
     .panel.expanded .note-list,
-    .panel.expanded .run-list { flex: 1; }
+    .panel.expanded .run-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
     .panel.expanded .panel-footer { margin-top: auto; }
     .note-text, .note-input, .note-edit { font-family: var(--sans); font-size: 15px; }
     .note-input, .note-edit { font-size: 16px; }   /* no iOS zoom-jump */
@@ -1444,10 +1452,14 @@
     /* Fill the screen: the card stretches to the bottom of the viewport so the
        list uses the whole phone instead of floating in the top half, and the
        footer sits where the thumb is. 100dvh accounts for Safari's bars. */
-    html, body { height: 100%; }
+    html, body { height: 100%; overflow: hidden; }
     .layout {
-      min-height: 100vh;
-      min-height: 100dvh;
+      /* height, not min-height: with min-height a long list grew the card
+         past the bottom of the phone — on the folded screen it ran 200px
+         below the fold, so the footer and the add row were unreachable
+         without scrolling the whole page. */
+      height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
     }
@@ -1477,6 +1489,21 @@
     /* while a thumb is down the cards track it exactly — the easing is for
        the snap afterwards, not for following a finger */
     .card-fan.dragging .fan-card { transition: none; }
+    /* The cards are deliberately large, which costs a quarter of a short
+       screen. They tuck away once you start reading the list and come back
+       when you return to the top, so the list gets the whole phone without
+       the cards being made small to pay for it. */
+    .card-fan {
+      transition: height .22s ease, opacity .16s ease, margin-bottom .22s ease;
+    }
+    .card-fan.tucked {
+      height: 0;
+      opacity: 0;
+      margin-bottom: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .card-fan.tucked .fan-card { transition: none; }
     /* Shown once, while the cards demonstrate themselves. It is pushed
        toward the viewer rather than given a z-index: inside a preserve-3d
        parent it is depth that decides what covers what. The scale cancels
@@ -3808,7 +3835,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1253";
+  var BUILD = "2026-11-08-1307";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4772,6 +4799,7 @@
   function setMobileTab(id) {
     if (PANEL_IDS.indexOf(id) === -1) id = "personal";
     cancelFanHint();              // a pending nudge would fight the new card
+    untuckFan();                  // a different list starts at its own top
     panelsRoot.className = "panels show-" + id;
     PANEL_IDS.forEach(function (t) {
       var el2 = panelEl(t);
@@ -5022,6 +5050,7 @@
   // grid, a swipe — is the same animated glide.
   var fanBuilt = "";
   var fanSuppressClick = false;
+  var untuckFan = function () {};   // set once the tuck behaviour is wired
 
   function buildFanCards() {
     fanRoot.textContent = "";
@@ -5055,6 +5084,69 @@
     // and only once the cards have settled is there anything to demonstrate
     setTimeout(function () { playFanHint(localStorage.getItem(MTAB_KEY) || PANEL_IDS[0]); }, 1050);
   }
+
+  // Reading a long list on a phone should not happen through a letterbox:
+  // pushing the list up tucks the fan away, pulling it back down brings the
+  // cards out again.
+  //
+  // It listens to the GESTURE — wheel deltas and finger travel — not to
+  // scrollTop. Tucking grows the list by the height of the fan, so the
+  // content shifts and the element reports a large scroll of its own
+  // accord; reacting to that put the cards in a loop, flapping in and out
+  // (at 375x667 the fan measured 1px mid-swing). A finger only ever moves
+  // because somebody moved it.
+  //
+  // The "All Lists" pill stays on screen while tucked, so the cards are
+  // never more than one tap away even if the list no longer scrolls.
+  (function () {
+    var tucked = false;
+    function isPhone() { return window.matchMedia("(max-width: 720px)").matches; }
+
+    function listFrom(node) {
+      while (node && node !== panelsRoot) {
+        if (node.className && typeof node.className === "string" &&
+            /\b(task-list|note-list|run-list)\b/.test(node.className)) return node;
+        node = node.parentElement;
+      }
+      return null;
+    }
+    function tuck(on) {
+      if (tucked === on) return;
+      tucked = on;
+      fanRoot.classList.toggle("tucked", on);
+    }
+
+    panelsRoot.addEventListener("wheel", function (e) {
+      if (!isPhone()) return;
+      var el = listFrom(e.target);
+      if (!el) return;
+      // The second test is for a trackpad: one notch from the very top can
+      // carry the list hundreds of pixels while scrollTop still reads 0 at
+      // the moment the event arrives.
+      if (e.deltaY > 2 && (el.scrollTop > 44 || e.deltaY > 44)) tuck(true);
+      else if (e.deltaY < -2) tuck(false);
+    }, { passive: true });
+
+    var fromY = null;
+    panelsRoot.addEventListener("touchstart", function (e) {
+      fromY = e.touches.length === 1 ? e.touches[0].clientY : null;
+    }, { passive: true });
+
+    panelsRoot.addEventListener("touchmove", function (e) {
+      if (!isPhone() || fromY === null) return;
+      var el = listFrom(e.target);
+      if (!el) return;
+      var dy = e.touches[0].clientY - fromY;
+      if (dy < -26 && el.scrollTop > 44) tuck(true);
+      else if (dy > 26) tuck(false);
+    }, { passive: true });
+
+    panelsRoot.addEventListener("touchend", function () { fromY = null; }, { passive: true });
+
+    // Changing list starts you at the top of a different one, so the cards
+    // belong back on screen.
+    untuckFan = function () { tuck(false); };
+  })();
 
   // ── First run: show that the cards turn ─────────────────
   // A fan of cards doesn't announce that it is a carousel — the shoulders
