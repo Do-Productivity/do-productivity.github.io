@@ -366,9 +366,10 @@
   }
   .run-card.is-done { opacity: .62; }
   .run-head { display: flex; align-items: baseline; gap: 8px; }
+  /* Serif, like every other piece of content in a card — the step list was
+     the only place in the app setting its own typeface. */
   .run-name {
-    flex: 1; min-width: 0; font-family: var(--sans); font-size: 14px;
-    font-weight: 700; color: var(--ink);
+    flex: 1; min-width: 0; font-size: 16px; font-weight: 700; color: var(--ink);
   }
   .run-progress {
     flex: none; font-family: var(--sans); font-size: 11px; font-weight: 700;
@@ -398,8 +399,7 @@
   }
   .run-step .task-circle { width: 17px; height: 17px; margin-top: 1px; }
   .run-step-text {
-    flex: 1; min-width: 0; font-family: var(--sans); font-size: 13.5px;
-    line-height: 1.45; color: var(--ink);
+    flex: 1; min-width: 0; font-size: 15px; line-height: 1.5; color: var(--ink);
   }
   .run-step.is-done .run-step-text { color: var(--ink-faint); text-decoration: line-through; }
   .run-done-list .run-card { margin-top: 10px; }
@@ -414,10 +414,12 @@
   }
   .runbook-act.danger { color: var(--red); border-color: var(--red-soft); }
   .run-add-step {
-    width: 100%; font-family: var(--sans); font-size: 13px; color: var(--ink);
+    width: 100%; font-family: var(--serif); font-style: italic;
+    font-size: 15px; color: var(--ink);
     background: transparent; border: none; border-bottom: 1px dashed var(--rule);
     padding: 7px 2px 5px; margin-top: 4px; outline: none;
   }
+  .run-add-step::placeholder { color: var(--ink-faint); font-style: italic; }
   .run-add-step:focus { border-bottom-style: solid; border-bottom-color: var(--ink-faint); }
   .run-head .task-edit { flex: 1; min-width: 0; font-size: 14px; }
   .today-row .task-circle.is-locked { opacity: .45; cursor: default; }
@@ -1629,6 +1631,14 @@
       flex-direction: column;
       padding-left: clamp(20px, env(safe-area-inset-left, 0px), 28px);
       padding-right: clamp(20px, env(safe-area-inset-right, 0px), 28px);
+    }
+    /* The device draws its clock and signal down the RIGHT edge and reports
+       an inset wider than the 28px the content is capped at. The cards can
+       sit under the rest of that strip, but the toolbar buttons cannot —
+       they were landing under the glyphs. Give the toolbar the remainder. */
+    .toolbar {
+      padding-left: max(0px, calc(env(safe-area-inset-left, 0px) - 28px));
+      padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 28px));
       /* The base layout keeps 28/52 top and bottom, which suits a page that
          scrolls. This one does not scroll — the cards are the window — so
          that padding was just 80px of paper nobody can use. Clamped rather
@@ -1689,6 +1699,10 @@
     .task-row { gap: 7px; padding: 8px 0; }
     .task-circle { width: 18px; height: 18px; }
     .task-text { font-size: 14px; line-height: 1.45; }
+    /* the step list tracks the task list exactly at this width */
+    .run-step-text { font-size: 14px; line-height: 1.45; }
+    .run-name { font-size: 15px; }
+    .run-add-step { font-size: 14px; }
     .task-meta { font-size: 10.5px; }
     .task-actions { flex-direction: column; gap: 0; align-self: flex-start; }
     .note-input, .note-edit, .note-text { font-size: 13.5px; }
@@ -3792,7 +3806,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1241";
+  var BUILD = "2026-11-08-1244";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
