@@ -1800,6 +1800,24 @@
     .panel-footer, .clear-completed { font-size: 10px; }
   }
 
+  /* Four columns stop working long before they stop fitting. At 900px wide
+     each one is 202px: "Surprise treatment through CX for good customers"
+     breaks over four lines, the add box reads "What ne" and the date field
+     is cut off mid-format. Below ~980 the cards go two by two instead —
+     420px of line length beats four cramped ribbons. A second row needs the
+     height for it, hence min-height; a short window keeps the single row and
+     lets the lists scroll inside. */
+  @media (min-width: 721px) and (max-width: 980px) and (min-height: 560px) {
+    .panels {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      /* both rows share the window; the lists scroll inside their cards */
+      grid-auto-rows: minmax(0, 1fr);
+      gap: 12px;
+    }
+    .panel.notes { grid-column: auto; }
+  }
+
   /* Phone held sideways: width is plentiful, height is the scarce resource,
      so spend the savings vertically — drop the subtitle line, thin the
      toolbar and tighten the paddings. */
@@ -3880,7 +3898,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1450";
+  var BUILD = "2026-11-08-1453";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
