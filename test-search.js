@@ -162,6 +162,29 @@
     check("completed drawer opens", !!drawer && drawer.classList.contains("open"), "");
     check("completed row flashes", !!(landed && landed.hit), "");
 
+    // The drawer sits beside the scrolling list, so an open one used to push
+    // the whole card off the bottom of the page and carry the toolbar with
+    // it — which is what made a search impossible to undo.
+    var cardBottom = Math.round(panel("personal").getBoundingClientRect().bottom);
+    check("card stays inside the window", cardBottom <= window.innerHeight + 2,
+      cardBottom + " vs " + window.innerHeight);
+    check("page does not grow",
+      document.documentElement.scrollHeight <= window.innerHeight + 2,
+      document.documentElement.scrollHeight + " vs " + window.innerHeight);
+    var dl = $(".completed-list", drawer);
+    check("drawer scrolls on its own",
+      !!dl && dl.scrollHeight <= dl.clientHeight + 2 ? true : !!dl && dl.clientHeight < dl.scrollHeight,
+      dl ? dl.clientHeight + "/" + dl.scrollHeight : "no list");
+
+    // and Escape puts back what the search opened
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await sleep(260);
+    drawer = $$(".completed-section", panel("personal")).filter(function (s) {
+      return !s.classList.contains("trash");
+    })[0];
+    check("Esc closes the drawer search opened",
+      !!drawer && !drawer.classList.contains("open"), "");
+
     // 3. deleted — the trash drawer
     row = rowsIn(panel("personal"), ".task-row")[0];
     $(".task-delete", row).click();

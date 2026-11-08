@@ -1032,7 +1032,19 @@
   .panel.business .count-badge { background: #a8c4d8; }
 
   .completed-list { list-style: none; display: none; }
-  .completed-section.open .completed-list { display: block; }
+  /* The drawer sits BESIDE the scrolling list, not inside it, so sixty-three
+     completed rows pushed the whole card off the bottom of the page and took
+     the toolbar with it — the search that opened the drawer then looked
+     impossible to undo. Cap it and let it scroll on its own; the open list
+     above has flex:1 and min-height:0, so it yields the space. */
+  .completed-section.open .completed-list {
+    display: block;
+    max-height: min(42vh, 380px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .completed-section { min-height: 0; }
   .completed-section .empty-state { display: none; padding: 12px 2px 16px; }
   .completed-section.open .empty-state.visible { display: block; }
 
@@ -4042,7 +4054,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1738";
+  var BUILD = "2026-11-08-1745";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -5272,9 +5284,33 @@
     // Clicking the drawer's own toggle is what opens it, because the panel
     // keeps that state in a closure — setting the class would be undone by
     // the next render.
-    function openDrawerFor(node) {
+    function openDrawerFor(node, listId) {
       var sec = node.closest(".completed-section");
       if (!sec || sec.classList.contains("open")) return false;
+      var toggle = sec.querySelector(".completed-toggle");
+      if (!toggle) return false;
+      // Everything about the drawer has to be read BEFORE the click: the
+      // toggle re-renders the panel, which detaches this node, and a
+      // detached node's closest() is null.
+      var trash = sec.classList.contains("trash");
+      toggle.click();
+      return { listId: listId, trash: trash,
+               label: trash ? "Recently deleted" : "Completed" };
+    }
+
+    // Opening a drawer is the one thing search does that outlives the search
+    // itself, and a drawer with sixty rows in it does not look like something
+    // search did — it looks like the app broke. Remember which one, say so,
+    // and let Escape put it back.
+    var lastOpened = null;
+
+    function closeLastDrawer() {
+      if (!lastOpened) return false;
+      var p = panelEl(lastOpened.listId);
+      var sec = p && p.querySelector(lastOpened.trash
+        ? ".completed-section.trash" : ".completed-section:not(.trash)");
+      lastOpened = null;
+      if (!sec || !sec.classList.contains("open")) return false;
       var toggle = sec.querySelector(".completed-toggle");
       if (!toggle) return false;
       toggle.click();
@@ -5311,7 +5347,10 @@
                  : r.kind === "step" ? "step-id" : "sched-id";
         var node = find(panel, attr, r.id);
         if (!node) { flashStatus("Opened " + r.listTitle + " \u2014 the row has moved."); return; }
-        if (openDrawerFor(node)) {
+        var opened = openDrawerFor(node, r.listId);
+        if (opened) {
+          lastOpened = opened;
+          flashStatus("Opened " + opened.label + " \u2014 press Esc to close it again.");
           // the drawer re-rendered, so the row object is a new one
           setTimeout(function () { flash(find(panel, attr, r.id)); }, 90);
           return;
@@ -5351,6 +5390,10 @@
       if (modal.classList.contains("show")) {
         if (e.key === "Escape") close();
         return;
+      }
+      // Escape with the search shut means "undo what it left open"
+      if (e.key === "Escape" && lastOpened) {
+        if (closeLastDrawer()) { e.preventDefault(); return; }
       }
       var t = e.target;
       var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
