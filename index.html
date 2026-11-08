@@ -352,6 +352,74 @@
     margin-top: 4px;
   }
 
+  /* ── Today ───────────────────────────────── */
+  /* One screen that answers "what now": overdue, then today, then tomorrow,
+     across every list. It replaces the lists rather than sitting beside
+     them, because the whole point is to stop you reading three columns and
+     doing the merge in your head. */
+  .today { display: none; }
+  body.view-today .today { display: flex; flex-direction: column; min-height: 0; }
+  body.view-today .panels,
+  body.view-today .card-fan,
+  body.view-today .fan-more,
+  body.view-today .mobile-tabs { display: none !important; }
+
+  .today-card {
+    /* A single column of one-line tasks stretched across a desktop reads
+       badly; the lists get their width from being three. */
+    max-width: 880px;
+    width: 100%;
+    margin: 0 auto;
+    background: var(--card);
+    border-radius: 14px;
+    border-top: 3px solid var(--ink-soft);
+    box-shadow: 0 2px 14px rgba(43, 38, 32, 0.08);
+    padding: 20px 20px 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .today-title { font-family: var(--serif); font-size: 30px; font-weight: 700; }
+  .today-title .dot { color: var(--red); }
+  .today-sub {
+    font-family: var(--sans); font-size: 10px; font-weight: 700; letter-spacing: 2.4px;
+    text-transform: uppercase; color: var(--ink-faint); margin-top: 5px;
+  }
+  .today-scroll { overflow-y: auto; min-height: 0; margin-top: 14px; }
+  .today-group { margin-bottom: 16px; }
+  .today-head {
+    font-family: var(--sans); font-size: 10px; font-weight: 700; letter-spacing: 1.8px;
+    text-transform: uppercase; color: var(--ink-faint);
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  .today-head.is-overdue { color: var(--red); }
+  .today-head .n { float: right; letter-spacing: 0; }
+  .today-row {
+    display: flex; align-items: flex-start; gap: 11px;
+    padding: 11px 2px; border-bottom: 1px solid var(--rule);
+  }
+  .today-group .today-row:last-child { border-bottom: none; }
+  .today-body { flex: 1; min-width: 0; }
+  .today-text { font-family: var(--sans); font-size: 15px; line-height: 1.45; }
+  .today-meta {
+    font-family: var(--sans); font-size: 11px; color: var(--ink-faint);
+    margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .today-when.is-overdue { color: var(--red); font-weight: 700; }
+  .today-when.is-soon { color: #b3701f; font-weight: 700; }
+  .today-tag {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 999px; padding: 1px 9px; cursor: pointer; color: var(--ink-soft);
+  }
+  .today-empty {
+    font-family: var(--serif); font-style: italic; font-size: 16px;
+    color: var(--ink-faint); padding: 26px 2px; line-height: 1.6;
+  }
+  .today-later {
+    font-family: var(--sans); font-size: 11px; color: var(--ink-faint);
+    padding: 10px 2px 4px; border-top: 1px solid var(--rule);
+  }
+
   /* ── Due dates ───────────────────────────── */
   .due-row {
     display: flex;
@@ -1469,6 +1537,8 @@
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
+    body.view-today .today { flex: 1; }
+    .today-card { height: 100%; }
     .panel-footer { margin-top: auto; }
   }
 
@@ -1509,6 +1579,8 @@
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
+    body.view-today .today { flex: 1; }
+    .today-card { height: 100%; }
     .panel-footer { margin-top: auto; }
 
     .panel { padding: 13px 12px 5px; border-radius: 12px; }
@@ -1621,6 +1693,7 @@
     <span class="build-stamp" id="build-stamp" title="Which version this device is running"></span>
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
+    <button class="toolbar-btn" id="today-btn">Today</button>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
   </div>
 
@@ -1629,6 +1702,8 @@
     <button class="mobile-tab business" id="tab-business">Business<span class="dot">.</span><span class="tab-count" id="tab-count-business">0</span></button>
     <button class="mobile-tab notes" id="tab-notes">Notes<span class="dot">.</span><span class="tab-count" id="tab-count-notes">0</span></button>
   </div>
+
+  <div class="today" id="today"></div>
 
   <div class="card-fan" id="card-fan"></div>
   <button class="fan-more" id="fan-more">&#x229E;&nbsp; All Lists</button>
@@ -2140,6 +2215,45 @@
       rep: normalizeRep(task.rep),
       mt: now
     };
+  }
+
+  // Ticking a task off is no longer a one-liner — a repeat has to be carried
+  // forward, and taking the tick back has to withdraw it again. It happens
+  // from two places now, the list and the Today view, so it lives in one.
+  // The caller owns saving, redrawing and the calendar mirror.
+  function toggleTaskState(tasks, task) {
+    var now = Date.now();
+    if (task.deleted) {
+      delete task.deleted;
+      delete task.deletedAt;
+    } else if (task.done) {
+      task.done = false;
+      delete task.completedAt;
+      // Taking back a tick takes back the copy it created, as long as
+      // nobody has touched it since — otherwise you are left with two open
+      // copies and no way to tell which one counts.
+      if (task.spawned) {
+        tasks.forEach(function (t) {
+          if (t.id !== task.spawned || t.done || t.deleted) return;
+          t.deleted = true;
+          t.deletedAt = now;
+          t.mt = now;
+        });
+        delete task.spawned;
+      }
+    } else {
+      task.done = true;
+      task.completedAt = now;
+      var next = nextTaskFor(task, now);
+      if (next) {
+        // the id is derived, so a copy may already be here from another
+        // device that ticked this off first
+        var already = tasks.some(function (t) { return t.id === next.id; });
+        if (!already) tasks.push(next);
+        task.spawned = next.id;
+      }
+    }
+    task.mt = now;
   }
 
   function normalizeTasks(parsed) {
@@ -2987,6 +3101,7 @@
     function persist() {
       saveTasks(config.storageKey, tasks);
       scheduleSyncPush();
+      renderToday();          // no-op unless it is the view on screen
     }
 
     // Mirror one task into the Mylo Outlook calendar (no-op unless connected)
@@ -3178,38 +3293,7 @@
       var circle = el("button", "task-circle");
       circle.title = task.deleted ? "Restore task" : (task.done ? "Retrieve task" : "Complete task");
       circle.addEventListener("click", function () {
-        var now = Date.now();
-        if (task.deleted) {
-          delete task.deleted;
-          delete task.deletedAt;
-        } else if (task.done) {
-          task.done = false;
-          delete task.completedAt;
-          // Taking back a tick takes back the copy it created, as long as
-          // nobody has touched it since — otherwise you would be left with
-          // two open copies and no way to tell which one counts.
-          if (task.spawned) {
-            tasks.forEach(function (t) {
-              if (t.id !== task.spawned || t.done || t.deleted) return;
-              t.deleted = true;
-              t.deletedAt = now;
-              t.mt = now;
-            });
-            delete task.spawned;
-          }
-        } else {
-          task.done = true;
-          task.completedAt = now;
-          var next = nextTaskFor(task, now);
-          if (next) {
-            // the id is derived, so a copy may already be here from another
-            // device that ticked this off first
-            var already = tasks.some(function (t) { return t.id === next.id; });
-            if (!already) tasks.push(next);
-            task.spawned = next.id;
-          }
-        }
-        task.mt = now;
+        toggleTaskState(tasks, task);
         persist();
         render();
         outlook(task);
@@ -3425,7 +3509,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1143";
+  var BUILD = "2026-11-08-1202";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4024,6 +4108,160 @@
     localStorage.setItem(MTAB_KEY, id);
     renderFan(id);
   }
+
+  // ── Today ────────────────────────────────────────────────
+  // Three lists side by side is good organisation and poor focus: nothing
+  // answered "what do I do now" without reading all three and merging them
+  // in your head. This is that merge, done once, in time order. It shows
+  // only dated tasks — an undated one is not scheduled, and padding the
+  // screen with everything would defeat the point.
+
+  var todayRoot = document.getElementById("today");
+  var todayOpen = false;
+
+  function startOfDay(ts, plusDays) {
+    var d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    if (plusDays) d.setDate(d.getDate() + plusDays);
+    return d.getTime();
+  }
+
+  function datedTasks(now) {
+    var out = [];
+    taskLists().forEach(function (l) {
+      loadTasks(l.storageKey).forEach(function (t) {
+        if (t.done || t.deleted || !t.due) return;
+        out.push({ task: t, listId: l.id, listTitle: l.title });
+      });
+    });
+    out.sort(function (a, b) { return a.task.due - b.task.due; });
+    return out;
+  }
+
+  // "Overdue" means past, not "earlier today": something set for nine this
+  // morning is overdue by lunchtime, and the task rows have always said so.
+  function todayGroups(now) {
+    var tomorrow = startOfDay(now, 1), after = startOfDay(now, 2);
+    var g = { overdue: [], today: [], tomorrow: [], later: 0 };
+    datedTasks(now).forEach(function (item) {
+      var due = item.task.due;
+      if (due < now) g.overdue.push(item);
+      else if (due < tomorrow) g.today.push(item);
+      else if (due < after) g.tomorrow.push(item);
+      else g.later++;
+    });
+    return g;
+  }
+
+  function todayToggle(item) {
+    var key = keyForListId(item.listId);
+    var arr = loadTasks(key);
+    var t = arr.filter(function (x) { return x.id === item.task.id; })[0];
+    if (!t) return;
+    toggleTaskState(arr, t);
+    saveTasks(key, arr);
+    scheduleSyncPush();
+    cascadeNotesToTask(t.id, !!t.done);
+    syncTaskToOutlook(t, item.listTitle, function () {
+      saveTasks(key, arr);
+      scheduleSyncPush();
+    });
+    // The lists are built from their own copy of the data, so they have to
+    // be told it changed underneath them — the same hook a sync uses.
+    panelReloaders.forEach(function (r) { r(); });
+    renderToday();
+  }
+
+  function todayRow(item, now) {
+    var row = el("div", "today-row");
+    var circle = el("button", "task-circle");
+    circle.title = "Complete task";
+    circle.addEventListener("click", function () { todayToggle(item); });
+    row.appendChild(circle);
+
+    var body = el("div", "today-body");
+    body.appendChild(el("div", "today-text", item.task.text));
+
+    var meta = el("div", "today-meta");
+    var due = item.task.due;
+    var cls = "today-when";
+    if (due < now) cls += " is-overdue";
+    else if (due < startOfDay(now, 1)) cls += " is-soon";
+    meta.appendChild(el("span", cls, formatDateTime(due)));
+
+    var tag = el("span", "today-tag", item.listTitle);
+    tag.title = "Open this list";
+    tag.addEventListener("click", function () {
+      showToday(false);
+      setMobileTab(item.listId);
+      var panel = panelEl(item.listId);
+      if (panel && panel.scrollIntoView) panel.scrollIntoView({ block: "nearest" });
+    });
+    meta.appendChild(tag);
+
+    if (item.task.rep) meta.appendChild(el("span", null, "\u21bb " + repLabel(item.task.rep)));
+    body.appendChild(meta);
+    row.appendChild(body);
+    return row;
+  }
+
+  function todayGroup(title, items, now, overdue) {
+    var wrap = el("div", "today-group");
+    var head = el("div", "today-head" + (overdue ? " is-overdue" : ""), title);
+    head.appendChild(el("span", "n", String(items.length)));
+    wrap.appendChild(head);
+    items.forEach(function (item) { wrap.appendChild(todayRow(item, now)); });
+    return wrap;
+  }
+
+  function renderToday() {
+    if (!todayRoot || !todayOpen) return;
+    var now = Date.now();
+    var g = todayGroups(now);
+
+    todayRoot.textContent = "";
+    var card = el("div", "today-card");
+    var title = el("div", "today-title", "Today");
+    title.appendChild(el("span", "dot", "."));
+    card.appendChild(title);
+    card.appendChild(el("div", "today-sub",
+      new Date(now).toLocaleDateString(undefined,
+        { weekday: "long", day: "numeric", month: "long" })));
+
+    var scroll = el("div", "today-scroll");
+    if (g.overdue.length) scroll.appendChild(todayGroup("Overdue", g.overdue, now, true));
+    if (g.today.length) scroll.appendChild(todayGroup("Today", g.today, now));
+    if (g.tomorrow.length) scroll.appendChild(todayGroup("Tomorrow", g.tomorrow, now));
+
+    if (!g.overdue.length && !g.today.length && !g.tomorrow.length) {
+      scroll.appendChild(el("div", "today-empty", g.later
+        ? "Nothing until later in the week."
+        : "Nothing due. Give a task a date and it turns up here."));
+    }
+    if (g.later) {
+      scroll.appendChild(el("div", "today-later",
+        g.later + (g.later === 1 ? " dated task" : " dated tasks") + " further ahead."));
+    }
+    card.appendChild(scroll);
+    todayRoot.appendChild(card);
+  }
+
+  function showToday(on) {
+    todayOpen = !!on;
+    document.body.classList.toggle("view-today", todayOpen);
+    var btn = document.getElementById("today-btn");
+    if (btn) btn.textContent = todayOpen ? "Lists" : "Today";
+    if (todayOpen) renderToday();
+    else if (todayRoot) todayRoot.textContent = "";
+  }
+
+  (function () {
+    var btn = document.getElementById("today-btn");
+    if (btn) btn.addEventListener("click", function () { showToday(!todayOpen); });
+    // A due time passing changes which group a task belongs in, so keep it
+    // honest while it is on screen rather than only when something is ticked.
+    setInterval(function () { if (todayOpen) renderToday(); }, 60000);
+  })();
 
   // ── Wallet fan ───────────────────────────────────────────
   // Three cards, the chosen one face on and the other two at its shoulders.
@@ -5180,6 +5418,7 @@
     }
     panelReloaders.forEach(function (r) { r(); });
     noteReloaders.forEach(function (r) { r(); });
+    renderToday();
   }
 
   function setSyncStatusLine(override) {
