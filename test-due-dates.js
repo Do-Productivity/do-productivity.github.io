@@ -1,28 +1,43 @@
 #!/usr/bin/env node
-/* Checks the natural-language due-date reader:   node test-due-dates.js
+/* Checks the natural-language due-date reader and the repeat arithmetic:
  *
- * The parser is lifted straight out of index.html rather than copied here,
- * so the thing under test is always the thing that ships. "now" is pinned to
+ *     node test-due-dates.js
+ *
+ * Both are lifted straight out of index.html rather than copied here, so the
+ * thing under test is always the thing that ships. "now" is pinned to
  * Thursday 5 November 2026, 10:00 local, which is what makes every expected
  * answer below a fixed string instead of a moving target.
  *
- * Half of these cases are tasks with NO date in them. Those matter most: a
- * reader that volunteers a due date for "buy 2 apples" is worse than no
- * reader at all, so each one is a test that nothing was detected.
+ * Half of the reader's cases are tasks with NO date in them. Those matter
+ * most: a reader that volunteers a due date for "buy 2 apples" is worse than
+ * no reader at all, so each one is a test that nothing was detected.
  */
 var fs = require("fs");
 var path = require("path");
 
 var src = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
-var from = src.indexOf("// ── Natural-language due dates");
-var to = src.indexOf("function ensureNotifyPermission()");
-if (from < 0 || to < 0 || to < from) {
-  console.error("Could not find the parser in index.html — markers moved?");
-  process.exit(2);
+
+function slice(fromMarker, toMarker, what) {
+  var a = src.indexOf(fromMarker), b = src.indexOf(toMarker);
+  if (a < 0 || b < 0 || b < a) {
+    console.error("Could not find " + what + " in index.html — markers moved?");
+    process.exit(2);
+  }
+  return src.slice(a, b);
 }
-var parseNaturalDue = new Function(
-  src.slice(from, to) + "\nreturn parseNaturalDue;"
+
+// The reader calls defaultDue, which lives with the repeat model, so both
+// blocks are evaluated together in one scope.
+var sandbox = new Function(
+  slice("// ── Repeating tasks", "function normalizeTasks(", "the repeat model") +
+  slice("// ── Natural-language due dates", "function ensureNotifyPermission()", "the date reader") +
+  "\nreturn { parseNaturalDue: parseNaturalDue, repLabel: repLabel," +
+  "         nextOccurrence: nextOccurrence, defaultDue: defaultDue };"
 )();
+var parseNaturalDue = sandbox.parseNaturalDue;
+var repLabel = sandbox.repLabel;
+var nextOccurrence = sandbox.nextOccurrence;
+function label(r) { return repLabel(r); }
 
 var NOW = new Date(2026, 10, 5, 10, 0, 0, 0).getTime();   // Thu 5 Nov 2026
 var DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -33,7 +48,8 @@ function stamp(ts) {
     String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
-// [typed text, expected date or null, expected task text left behind]
+// [typed text, expected date or null, expected task text left behind,
+//  expected repeat rule or undefined]
 var CASES = [
   ["call mum tomorrow 6pm",            "Fri 6/11 18:00",  "call mum"],
   ["call mum tomorrow at 6pm",         "Fri 6/11 18:00",  "call mum"],
@@ -85,7 +101,19 @@ var CASES = [
   ["sun cream",                        null, null],
   ["20 push ups",                      null, null],
   ["review PR 123",                    null, null],
-  ["standup every monday",             null, null],   // no recurring tasks here
+  // Repeats. "every X" is two statements — how often, and when the first
+  // one falls — so the date must survive having the repeat taken out.
+  ["standup every monday",             "Mon 9/11 09:00",  "standup",   "every week"],
+  ["team sync every monday 10am",      "Mon 9/11 10:00",  "team sync", "every week"],
+  ["gym every other monday",           "Mon 9/11 09:00",  "gym",       "every other week"],
+  ["pay rent every month",             "Thu 5/11 11:00",  "pay rent",  "every month"],
+  ["standup daily at 9",               "Fri 6/11 09:00",  "standup",   "every day"],
+  ["water plants every 3 days",        "Thu 5/11 11:00",  "water plants", "every 3 days"],
+  ["payroll every weekday",            "Thu 5/11 11:00",  "payroll",   "every weekday"],
+  ["renew domain yearly",              "Thu 5/11 11:00",  "renew domain", "every year"],
+  ["reconcile quarterly",              "Thu 5/11 11:00",  "reconcile", "every 3 months"],
+  // and one it cannot express, which must claim nothing at all
+  ["review every 2nd tuesday of the month", null, null],
   ["email john",                       null, null]
 ];
 
@@ -93,14 +121,71 @@ var failed = 0;
 CASES.forEach(function (c) {
   var r = parseNaturalDue(c[0], NOW);
   var got = r ? stamp(r.due) : null;
-  var ok = (got === c[1]) && (!r || !c[2] || r.text === c[2]);
+  var gotRep = (r && r.rep) ? label(r.rep) : undefined;
+  var ok = (got === c[1]) && (!r || !c[2] || r.text === c[2]) && gotRep === c[3];
   if (!ok) {
     failed++;
     console.log("FAIL  " + JSON.stringify(c[0]));
-    console.log("      expected " + (c[1] || "no date") + (c[2] ? '  "' + c[2] + '"' : ""));
-    console.log("      got      " + (got || "no date") + (r ? '  "' + r.text + '"' : ""));
+    console.log("      expected " + (c[1] || "no date") + (c[2] ? '  "' + c[2] + '"' : "") +
+      (c[3] ? "  [" + c[3] + "]" : ""));
+    console.log("      got      " + (got || "no date") + (r ? '  "' + r.text + '"' : "") +
+      (gotRep ? "  [" + gotRep + "]" : ""));
   }
 });
 
-console.log((CASES.length - failed) + "/" + CASES.length + " passed");
+// ── repeat arithmetic ────────────────────────────────────────────────
+// The reader only decides what the rule IS. This is the part that decides
+// when the next one falls, and it is where a repeat quietly rots: a monthly
+// task walking backwards a day each short month, or a weekday rule landing
+// on a Saturday.
+
+function at(y, m, d, h, min) { return new Date(y, m - 1, d, h || 9, min || 0, 0, 0).getTime(); }
+
+var REPEATS = [
+  // [label, from, rule, now, expected next]
+  ["daily",
+   at(2026, 11, 5), { unit: "day", n: 1 }, at(2026, 11, 5, 10), at(2026, 11, 6)],
+  ["every 3 days",
+   at(2026, 11, 5), { unit: "day", n: 3 }, at(2026, 11, 5, 10), at(2026, 11, 8)],
+  ["weekly keeps its weekday",
+   at(2026, 11, 5), { unit: "week", n: 1 }, at(2026, 11, 5, 10), at(2026, 11, 12)],
+  ["fortnightly",
+   at(2026, 11, 5), { unit: "week", n: 2 }, at(2026, 11, 5, 10), at(2026, 11, 19)],
+  ["weekly ticked three weeks late still lands on a Thursday",
+   at(2026, 11, 5), { unit: "week", n: 1 }, at(2026, 11, 24, 10), at(2026, 11, 26)],
+  ["monthly",
+   at(2026, 11, 5), { unit: "month", n: 1, day: 5 }, at(2026, 11, 5, 10), at(2026, 12, 5)],
+  ["the 31st becomes the 30th in a short month",
+   at(2026, 10, 31), { unit: "month", n: 1, day: 31 }, at(2026, 10, 31, 10), at(2026, 11, 30)],
+  ["and comes BACK to the 31st the month after",
+   at(2026, 11, 30), { unit: "month", n: 1, day: 31 }, at(2026, 11, 30, 10), at(2026, 12, 31)],
+  ["the 31st in January lands on the 28th of February",
+   at(2027, 1, 31), { unit: "month", n: 1, day: 31 }, at(2027, 1, 31, 10), at(2027, 2, 28)],
+  ["quarterly",
+   at(2026, 11, 5), { unit: "month", n: 3, day: 5 }, at(2026, 11, 5, 10), at(2027, 2, 5)],
+  ["yearly",
+   at(2026, 11, 5), { unit: "year", n: 1, day: 5 }, at(2026, 11, 5, 10), at(2027, 11, 5)],
+  ["a weekday rule skips Saturday and Sunday",
+   at(2026, 11, 6), { unit: "weekday" }, at(2026, 11, 6, 10), at(2026, 11, 9)],
+  ["and steps one day midweek",
+   at(2026, 11, 9), { unit: "weekday" }, at(2026, 11, 9, 10), at(2026, 11, 10)],
+  ["a daily task months overdue jumps to tomorrow, not to the day after it was set",
+   at(2026, 8, 1), { unit: "day", n: 1 }, at(2026, 11, 5, 10), at(2026, 11, 6)],
+  ["the time of day is kept",
+   at(2026, 11, 5, 18, 30), { unit: "week", n: 1 }, at(2026, 11, 5, 19), at(2026, 11, 12, 18, 30)]
+];
+
+REPEATS.forEach(function (c) {
+  var got = nextOccurrence(c[1], c[2], c[3]);
+  if (got !== c[4]) {
+    failed++;
+    console.log("FAIL  repeat: " + c[0]);
+    console.log("      expected " + new Date(c[4]).toString().slice(0, 24));
+    console.log("      got      " + new Date(got).toString().slice(0, 24));
+  }
+});
+
+var total = CASES.length + REPEATS.length;
+console.log((total - failed) + "/" + total + " passed  (" +
+  CASES.length + " reading, " + REPEATS.length + " repeat arithmetic)");
 process.exit(failed ? 1 : 0);

@@ -440,9 +440,22 @@
   .due-edit-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;          /* the repeat menu takes a line of its own */
     gap: 6px;
     margin-top: 5px;
   }
+  .rep-select {
+    flex: 1 1 100%;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 6px 8px;
+    outline: none;
+  }
+  .task-rep { color: var(--ink-faint); }
   .due-edit-row .due-input { flex: 1; }
   .due-clear {
     font-family: var(--sans);
@@ -2018,6 +2031,117 @@
   // Shared normalizer for tasks from localStorage or the sync gist.
   // Backfills stable ids (deterministic, so every device derives the same id
   // for the same legacy task) and purges trash older than 30 days.
+  // ── Repeating tasks ──────────────────────────────────────
+  // A repeat is stored on the task as { n, unit, day } and nothing else:
+  // no series object, no parent record. Ticking one off completes it in
+  // place — so it lands in Completed with the date it was actually done,
+  // which is the history worth keeping — and pushes a fresh copy carrying
+  // the same rule forward to the next date.
+  //
+  // The new copy's id is derived from the old id and the new date, so two
+  // devices that tick the same task while offline invent the SAME id and
+  // the ordinary per-id merge folds them into one instead of leaving a
+  // duplicate behind.
+
+  var REP_UNITS = { day: 1, week: 1, month: 1, year: 1, weekday: 1 };
+
+  function normalizeRep(r) {
+    if (!r || typeof r !== "object" || !REP_UNITS[r.unit]) return null;
+    var out = { unit: r.unit };
+    if (typeof r.n === "number" && r.n > 0 && r.n < 100) out.n = Math.round(r.n);
+    if (typeof r.day === "number" && r.day >= 1 && r.day <= 31) out.day = Math.round(r.day);
+    return out;
+  }
+
+  function repLabel(r) {
+    if (!r) return "";
+    var n = r.n || 1;
+    if (r.unit === "weekday") return "every weekday";
+    if (n === 1) return "every " + r.unit;
+    if (n === 2 && r.unit === "week") return "every other week";
+    return "every " + n + " " + r.unit + "s";
+  }
+
+  // Months are not all the same length, so a task set for the 31st keeps
+  // the 31st as its anchor and merely lands on the 30th or the 28th when
+  // the month is short — rather than walking backwards a day a month.
+  function addMonths(date, n, anchorDay) {
+    var y = date.getFullYear(), m = date.getMonth() + n;
+    var lastDay = new Date(y, m + 1, 0).getDate();
+    var d = new Date(y, m, Math.min(anchorDay || date.getDate(), lastDay));
+    d.setHours(date.getHours(), date.getMinutes(), 0, 0);
+    return d;
+  }
+
+  function stepOnce(ts, r) {
+    var d = new Date(ts), n = r.n || 1;
+    if (r.unit === "weekday") {
+      do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+      return d.getTime();
+    }
+    if (r.unit === "day")  { d.setDate(d.getDate() + n); return d.getTime(); }
+    if (r.unit === "week") { d.setDate(d.getDate() + 7 * n); return d.getTime(); }
+    if (r.unit === "month") return addMonths(d, n, r.day).getTime();
+    return addMonths(d, 12 * n, r.day).getTime();
+  }
+
+  // Counted from the date it was due, not from now, so a weekly task ticked
+  // late still lands on its own weekday. Then walked forward until it is
+  // ahead of us, because a repeat that arrives already overdue is no use.
+  function nextOccurrence(from, r, now) {
+    if (!r) return null;
+    var ts = stepOnce(from, r), guard = 0;
+    while (ts <= now && guard++ < 500) ts = stepOnce(ts, r);
+    return ts;
+  }
+
+  // A repeat needs a date to count from. Nine in the morning, or the next
+  // whole hour if nine has already gone — the same rule the typed-date
+  // reader uses when someone names a day but no time.
+  function defaultDue(now) {
+    var d = new Date(now);
+    d.setHours(9, 0, 0, 0);
+    if (d.getTime() < now + 6e4) {
+      d = new Date(now + 36e5);
+      d.setMinutes(0, 0, 0);
+      if (d.getTime() < now + 6e4) d = new Date(d.getTime() + 36e5);
+    }
+    return d.getTime();
+  }
+
+  var REP_CHOICES = [
+    ["",        "Does not repeat",  null],
+    ["day",     "Every day",        { unit: "day",   n: 1 }],
+    ["weekday", "Every weekday",    { unit: "weekday" }],
+    ["week",    "Every week",       { unit: "week",  n: 1 }],
+    ["week2",   "Every other week", { unit: "week",  n: 2 }],
+    ["month",   "Every month",      { unit: "month", n: 1 }],
+    ["year",    "Every year",       { unit: "year",  n: 1 }]
+  ];
+
+  function repKey(r) {
+    if (!r) return "";
+    if (r.unit === "weekday") return "weekday";
+    if (r.unit === "week" && (r.n || 1) === 2) return "week2";
+    if ((r.n || 1) !== 1) return "other";     // e.g. "every 3 days", typed
+    return r.unit;
+  }
+
+  function nextTaskFor(task, now) {
+    if (!task.rep || !task.due) return null;
+    var due = nextOccurrence(task.due, task.rep, now);
+    if (!due) return null;
+    return {
+      text: task.text,
+      done: false,
+      // deterministic, so two devices ticking the same task agree
+      id: "r" + textHash(task.id + "@" + due),
+      due: due,
+      rep: normalizeRep(task.rep),
+      mt: now
+    };
+  }
+
   function normalizeTasks(parsed) {
     if (!Array.isArray(parsed)) return [];
     var purgeBefore = Date.now() - 30 * 24 * 3600 * 1000;
@@ -2035,6 +2159,10 @@
       task.id = (typeof t.id === "string" && t.id) ? t.id : "h" + textHash(t.text);
       if (typeof t.mt === "number") task.mt = t.mt;
       if (typeof t.msEventId === "string") task.msEventId = t.msEventId;
+      var r = normalizeRep(t.rep);
+      if (r) task.rep = r;
+      // which copy this one spawned, so un-ticking can take it back again
+      if (typeof t.spawned === "string") task.spawned = t.spawned;
       return task;
     }).filter(function (t) {
       return !(t.deleted && t.deletedAt && t.deletedAt < purgeBefore);
@@ -2159,9 +2287,15 @@
       if (!m) return false;
       var start = m.index, end = m.index + m[0].length;
       if (fromOriginal && overlaps(start, end)) return false;
-      // A repeat is not a due date, and this app has no recurring tasks, so
-      // "standup every monday" must not quietly become one Monday.
-      if (/\b(?:every|each)(?:\s+other)?\s*$/.test(original.slice(0, start))) return false;
+      // Any "every ..." the reader understands has been taken out above and
+      // is blank in `masked` by now. An "every" still standing there means a
+      // repeat it cannot express — "every 2nd tuesday of the month" — and
+      // one Tuesday is not an acceptable answer, so it claims nothing.
+      // Read from `masked`, never the original: "standup every day at 9" has
+      // a perfectly good 9 o'clock in it once the repeat has been taken out.
+      // The trailing \s* matters: a weekday match begins at the space before
+      // the word, so the prefix ends "…every 2nd" with nothing after it.
+      if (/\b(?:every|each)\s+(?:\S+\s*){0,2}$/.test(masked.slice(0, start))) return false;
       if (use(m) === false) return false;
       spans.push([start, end]);
       masked = masked.slice(0, start) +
@@ -2170,6 +2304,7 @@
       return true;
     }
 
+    var repeat = null;       // a repeat rule, if the text names one
     var dayStart = null;     // local midnight of the target day
     var time = null;         // [hours, minutes]
     var exact = null;        // a whole timestamp, for "in 20 minutes"
@@ -2234,6 +2369,55 @@
         }
       }
       time = [h, min];
+    }
+
+    // ── a repeat, before anything else ──
+    // "every monday 9am" is two statements: how often, and when the first
+    // one falls. Taking the "every" out first leaves an ordinary date
+    // phrase for the rules below, which is why this runs before them
+    // rather than being woven through them.
+    var UNIT_WORDS = {
+      day: "day", days: "day", weekday: "weekday", weekdays: "weekday",
+      week: "week", weeks: "week", fortnight: "week",
+      month: "month", months: "month", year: "year", years: "year"
+    };
+    var PLAIN_REPEATS = {
+      daily: { unit: "day", n: 1 },
+      weekly: { unit: "week", n: 1 },
+      fortnightly: { unit: "week", n: 2 },
+      biweekly: { unit: "week", n: 2 },
+      monthly: { unit: "month", n: 1 },
+      quarterly: { unit: "month", n: 3 },
+      yearly: { unit: "year", n: 1 },
+      annually: { unit: "year", n: 1 }
+    };
+
+    // "every monday" — take only the "every" and let the weekday rule below
+    // set the first date. The lookahead is what leaves it there.
+    take(new RegExp("\\b(?:every|each)\\s+(?:(other|\\d{1,2})\\s+)?(?=(?:" +
+      Object.keys(NL_WEEKDAYS).join("|") + "|sat|sun)\\b)"), function (m) {
+        var n = m[1] === "other" ? 2 : (m[1] ? parseInt(m[1], 10) : 1);
+        if (!n || n > 99) return false;
+        repeat = { unit: "week", n: n };
+      });
+
+    // "every day", "every other week", "every 3 months", "every weekday"
+    if (!repeat) {
+      take(new RegExp("\\b(?:every|each)\\s+(?:(other|\\d{1,2})\\s+)?(" +
+        Object.keys(UNIT_WORDS).join("|") + ")\\b"), function (m) {
+          var unit = UNIT_WORDS[m[2]];
+          var n = m[1] === "other" ? 2 : (m[1] ? parseInt(m[1], 10) : 1);
+          if (m[2] === "fortnight") n = 2;
+          if (!n || n > 99) return false;
+          repeat = (unit === "weekday") ? { unit: "weekday" } : { unit: unit, n: n };
+        });
+    }
+
+    // "weekly", "monthly", "quarterly"
+    if (!repeat) {
+      take(new RegExp("\\b(" + Object.keys(PLAIN_REPEATS).join("|") + ")\\b"), function (m) {
+        repeat = { unit: PLAIN_REPEATS[m[1]].unit, n: PLAIN_REPEATS[m[1]].n };
+      });
     }
 
     // ── the clock, before the day ──
@@ -2417,7 +2601,11 @@
     if (exact !== null) {
       due = Math.round(exact / 6e4) * 6e4;
     } else {
-      if (!dayStart && !time) return null;
+      // A repeat on its own ("every week") still has to start somewhere.
+      if (!dayStart && !time) {
+        if (!repeat) return null;
+        return finish(defaultDue(now));
+      }
       var d = dayStart ? new Date(dayStart.getTime()) : new Date(now);
       if (time) {
         d.setHours(time[0], time[1], 0, 0);
@@ -2436,12 +2624,26 @@
       due = d.getTime();
     }
 
+    return finish(due);
+
     // ── the text, without the phrase ──
+    function finish(due) {
     spans.sort(function (a, b) { return a[0] - b[0]; });
-    var phrase = spans.map(function (s) { return raw.slice(s[0], s[1]).trim(); })
+    // Spans can overlap: "every monday" is taken as two matches, and the
+    // weekday one starts on the space the repeat left behind. Overlapping
+    // ranges have to be merged before anything is cut out of the text, or
+    // the slices run backwards and weld the words either side together
+    // ("standup every monday" came out as "standupmonday").
+    var merged = [];
+    spans.forEach(function (sp) {
+      var last = merged[merged.length - 1];
+      if (last && sp[0] <= last[1]) { last[1] = Math.max(last[1], sp[1]); return; }
+      merged.push([sp[0], sp[1]]);
+    });
+    var phrase = merged.map(function (s) { return raw.slice(s[0], s[1]).trim(); })
       .filter(Boolean).join(" ").replace(/\s{2,}/g, " ").trim();
     var out = "", at = 0;
-    spans.forEach(function (s) { out += raw.slice(at, s[0]); at = s[1]; });
+    merged.forEach(function (s) { out += raw.slice(at, s[0]); at = s[1]; });
     out += raw.slice(at);
     out = out.replace(/\s{2,}/g, " ").trim();
     // What a removed phrase leaves behind: punctuation, and the occasional
@@ -2454,7 +2656,16 @@
     out = out.replace(/^[\s,;:·–—-]+/, "").replace(/^(?:due|by|at|@|on)\s+/i, "").trim();
     if (!out) out = raw.trim();   // "tomorrow 6pm" on its own is still the task's name
 
-    return { due: due, text: out, phrase: phrase };
+    var result = { due: due, text: out, phrase: phrase };
+    if (repeat) {
+      result.rep = { unit: repeat.unit };
+      if (repeat.n) result.rep.n = repeat.n;
+      if (repeat.unit === "month" || repeat.unit === "year") {
+        result.rep.day = new Date(due).getDate();
+      }
+    }
+    return result;
+    }
   }
 
   function ensureNotifyPermission() {
@@ -2710,7 +2921,8 @@
         return;
       }
       smartText.textContent = "";
-      smartText.appendChild(el("span", null, "Due " + formatDateTime(smart.due) + " "));
+      smartText.appendChild(el("span", null, "Due " + formatDateTime(smart.due) +
+        (smart.rep ? " \u21bb " + repLabel(smart.rep) : "") + " "));
       smartText.appendChild(el("span", "sd-from", "\u2014 from \u201c" + smart.phrase + "\u201d"));
       smartOff.textContent = "Not a date";
       smartRow.className = "smart-due show";
@@ -2801,6 +3013,7 @@
       } else if (read) {
         task.text = read.text;      // the phrase has done its job
         task.due = read.due;
+        if (read.rep) task.rep = read.rep;
         // The alarm is the point of a due date, so ask for permission at the
         // moment one is first set this way rather than while typing.
         ensureNotifyPermission();
@@ -2816,7 +3029,9 @@
       render();
       if (task.due) outlook(task);
       if (read) {
-        flashStatus("Due " + formatDateTime(read.due) + " \u2014 read from \u201c" + read.phrase + "\u201d");
+        flashStatus("Due " + formatDateTime(read.due) +
+          (read.rep ? ", " + repLabel(read.rep) : "") +
+          " \u2014 read from \u201c" + read.phrase + "\u201d");
       }
       addInput.focus();
     }
@@ -2866,8 +3081,38 @@
       if (task.due) input.value = toLocalInputValue(task.due);
       var clearBtn = el("button", "due-clear", task.due ? "Clear" : "Cancel");
 
-      function commit() {
+      var repSelect = el("select", "rep-select");
+      var current = repKey(task.rep);
+      if (current === "other") {
+        // typed as something the menu cannot say, e.g. "every 3 days" —
+        // offered back verbatim so choosing nothing does not silently
+        // rewrite the rule
+        repSelect.appendChild(el("option", null, repLabel(task.rep))).value = "keep";
+      }
+      REP_CHOICES.forEach(function (c) {
+        var o = el("option", null, c[1]);
+        o.value = c[0];
+        repSelect.appendChild(o);
+      });
+      repSelect.value = (current === "other") ? "keep" : current;
+
+      // `clearing` is the Clear/Cancel button rather than Save, and the two
+      // have to be told apart: an empty date box with a repeat still chosen
+      // means "give this repeat a date to start from" when saving, and "I
+      // want neither" when clearing. Without the distinction, Clear handed
+      // the date straight back.
+      function commit(clearing) {
         var dateWasSet = false;
+        if (clearing) {
+          delete task.due;
+          delete task.notified;
+          delete task.rep;
+          task.mt = Date.now();
+          persist();
+          render();
+          outlook(task);
+          return;
+        }
         if (input.value) {
           var ts = new Date(input.value).getTime();
           if (!isNaN(ts)) {
@@ -2879,6 +3124,22 @@
           delete task.due;
           delete task.notified;
         }
+        var choice = repSelect.value;
+        if (choice !== "keep") {
+          var picked = null;
+          REP_CHOICES.forEach(function (c) { if (c[0] === choice) picked = c[2]; });
+          if (picked) {
+            // A repeat with no first date has nothing to count from.
+            if (!task.due) { task.due = defaultDue(Date.now()); dateWasSet = true; }
+            var r = { unit: picked.unit };
+            if (picked.n) r.n = picked.n;
+            if (r.unit === "month" || r.unit === "year") r.day = new Date(task.due).getDate();
+            task.rep = r;
+          } else {
+            delete task.rep;
+          }
+        }
+        if (!task.due) delete task.rep;      // clearing the date ends the repeat
         task.mt = Date.now();
         persist();
         render();
@@ -2887,19 +3148,20 @@
 
       input.addEventListener("change", ensureNotifyPermission);
       input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") commit();
+        if (e.key === "Enter") commit(false);
         else if (e.key === "Escape") render();
       });
       var saveBtn = el("button", "due-clear", "Save");
-      saveBtn.addEventListener("click", commit);
+      saveBtn.addEventListener("click", function () { commit(false); });
       clearBtn.addEventListener("click", function () {
         input.value = "";
-        commit();
+        commit(true);
       });
 
       editRow.appendChild(input);
       editRow.appendChild(saveBtn);
       editRow.appendChild(clearBtn);
+      editRow.appendChild(repSelect);
       body.appendChild(editRow);
       input.focus();
     }
@@ -2916,17 +3178,38 @@
       var circle = el("button", "task-circle");
       circle.title = task.deleted ? "Restore task" : (task.done ? "Retrieve task" : "Complete task");
       circle.addEventListener("click", function () {
+        var now = Date.now();
         if (task.deleted) {
           delete task.deleted;
           delete task.deletedAt;
         } else if (task.done) {
           task.done = false;
           delete task.completedAt;
+          // Taking back a tick takes back the copy it created, as long as
+          // nobody has touched it since — otherwise you would be left with
+          // two open copies and no way to tell which one counts.
+          if (task.spawned) {
+            tasks.forEach(function (t) {
+              if (t.id !== task.spawned || t.done || t.deleted) return;
+              t.deleted = true;
+              t.deletedAt = now;
+              t.mt = now;
+            });
+            delete task.spawned;
+          }
         } else {
           task.done = true;
-          task.completedAt = Date.now();
+          task.completedAt = now;
+          var next = nextTaskFor(task, now);
+          if (next) {
+            // the id is derived, so a copy may already be here from another
+            // device that ticked this off first
+            var already = tasks.some(function (t) { return t.id === next.id; });
+            if (!already) tasks.push(next);
+            task.spawned = next.id;
+          }
         }
-        task.mt = Date.now();
+        task.mt = now;
         persist();
         render();
         outlook(task);
@@ -2952,6 +3235,11 @@
         var dueText = el("span", null,
           (task.due < now ? "Overdue — was due " : "Due ") + formatDateTime(task.due));
         dueText.title = "Change date";
+        if (task.rep) {
+          var repNote = el("span", "task-rep", " \u21bb " + repLabel(task.rep));
+          repNote.title = "Repeats — ticking it off sets the next one";
+          dueText.appendChild(repNote);
+        }
         dueText.addEventListener("click", function () { startDueEdit(task, body); });
         dueMeta.appendChild(dueText);
         var bell = el("button", "due-bell", "🔔");
@@ -3137,7 +3425,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-05-1723";
+  var BUILD = "2026-11-08-1143";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
