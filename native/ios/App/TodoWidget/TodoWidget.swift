@@ -3,7 +3,7 @@
 //
 //  Two data paths, on purpose:
 //
-//    1. the App Group (group.com.ahmedmohsen.mytodolist), written by the app
+//    1. the App Group (group.com.ahmedmohsen.todolist.shared), written by the app
 //       through Capacitor Preferences. No network, no token, current the
 //       moment the app saves.
 //    2. the public sync feed, if the group is empty or unreadable. A free
@@ -65,7 +65,7 @@ private struct FeedDoc: Codable {
 // ── loading ───────────────────────────────────────────────────────────────
 
 enum TodoStore {
-    static let group = "group.com.ahmedmohsen.mytodolist"
+    static let group = "group.com.ahmedmohsen.todolist.shared"
     static let feed = URL(string:
         "https://gist.githubusercontent.com/ahmedmohsen18/" +
         "1f3e9c2d3186c395b62391c6b62f0358/raw/dia-todo.json")!

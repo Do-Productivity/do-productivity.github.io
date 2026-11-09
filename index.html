@@ -4208,7 +4208,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1328";
+  var BUILD = "2026-11-09-1546";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -8098,7 +8098,7 @@
     var AppPlug = plug("App");
     var Widget = plug("WidgetBridge");
 
-    var GROUP = "group.com.ahmedmohsen.mytodolist";
+    var GROUP = "group.com.ahmedmohsen.todolist.shared";
     var CAP = 48;            // iOS keeps 64 pending; leave headroom
     var OURS = 1000000;      // our ids start here, so we only ever cancel ours
 

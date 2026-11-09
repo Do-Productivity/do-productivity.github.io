@@ -37,7 +37,7 @@ except ImportError:
 
 HERE = pathlib.Path(__file__).resolve().parent
 PROJ = HERE / "ios" / "App" / "App.xcodeproj" / "project.pbxproj"
-APP_ID = "com.ahmedmohsen.mytodolist"
+APP_ID = "com.ahmedmohsen.todolist"
 WIDGET = "TodoWidget"
 
 if not PROJ.exists():

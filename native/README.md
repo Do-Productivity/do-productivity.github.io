@@ -18,7 +18,15 @@ You need Xcode (27.2 here) and your Apple ID. **No paid account**, so the app
 is signed for 7 days and then needs the same Run again — step 5 is the whole
 re-signing routine.
 
-The signing team is already set in the project: **`6MCMG3FEW8`**. Note that
+The signing team is already set in the project: **`Z285TWPM86`** — the personal
+team of the `ahmedmohsen18@gmail.com` Apple ID. The older team (`6MCMG3FEW8`,
+`ahmedmohsen18@hotmail.com`) cannot be used: it has filled its free iPhone
+registration slots with 23 devices from the pre-2018 era, and a free team has
+no way to clear them — disabling a device does not free a slot, and the annual
+reset is a paid-membership feature. That is why the ids below are
+`com.ahmedmohsen.todolist` and not `...mytodolist`: **bundle ids and App Group
+ids are globally unique across all Apple teams**, the old team had already
+registered the `mytodolist` ones, and a second team may not reuse them. Note that
 this is *not* the number in the certificate's name. The certificate is called
 `Apple Development: Ahmed Hassaan (6DSVWXH9GY)`, and `6DSVWXH9GY` is the
 certificate id, not a team — putting it in `DEVELOPMENT_TEAM` produces
@@ -48,9 +56,9 @@ The first run asks you, on the phone, to trust the developer:
 
 ### App Groups on a free team — answered: it works
 
-This was the open question. It is settled: on 9 Nov 2026 the free personal team
-minted both profiles carrying `group.com.ahmedmohsen.mytodolist`, and codesign
-confirms the entitlement on the app *and* the widget:
+This was the open question. It is settled, and on two separate free teams: both
+minted profiles carrying the App Group and codesign confirms the entitlement on
+the app *and* the widget:
 
 ```bash
 codesign -d --entitlements :- App.app | plutil -p -

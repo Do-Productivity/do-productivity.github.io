@@ -10,7 +10,7 @@
  * old code for hours is structurally impossible here.
  */
 
-var BUILD = "2026-11-09-1328";
+var BUILD = "2026-11-09-1546";
 var CACHE = "dia-todo-" + BUILD;
 
 /* Everything needed to open the app cold, offline. */
