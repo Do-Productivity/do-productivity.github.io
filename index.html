@@ -3903,7 +3903,6 @@
       syncDueRow();          // the date it was holding has been used up
       persist();
       render();
-      settleFanForList();    // one more row may have pushed it past the fold
       if (task.due) outlook(task);
       if (read) {
         flashStatus("Due " + formatDateTime(read.due) +
@@ -4273,7 +4272,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1713";
+  var BUILD = "2026-11-09-1716";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5384,13 +5383,11 @@
     if (PANEL_IDS.indexOf(id) === -1) id = "personal";
     cancelFanHint();              // a pending nudge would fight the new card
     untuckFan();                  // a different list starts at its own top
-    // ...unless the list is long enough that the cards are in its way. A
-    // folded phone gives the list about three rows once the fan, the pill,
-    // the add box and the date row have taken their share; arriving at a
-    // fourteen-item list and seeing three of them, with a gesture needed
-    // before the fourth, is the wrong first impression. The cards yield to
-    // a list that needs the room, and come back on a pull down.
-    settleFanForList();
+    // The cards STAY on arrival, however long the list is. Tucking them
+    // automatically was tried and it was wrong: the fan is what the app
+    // looks like and it is how you change list, so a list that opens with
+    // no cards reads as the app having lost them. The fan goes away when
+    // the reader pushes the list up and asks for the room, and not before.
     panelsRoot.className = "panels show-" + id;
     PANEL_IDS.forEach(function (t) {
       var el2 = panelEl(t);
@@ -5934,7 +5931,6 @@
   var fanBuilt = "";
   var fanSuppressClick = false;
   var untuckFan = function () {};   // set once the tuck behaviour is wired
-  var settleFanForList = function () {};   // same, for the long-list rule
 
   function buildFanCards() {
     fanRoot.textContent = "";
@@ -6056,43 +6052,6 @@
     // belong back on screen.
     untuckFan = function () { tuck(false); };
 
-    // Called after a list is shown. Measured, not guessed: if what is
-    // hidden below the fold is worth more than the cards are, the cards go.
-    // The threshold is two rows, so a list that merely spills a little keeps
-    // its cards and a genuinely long one does not.
-    settleFanForList = function (tries) {
-      if (!isPhone()) return;
-      // Deferred so the measurement happens after the switch has been laid
-      // out — reading clientHeight in the same tick returns whatever the
-      // previous list left behind.
-      //
-      // A timeout rather than requestAnimationFrame, deliberately. A frame
-      // callback does not run while the page is not being painted, so the
-      // rule would silently not apply to an app coming back from the
-      // background, which is most of the times this app is opened. The
-      // getBoundingClientRect below forces the layout we need anyway, so
-      // there is nothing a frame gives us here.
-      //
-      // On the very first call the panels have not been filled yet, so an
-      // empty list means "ask again", not "nothing to hide" — otherwise the
-      // rule works on every list change except the one that matters most,
-      // which is arriving at the app.
-      setTimeout(function () {
-        var panel = panelsRoot.querySelector(".panel.expanded");
-        var list = panel && panel.querySelector(".task-list, .note-list, .run-list");
-        var row = list && list.firstElementChild;
-        if (!row) {
-          // Only ever waiting for content to exist, never for a decision, so
-          // waiting a while costs nothing. On a cold start the panels are
-          // filled well after the first frame, and a short window meant this
-          // worked on every list change except the one that matters most.
-          if ((tries || 0) < 20) setTimeout(function () { settleFanForList((tries || 0) + 1); }, 100);
-          return;
-        }
-        var hidden = list.scrollHeight - list.clientHeight;
-        tuck(hidden > row.getBoundingClientRect().height * 2);
-      });
-    };
   })();
 
   // ── First run: show that the cards turn ─────────────────
