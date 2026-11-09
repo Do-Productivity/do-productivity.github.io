@@ -1757,6 +1757,35 @@
       font-family: var(--sans); font-size: clamp(13px, 3.8vw, 16px);
       font-weight: 700; opacity: .93;
     }
+    /* The one visible sign that tapping the open card does anything. It
+       lives in the top corner rather than the bottom so it survives the
+       clip when the fan condenses — a handle that disappears the moment you
+       use it would be worse than none — and it turns over to say which way
+       the next tap goes. Only the open card offers it; the shoulders mean
+       "come forward", which needs no explaining. */
+    .fan-grip {
+      position: absolute; top: 0; right: 0;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0;
+      transition: opacity .2s ease;
+      pointer-events: none;      /* the card underneath takes the tap */
+    }
+    .fan-card.pos-active .fan-grip { opacity: .75; }
+    .fan-grip::before {
+      content: "";
+      width: 8px; height: 8px;
+      border-right: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      border-radius: 1px;
+      margin-top: 3px;
+      transform: rotate(-135deg);        /* up: tap to condense */
+      transition: transform .22s ease, margin-top .22s ease;
+    }
+    .card-fan.squeezed .fan-grip::before {
+      transform: rotate(45deg);          /* down: tap to bring them back */
+      margin-top: -3px;
+    }
     /* The fan deals itself out the first time it draws. Later moves are the
        transition above, so this plays once rather than on every re-render. */
     .card-fan.dealing .fan-card { animation: fan-deal .5s cubic-bezier(.2, .9, .3, 1) backwards; }
@@ -4296,7 +4325,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1756";
+  var BUILD = "2026-11-09-1801";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5972,6 +6001,7 @@
       head.appendChild(el("span", "fc-sub", meta.sub));
       card.appendChild(head);
       card.appendChild(el("span", "fc-count", ""));
+      card.appendChild(el("span", "fan-grip"));   // tap-to-condense affordance
 
       card._id = id;
       card.addEventListener("click", function () {
