@@ -117,6 +117,38 @@
     font-size: 9px; letter-spacing: 1px; color: var(--ink-faint);
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
+  /* An uncaught error used to leave no trace at all: the feature just stopped
+     working and the page looked fine. This is the trace. */
+  .err-dot {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    background: var(--red);
+    border: none;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex: none;
+    box-shadow: 0 1px 3px rgba(43, 38, 32, 0.25);
+  }
+  .err-dot[hidden] { display: none; }
+  .err-log {
+    font-family: Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 10px;
+    max-height: 40vh;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 
   /* ── Mobile list switcher (hidden on desktop) ── */
   .mobile-tabs {
@@ -2038,6 +2070,7 @@
   <div class="toolbar">
     <h1>My Lists</h1>
     <span class="build-stamp" id="build-stamp" title="Which version this device is running"></span>
+    <button class="err-dot" id="err-dot" hidden title="Something went wrong on this device — tap to read it">!</button>
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
     <button class="toolbar-btn undo-drawer" id="undo-drawer" hidden>× Close Completed</button>
@@ -2222,6 +2255,21 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="err-modal">
+  <div class="modal">
+    <h2>Something went wrong</h2>
+    <p>These are errors this device hit, newest first. They are kept here only —
+       nothing is sent anywhere. Showing them beats the alternative: a button
+       that silently stopped working and nobody knowing for a week.</p>
+    <pre class="err-log" id="err-log"></pre>
+    <div class="modal-actions">
+      <button class="modal-btn" id="err-copy">Copy</button>
+      <button class="modal-btn" id="err-clear">Clear</button>
+      <button class="modal-btn primary" id="err-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay search-overlay" id="search-modal">
   <div class="search-sheet">
     <div class="search-head">
@@ -2277,6 +2325,63 @@
 <script>
 (function () {
   "use strict";
+
+  // ── Error trap ───────────────────────────────────────────
+  // Everything here is one script. An uncaught error stops whatever was
+  // running and leaves no mark: the delete button that quietly does nothing,
+  // the highlight that never appears. That has happened, and it was found by
+  // a person noticing weeks later rather than by the app saying so.
+  //
+  // Errors are kept on the device, newest last, capped. Nothing is sent
+  // anywhere — the point is to be able to read what happened, not to report
+  // it. The dot in the toolbar is the only outward sign, and it only appears
+  // when there is something to read.
+  var ERR_KEY = "dia_todo_errors_v1";
+  var ERR_MAX = 15;
+
+  function errLoad() {
+    try { var v = JSON.parse(localStorage.getItem(ERR_KEY) || "[]"); return v.slice ? v : []; }
+    catch (e) { return []; }
+  }
+
+  function errSave(list) {
+    try { localStorage.setItem(ERR_KEY, JSON.stringify(list.slice(-ERR_MAX))); }
+    catch (e) { /* a full or blocked store must not itself break anything */ }
+  }
+
+  function errDot() {
+    var dot = document.getElementById("err-dot");
+    if (dot) dot.hidden = errLoad().length === 0;
+  }
+
+  function errRecord(kind, message, where) {
+    try {
+      var list = errLoad();
+      var last = list[list.length - 1];
+      // the same error firing in a render loop should not push out the
+      // earlier, more interesting ones
+      if (last && last.m === message && last.w === where) {
+        last.n = (last.n || 1) + 1;
+        last.t = Date.now();
+      } else {
+        list.push({ t: Date.now(), b: typeof BUILD === "string" ? BUILD : "?",
+                    k: kind, m: String(message).slice(0, 300),
+                    w: String(where || "").slice(0, 160), n: 1 });
+      }
+      errSave(list);
+      errDot();
+    } catch (e) { /* never throw from the thing that catches throws */ }
+  }
+
+  window.addEventListener("error", function (e) {
+    errRecord("error", (e && e.message) || "script error",
+      e && e.filename ? (String(e.filename).replace(/^.*\//, "") + ":" + e.lineno + ":" + e.colno) : "");
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    var r = e && e.reason;
+    errRecord("promise", (r && (r.message || r)) || "unhandled rejection",
+      r && r.stack ? String(r.stack).split("\n")[1] || "" : "");
+  });
 
   // The two originals keep their own storage keys — migrating them to the
   // generic scheme would rewrite data that already syncs, for no gain.
@@ -4084,7 +4189,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-08-1755";
+  var BUILD = "2026-11-09-1120";
 
   function checkForUpdate() {
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
@@ -4097,6 +4202,57 @@
       })
       .catch(function () { /* offline — try again next time */ });
   }
+
+  // ── the error dot, now that the page exists ──
+  (function () {
+    var dot = document.getElementById("err-dot");
+    var modal = document.getElementById("err-modal");
+    var log = document.getElementById("err-log");
+    if (!dot || !modal || !log) return;
+
+    function when(t) {
+      var d = new Date(t);
+      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+             d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function text() {
+      var list = errLoad();
+      if (!list.length) return "Nothing to report.";
+      return list.slice().reverse().map(function (e) {
+        return when(e.t) + "  build " + e.b + (e.n > 1 ? "  (x" + e.n + ")" : "") +
+               "\n  " + e.k + ": " + e.m + (e.w ? "\n  at " + e.w : "");
+      }).join("\n\n");
+    }
+
+    dot.addEventListener("click", function () {
+      log.textContent = text();
+      modal.classList.add("show");
+    });
+    document.getElementById("err-close").addEventListener("click", function () {
+      modal.classList.remove("show");
+    });
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) modal.classList.remove("show");
+    });
+    document.getElementById("err-clear").addEventListener("click", function () {
+      errSave([]);
+      try { localStorage.removeItem(ERR_KEY); } catch (e) {}
+      errDot();
+      modal.classList.remove("show");
+      flashStatus("Cleared.");
+    });
+    document.getElementById("err-copy").addEventListener("click", function () {
+      var payload = text();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(payload).then(function () { flashStatus("Copied."); },
+                                                    function () { flashStatus("Could not copy."); });
+      } else {
+        flashStatus("Copy is not available here.");
+      }
+    });
+    errDot();
+  })();
 
   var stampEl = document.getElementById("build-stamp");
   if (stampEl) stampEl.textContent = "b" + BUILD.slice(-4);
