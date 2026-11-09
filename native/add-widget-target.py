@@ -19,6 +19,7 @@ Run with the venv python that has pbxproj:
     ./.tools/bin/python add-widget-target.py
 """
 
+import os
 import pathlib
 import sys
 
@@ -132,6 +133,22 @@ for cfg in project.objects.get_configurations_on_targets("App"):
         cfg.buildSettings["CODE_SIGN_ENTITLEMENTS"] = "App/App.entitlements"
         changed.append("App " + cfg.name + ": entitlements set")
 
+# ── 2b. both targets sign with the same team ───────────────────────────────
+# Set here rather than clicked in Xcode twice, so a fresh `npx cap add ios`
+# does not quietly leave the widget unsigned. Override with:
+#     TEAM=XXXXXXXXXX ./.tools/bin/python add-widget-target.py
+TEAM = os.environ.get("TEAM", "6DSVWXH9GY")
+
+def set_team(target_name):
+    for cfg in project.objects.get_configurations_on_targets(target_name):
+        if cfg.buildSettings.get("DEVELOPMENT_TEAM", None) != TEAM:
+            cfg.buildSettings["DEVELOPMENT_TEAM"] = TEAM
+            cfg.buildSettings["CODE_SIGN_STYLE"] = "Automatic"
+            changed.append(target_name + " " + cfg.name + ": team " + TEAM)
+
+
+set_team("App")
+
 # ── 3. the widget target ───────────────────────────────────────────────────
 if project.get_target_by_name(WIDGET) is not None:
     print("the " + WIDGET + " target already exists — leaving it alone")
@@ -198,6 +215,8 @@ else:
     app.buildPhases.append(embed.get_id())
 
     changed.append(WIDGET + " target created, embedded and made a dependency")
+
+set_team(WIDGET)
 
 if changed:
     project.save()
