@@ -2042,6 +2042,42 @@
     .add-row { margin-bottom: 5px; }
   }
 
+  /* ── Short phones: buy the list a row back ────────────────────────────
+     Measured on a folded iPhone, 373x603, before this block existed:
+
+       toolbar                28px
+       card fan + All Lists  185px   31% of the screen
+       add row + due row      78px
+       task list             156px   26% — two rows of 74px, and change
+       footer                 38px
+
+     A quarter of the phone for the thing the phone is for is the wrong
+     split, and it showed: two tasks where one carries a due line come to
+     about 174px, so the second sat clipped under the fold.
+
+     The fan stays the biggest thing here on purpose — it is how you change
+     list, and it tucks away entirely once you push the list up. This only
+     takes the edge off it on a screen that cannot afford the full size, and
+     shaves a few pixels of padding off each row. Together that is roughly
+     one more task visible without touching anything, which is the point.
+
+     Fonts are left alone apart from a hair off the fan's title: 15px body
+     text on a phone is already the floor, and shrinking it to fit one more
+     row trades a thing you read all day for a thing you notice once. */
+  @media (max-width: 720px) and (max-height: 720px) {
+    .card-fan { height: clamp(104px, 30vw, 132px); }
+    .fan-card {
+      height: clamp(98px, 28vw, 124px);
+      padding: clamp(11px, 3.4vw, 15px) clamp(13px, 4vw, 18px);
+      border-radius: 15px;
+    }
+    .fc-title { font-size: clamp(21px, 6vw, 26px); }
+    .fc-sub { margin-top: 3px; }
+    .fan-more { margin-bottom: 7px; padding: 7px 15px; }
+    .task-row { padding: 11px 0; }
+    .task-meta { margin-top: 2px; }
+  }
+
   /* Landscape / short screens: don't force a full-height card that pushes the
      list below the fold. */
   @media (max-width: 720px) and (max-height: 500px) {
@@ -4208,7 +4244,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1546";
+  var BUILD = "2026-11-09-1612";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5931,6 +5967,27 @@
       fanRoot.classList.toggle("tucked", on);
     }
 
+    // How far the list must have travelled before a push counts as reading
+    // rather than fidgeting.
+    //
+    // This was a flat 44px, and that number quietly switched the whole
+    // mechanism off in the case it exists for. scrollTop can never exceed
+    // scrollHeight - clientHeight, so a list that overflows by less than
+    // 44px can never report a scrollTop above 44, and the cards can never
+    // be persuaded to move. Two tasks where one carries a due line overflow
+    // a folded phone by about twenty pixels: the second task sits clipped
+    // under the fold, one third of the screen is still showing the card
+    // fan, and no gesture will trade one for the other.
+    //
+    // So the threshold is a share of what the list can actually scroll, and
+    // 44px is only its ceiling. A barely-clipped list asks for a small push,
+    // a long one still asks for a real one. The floor keeps a one-pixel
+    // overflow from tucking the cards on a stray touch.
+    function readingThreshold(el) {
+      var room = el.scrollHeight - el.clientHeight;
+      return Math.min(44, Math.max(8, room / 2));
+    }
+
     panelsRoot.addEventListener("wheel", function (e) {
       if (!isPhone()) return;
       var el = listFrom(e.target);
@@ -5938,7 +5995,7 @@
       // The second test is for a trackpad: one notch from the very top can
       // carry the list hundreds of pixels while scrollTop still reads 0 at
       // the moment the event arrives.
-      if (e.deltaY > 2 && (el.scrollTop > 44 || e.deltaY > 44)) tuck(true);
+      if (e.deltaY > 2 && (el.scrollTop > readingThreshold(el) || e.deltaY > 44)) tuck(true);
       else if (e.deltaY < -2) tuck(false);
     }, { passive: true });
 
@@ -5952,7 +6009,7 @@
       var el = listFrom(e.target);
       if (!el) return;
       var dy = e.touches[0].clientY - fromY;
-      if (dy < -26 && el.scrollTop > 44) tuck(true);
+      if (dy < -26 && el.scrollTop > readingThreshold(el)) tuck(true);
       else if (dy > 26) tuck(false);
     }, { passive: true });
 
