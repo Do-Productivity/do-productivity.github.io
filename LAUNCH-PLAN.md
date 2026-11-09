@@ -1,4 +1,11 @@
-# Taking this to the App Store
+# Do. — taking it to the App Store
+
+> **The full plan, with screenshots, hosting options and the complete cost
+> model, is [Do-launch-plan.pdf](Do-launch-plan.pdf).** Rebuild it with
+> `python3 brand/launch-plan/make_pdf.py`. This file is the working text the
+> PDF is drawn from.
+
+The name is **Do.** — the mark that is already on the icon.
 
 Goal: a paid app, **$9.99 once** worldwide and **EGP 99 once** in Egypt, sold on
 what it does when the phone unfolds.
