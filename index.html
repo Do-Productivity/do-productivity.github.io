@@ -640,6 +640,9 @@
     margin-bottom: 8px;
     max-width: 100%;
   }
+  /* Away unless it is being used — see syncDueRow(). An empty date field is
+     not worth a row of a phone screen above every list. */
+  .panel.due-shut .due-row { display: none; }
   .add-row { max-width: 100%; }
   .due-label {
     font-family: var(--sans);
@@ -3736,6 +3739,30 @@
     dueRow.appendChild(dueInput);
     panel.appendChild(dueRow);
 
+    // The date row belongs to the task being written, not to the list. Left
+    // open it is a permanently empty dd/mm/yyyy field holding a whole row of
+    // a phone screen hostage above every list, which on a folded screen is
+    // most of a task. So it is there while you are writing, or while it holds
+    // a date, and otherwise it is not.
+    //
+    // Nothing is lost by hiding it: a date can still be typed into the task
+    // itself, which is the way the app wants you to do it anyway, and an
+    // existing task has its own calendar button on its row.
+    function syncDueRow() {
+      var a = document.activeElement;
+      var open = !!dueInput.value || a === addInput || a === dueInput;
+      panel.classList.toggle("due-shut", !open);
+    }
+    addInput.addEventListener("focus", syncDueRow);
+    dueInput.addEventListener("focus", syncDueRow);
+    dueInput.addEventListener("change", syncDueRow);
+    // A blur runs before the next focus lands, so asking straight away says
+    // "nothing is focused" every time you move from the task box to the date.
+    function syncSoon() { setTimeout(syncDueRow, 0); }
+    addInput.addEventListener("blur", syncSoon);
+    dueInput.addEventListener("blur", syncSoon);
+    syncDueRow();
+
     // Reads a date out of what is being typed. It only ever proposes: the
     // chip states the date it would set and offers to drop it, so nothing
     // is decided behind the typist's back.
@@ -3873,8 +3900,10 @@
       smartWaved = "";
       smart = null;
       refreshSmart();
+      syncDueRow();          // the date it was holding has been used up
       persist();
       render();
+      settleFanForList();    // one more row may have pushed it past the fold
       if (task.due) outlook(task);
       if (read) {
         flashStatus("Due " + formatDateTime(read.due) +
@@ -4244,7 +4273,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1612";
+  var BUILD = "2026-11-09-1713";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5355,6 +5384,13 @@
     if (PANEL_IDS.indexOf(id) === -1) id = "personal";
     cancelFanHint();              // a pending nudge would fight the new card
     untuckFan();                  // a different list starts at its own top
+    // ...unless the list is long enough that the cards are in its way. A
+    // folded phone gives the list about three rows once the fan, the pill,
+    // the add box and the date row have taken their share; arriving at a
+    // fourteen-item list and seeing three of them, with a gesture needed
+    // before the fourth, is the wrong first impression. The cards yield to
+    // a list that needs the room, and come back on a pull down.
+    settleFanForList();
     panelsRoot.className = "panels show-" + id;
     PANEL_IDS.forEach(function (t) {
       var el2 = panelEl(t);
@@ -5898,6 +5934,7 @@
   var fanBuilt = "";
   var fanSuppressClick = false;
   var untuckFan = function () {};   // set once the tuck behaviour is wired
+  var settleFanForList = function () {};   // same, for the long-list rule
 
   function buildFanCards() {
     fanRoot.textContent = "";
@@ -6018,6 +6055,44 @@
     // Changing list starts you at the top of a different one, so the cards
     // belong back on screen.
     untuckFan = function () { tuck(false); };
+
+    // Called after a list is shown. Measured, not guessed: if what is
+    // hidden below the fold is worth more than the cards are, the cards go.
+    // The threshold is two rows, so a list that merely spills a little keeps
+    // its cards and a genuinely long one does not.
+    settleFanForList = function (tries) {
+      if (!isPhone()) return;
+      // Deferred so the measurement happens after the switch has been laid
+      // out — reading clientHeight in the same tick returns whatever the
+      // previous list left behind.
+      //
+      // A timeout rather than requestAnimationFrame, deliberately. A frame
+      // callback does not run while the page is not being painted, so the
+      // rule would silently not apply to an app coming back from the
+      // background, which is most of the times this app is opened. The
+      // getBoundingClientRect below forces the layout we need anyway, so
+      // there is nothing a frame gives us here.
+      //
+      // On the very first call the panels have not been filled yet, so an
+      // empty list means "ask again", not "nothing to hide" — otherwise the
+      // rule works on every list change except the one that matters most,
+      // which is arriving at the app.
+      setTimeout(function () {
+        var panel = panelsRoot.querySelector(".panel.expanded");
+        var list = panel && panel.querySelector(".task-list, .note-list, .run-list");
+        var row = list && list.firstElementChild;
+        if (!row) {
+          // Only ever waiting for content to exist, never for a decision, so
+          // waiting a while costs nothing. On a cold start the panels are
+          // filled well after the first frame, and a short window meant this
+          // worked on every list change except the one that matters most.
+          if ((tries || 0) < 20) setTimeout(function () { settleFanForList((tries || 0) + 1); }, 100);
+          return;
+        }
+        var hidden = list.scrollHeight - list.clientHeight;
+        tuck(hidden > row.getBoundingClientRect().height * 2);
+      });
+    };
   })();
 
   // ── First run: show that the cards turn ─────────────────
