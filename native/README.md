@@ -14,9 +14,20 @@ What the wrapper buys, and nothing else does:
 
 ## Building it onto your phone
 
-You need Xcode (26.6 here) and your Apple ID. **No paid account**, so the app
+You need Xcode (27.2 here) and your Apple ID. **No paid account**, so the app
 is signed for 7 days and then needs the same Run again — step 5 is the whole
 re-signing routine.
+
+The signing team is already set in the project: **`6MCMG3FEW8`**. Note that
+this is *not* the number in the certificate's name. The certificate is called
+`Apple Development: Ahmed Hassaan (6DSVWXH9GY)`, and `6DSVWXH9GY` is the
+certificate id, not a team — putting it in `DEVELOPMENT_TEAM` produces
+`No profiles for 'com.ahmedmohsen.mytodolist' were found`, which reads exactly
+like a sign-in problem and is not one. The team is the certificate's OU:
+
+```bash
+security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
+```
 
 ```bash
 python3 build-native.py && cd native && npx cap copy ios && open ios/App/App.xcodeproj
@@ -35,13 +46,20 @@ Then, in Xcode:
 The first run asks you, on the phone, to trust the developer:
 *Settings → General → VPN & Device Management → your Apple ID → Trust*.
 
-### If App Groups is refused
+### App Groups on a free team — answered: it works
 
-A free team may not be allowed to register `group.com.ahmedmohsen.mytodolist`.
-Nothing breaks: the widget falls back to the public sync feed on its own,
-exactly as the Scriptable widget did. You lose only instant refresh after an
-edit. To silence the build error, remove the App Group row from both targets'
-*Signing & Capabilities*.
+This was the open question. It is settled: on 9 Nov 2026 the free personal team
+minted both profiles carrying `group.com.ahmedmohsen.mytodolist`, and codesign
+confirms the entitlement on the app *and* the widget:
+
+```bash
+codesign -d --entitlements :- App.app | plutil -p -
+```
+
+So the widget reads the app's own storage and refreshes the moment you edit a
+task. The public-feed fallback in `TodoWidget.swift` stays anyway — it is what
+makes the widget survive a signing problem instead of going blank — but it is
+now the second choice, not the expected one.
 
 ## Afterwards
 

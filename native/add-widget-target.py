@@ -137,7 +137,12 @@ for cfg in project.objects.get_configurations_on_targets("App"):
 # Set here rather than clicked in Xcode twice, so a fresh `npx cap add ios`
 # does not quietly leave the widget unsigned. Override with:
 #     TEAM=XXXXXXXXXX ./.tools/bin/python add-widget-target.py
-TEAM = os.environ.get("TEAM", "6DSVWXH9GY")
+# 6MCMG3FEW8 is the TEAM. The "(6DSVWXH9GY)" in the certificate name
+# "Apple Development: Ahmed Hassaan (6DSVWXH9GY)" is the certificate id, NOT the
+# team — using it here cost an afternoon of "No profiles were found". The team
+# is the certificate's OU:
+#     security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
+TEAM = os.environ.get("TEAM", "6MCMG3FEW8")
 
 def set_team(target_name):
     for cfg in project.objects.get_configurations_on_targets(target_name):
