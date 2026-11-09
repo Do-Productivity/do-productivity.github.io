@@ -4296,7 +4296,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1730";
+  var BUILD = "2026-11-09-1756";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5954,7 +5954,8 @@
   // grid, a swipe — is the same animated glide.
   var fanBuilt = "";
   var fanSuppressClick = false;
-  var untuckFan = function () {};   // set once the tuck behaviour is wired
+  var untuckFan = function () {};         // set once the condense is wired
+  var toggleFanCondense = function () {}; // same — tapping the front card
 
   function buildFanCards() {
     fanRoot.textContent = "";
@@ -5975,8 +5976,14 @@
       card._id = id;
       card.addEventListener("click", function () {
         if (fanSuppressClick) return;        // that was a swipe, not a tap
-        // front card opens the grid; a shoulder card simply comes forward
-        if (Math.round(card._d) === 0) openCardPicker();
+        // A shoulder card comes forward. The front card — the one already
+        // open — condenses the fan and brings it back, because that is the
+        // only thing tapping your current list could usefully mean.
+        //
+        // It used to open the grid, which the "All Lists" pill directly
+        // underneath already does, so nothing is lost and the condense
+        // stops being a gesture you have to be told about.
+        if (Math.round(card._d) === 0) toggleFanCondense();
         else setMobileTab(id);
       });
       fanRoot.appendChild(card);
@@ -6056,6 +6063,26 @@
       apply();
     }
 
+    // Lifting a thumb halfway used to leave the cards halfway, which reads
+    // as the app not having finished rather than as a position you chose.
+    // So a release settles to one state or the other, and the threshold is
+    // low: having started to condense them at all, you meant to.
+    function snap() {
+      setK(k >= 0.3 ? 1 : 0);
+    }
+
+    // Tapping the open card — see buildFanCards. All or nothing, never a
+    // half state, because a tap carries no distance to be proportional to.
+    //
+    // No list is passed, so the "does this list even overflow" guard does
+    // not apply: that guard is there to stop a drag moving the cards as a
+    // side effect of scrolling a list that fits. A tap is not a side
+    // effect, and a control that silently does nothing is worse than one
+    // that shows you empty space.
+    toggleFanCondense = function () {
+      setK(k > 0.5 ? 0 : 1);
+    };
+
     // A fold, a rotation or a keyboard changes what the CSS clamp resolves
     // to, so the measurement is thrown away rather than scaled.
     window.addEventListener("resize", function () { full = 0; apply(); });
@@ -6065,6 +6092,7 @@
       var el = listFrom(e.target);
       if (!el) return;
       setK(k + e.deltaY / RANGE, el);
+      wheelSnap();
     }, { passive: true });
 
     var fromY = null, fromK = 0;
@@ -6082,7 +6110,18 @@
       setK(fromK + (fromY - e.touches[0].clientY) / RANGE, el);
     }, { passive: true });
 
-    panelsRoot.addEventListener("touchend", function () { fromY = null; }, { passive: true });
+    panelsRoot.addEventListener("touchend", function () {
+      if (fromY !== null) snap();
+      fromY = null;
+    }, { passive: true });
+
+    // A wheel has no release to listen for, so the settle waits for the
+    // scrolling to stop.
+    var wheelIdle = null;
+    function wheelSnap() {
+      clearTimeout(wheelIdle);
+      wheelIdle = setTimeout(snap, 180);
+    }
 
     // Changing list starts you at the top of a different one, so the cards
     // come back to full height.
