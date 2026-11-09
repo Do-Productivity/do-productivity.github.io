@@ -37,6 +37,26 @@ like a sign-in problem and is not one. The team is the certificate's OU:
 security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
 ```
 
+Every build goes onto the phone over the cable, with one command:
+
+```bash
+cd native && ./ship-to-phone.sh
+```
+
+It finds the paired iPhone itself (a re-paired phone gets a new identifier, and
+a hard-coded stale one fails as "destination not found", which reads like a
+project fault rather than a cable fault), bundles the current `index.html`,
+builds, signs, installs and launches. `--no-launch` skips the last step. It
+refuses clearly when the phone is unplugged, asleep or locked rather than
+failing somewhere deep in xcodebuild.
+
+Nothing else puts a new build on the phone. The website deploys itself — every
+device polls `version.json` — but the shell's copy of `index.html` is inside
+the signed bundle, so a phone that misses this keeps running the last build it
+was given and cannot tell.
+
+To open the project in Xcode instead:
+
 ```bash
 python3 build-native.py && cd native && npx cap copy ios && open ios/App/App.xcodeproj
 ```

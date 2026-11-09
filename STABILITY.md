@@ -102,7 +102,22 @@ because stamping a new build id makes the bundle stale by definition — but a
 shell quietly running last week's code is the same silent drift as a phone
 with a stale cache, and that has cost whole afternoons here before.
 
-After anything that changes `index.html`:
+After anything that changes `index.html`, the phone gets it over the cable:
+
+```bash
+cd native && ./ship-to-phone.sh
+```
+
+That bundles, builds, signs, installs and launches. It is not optional
+housekeeping: the web app deploys itself, because every device polls
+`version.json` and takes the new build within a minute, but **the shell
+cannot**. Its copy of `index.html` lives inside the signed bundle and can only
+be replaced by installing a new one, so a phone left out of this keeps running
+whatever was last installed and has no way to notice. That is the stale-cache
+failure the build stamp exists to prevent, with the one mechanism that catches
+it switched off.
+
+To bundle without building (rarely what you want):
 
 ```bash
 python3 build-native.py && (cd native && npx cap copy ios)
@@ -125,6 +140,12 @@ changed, then commit and push. Confirm the deploy actually landed:
 
 ```bash
 curl -s "https://ahmedmohsen18.github.io/my-todo-list/version.json?cb=$RANDOM"
+```
+
+and put the same build on the phone, which the push does not do for you:
+
+```bash
+cd native && ./ship-to-phone.sh
 ```
 
 ## Known traps, written down so they stop costing time
