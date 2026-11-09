@@ -756,12 +756,18 @@
     cursor: pointer;
   }
 
+  /* The note, date and delete buttons sit in a row, side by side. They used
+     to stack, which kept the text column wide — worth it when three or four
+     lists share a screen, and the 721-1200px block below still does it for
+     exactly that reason. On a phone there is only one list and plenty of
+     width, and a vertical stack of icons made every row taller than it
+     needed to be for no gain. */
   .task-actions {
     flex: none;
     display: flex;
-    flex-direction: column;     /* keeps the text column wide */
+    flex-direction: row;
     align-items: center;
-    gap: 0;
+    gap: 2px;
     align-self: flex-start;
   }
 
@@ -1619,9 +1625,14 @@
     .task-delete { font-size: 17px; padding: 4px 6px; }
     .due-clear { font-size: 11px; padding: 6px 9px; }
     .empty-state { font-size: 14px; padding: 20px 0; }
-    .completed-toggle { font-size: 10px; letter-spacing: 1.5px; gap: 6px; padding: 11px 0; }
-    .completed-toggle .count-badge { font-size: 10px; padding: 2px 8px; }
-    .panel-footer, .clear-completed { font-size: 11px; }
+    /* Completed and Recently deleted are drawers you open occasionally, not
+       things you read. They were taking 38px each at the foot of the panel,
+       which on a folded phone is most of a task. Same information, less of
+       the screen, and the list keeps what they give back. */
+    .completed-toggle { font-size: 9px; letter-spacing: 1.3px; gap: 5px; padding: 6px 0; }
+    .completed-toggle .count-badge { font-size: 9px; padding: 1px 6px; }
+    .panel-footer, .clear-completed { font-size: 10px; }
+    .panel-footer { padding-top: 5px; }
 
     /* Fill the screen: the card stretches to the bottom of the viewport so the
        list uses the whole phone instead of floating in the top half, and the
@@ -4285,7 +4296,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1722";
+  var BUILD = "2026-11-09-1730";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5995,8 +6006,8 @@
   // 1px mid-swing). A finger only ever moves because somebody moved it.
   (function () {
     var k = 0;            // 0 = cards at full height, 1 = fully condensed
-    var KEEP = 0.46;      // how much of the fan survives at k = 1
-    var RANGE = 170;      // finger travel, in px, from full to condensed
+    var KEEP = 0.34;      // how much of the fan survives at k = 1
+    var RANGE = 130;      // finger travel, in px, from full to condensed
     var full = 0;         // the fan's natural height, whatever the CSS says
 
     // pointer:coarse as well as width: a narrow laptop window shows the
