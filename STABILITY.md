@@ -60,8 +60,8 @@ runLayoutChecks()   // just the layout invariants, for sweeping widths
 - **`nothing threw while the suite ran`** reads the app's own error log. An
   assertion can pass while a feature is dead; this catches that.
 
-Sweep the widths that matter — 320, 373 (folded Duo), 430, 718, 900, 1114
-(unfolded Duo), 1280, 1440 — with `runLayoutChecks()` after any CSS change.
+Sweep the widths that matter — 320, 373 (folded iPhone), 430, 718, 900, 1114
+(unfolded iPhone), 1280, 1440 — with `runLayoutChecks()` after any CSS change.
 
 Two guards, both learned the hard way:
 
@@ -93,6 +93,26 @@ This exists because the failure mode here is silence: the drawer-opening bug
 threw on every search, the status line and highlight simply never ran, and the
 page looked perfectly fine. The console had it; nobody was looking at the
 console on a phone.
+
+## 5. The iOS shell is the same file
+
+`native/www/index.html` is a byte-identical copy of the shipped file, and the
+preflight **warns** when it is not. It is a warning rather than a failure
+because stamping a new build id makes the bundle stale by definition — but a
+shell quietly running last week's code is the same silent drift as a phone
+with a stale cache, and that has cost whole afternoons here before.
+
+After anything that changes `index.html`:
+
+```bash
+python3 build-native.py && (cd native && npx cap copy ios)
+```
+
+`native/README.md` has the signing routine. Three things behave differently
+inside the shell, all decided at runtime by one `NATIVE` check: the
+self-updater is off (the bundled file cannot climb to a newer build, so it
+would reload for ever), the service worker is not registered, and reminders
+are scheduled with iOS.
 
 ## The routine before deploying
 

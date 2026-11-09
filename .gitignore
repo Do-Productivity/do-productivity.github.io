@@ -1,5 +1,8 @@
 .DS_Store
 node_modules/
 native/ios/App/Pods/
-native/ios/App/public/
+native/ios/App/App/public/
 native/www/
+native/.tools/
+native/ios/DerivedData/
+native/ios/App/App/capacitor.config.json

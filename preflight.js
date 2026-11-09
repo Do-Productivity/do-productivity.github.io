@@ -197,6 +197,22 @@ else {
   }
 })();
 
+/* ── 7. the iOS shell carries the same file ────────────────────────────── */
+/* A warning, not a failure: bumping the build id makes the bundle stale by
+   definition, and a web deploy should not be blocked on rebuilding the app.
+   But a shell quietly running last week's code is exactly the kind of silent
+   drift this file exists to catch. */
+(function () {
+  var bundled = path.join(here, "native", "www", "index.html");
+  if (!fs.existsSync(bundled)) return;
+  if (fs.readFileSync(bundled, "utf8") !== html) {
+    warn("the iOS bundle is not the file being shipped",
+         "run: python3 build-native.py && (cd native && npx cap copy ios)");
+  } else {
+    note("iOS bundle", "matches index.html");
+  }
+})();
+
 var kb = Math.round(html.length / 1024);
 note("index.html", kb + " KB");
 if (kb > 900) warn("index.html is getting large", kb + " KB");

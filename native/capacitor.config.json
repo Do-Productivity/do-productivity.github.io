@@ -1,0 +1,16 @@
+{
+  "appId": "com.ahmedmohsen.mytodolist",
+  "appName": "My To Do List",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f7f3e9",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#00A86B"
+    }
+  }
+}

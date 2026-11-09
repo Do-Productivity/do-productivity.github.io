@@ -2326,6 +2326,25 @@
 (function () {
   "use strict";
 
+  // ── Where am I running? ──────────────────────────────────
+  // The same file is the web app and the iOS shell. Three things must behave
+  // differently inside the shell, and all three fail badly if they don't:
+  //
+  //   the self-updater  the bundled copy of this file CANNOT change, so
+  //                     seeing a newer build id on the web would reload for
+  //                     ever. Off in native.
+  //   the service worker  cannot register on capacitor://localhost, and
+  //                     there is nothing to cache — the bundle is local.
+  //   reminders         the web has to go the long way round (a cron job and
+  //                     a calendar feed). Native asks iOS to hold the alarm.
+  //
+  // Everything else — every pixel, every feature — is the same code.
+  var NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform &&
+                  window.Capacitor.isNativePlatform());
+  function plug(name) {
+    return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null;
+  }
+
   // ── Error trap ───────────────────────────────────────────
   // Everything here is one script. An uncaught error stops whatever was
   // running and leaves no mark: the delete button that quietly does nothing,
@@ -4189,9 +4208,13 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1120";
+  var BUILD = "2026-11-09-1328";
 
   function checkForUpdate() {
+    // In the shell this would be a reload loop: the bundled file cannot climb
+    // to the build it is being told about. The shell is updated by rebuilding
+    // it, and shows which build it is carrying in the Sync panel.
+    if (NATIVE) return;
     fetch("version.json?cb=" + Date.now(), { cache: "no-store" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (v) {
@@ -7480,7 +7503,7 @@
 
   var VAPID_PUBLIC_KEY = "BJUYqeW4BwJljjm3uodpK1Vdq9nPl8qiQNDrqMUKwDsJ8RFQw3rhlNddzd5XtFv8ZWQxWGF7RkhxE48hha6962o";
 
-  if ("serviceWorker" in navigator) {
+  if (!NATIVE && "serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(function () { /* unsupported context */ });
   }
 
@@ -8054,6 +8077,201 @@
         indicator.style.top = "-54px";
       }
     }, { passive: true });
+  })();
+
+  // ── Native shell: the device holds the alarm ─────────────
+  // On the web a due reminder has to survive a chain: a GitHub Actions cron
+  // (measured at one run every 60–195 min, so never punctual), a gist, Web
+  // Push, or else a subscribed calendar feed that needs Fetch New Data set to
+  // 15 minutes. Here iOS is simply told "wake me at 09:30" and does. No
+  // network, no server, no settings.
+  //
+  // Nothing in here mutates a task. Each panel keeps its list in a closure,
+  // so writing to storage from outside and not re-rendering gets the old
+  // array saved back over it later (the resurrection trap in STABILITY.md).
+  // That is why tapping a reminder opens the task instead of completing it.
+  (function () {
+    if (!NATIVE) return;
+
+    var LN = plug("LocalNotifications");
+    var Prefs = plug("Preferences");
+    var AppPlug = plug("App");
+    var Widget = plug("WidgetBridge");
+
+    var GROUP = "group.com.ahmedmohsen.mytodolist";
+    var CAP = 48;            // iOS keeps 64 pending; leave headroom
+    var OURS = 1000000;      // our ids start here, so we only ever cancel ours
+
+    // A stable 31-bit id per task, so rescheduling the same task reuses its
+    // slot instead of stacking duplicates.
+    function nid(key) {
+      var h = 2166136261;
+      for (var i = 0; i < key.length; i++) {
+        h ^= key.charCodeAt(i);
+        h = (h * 16777619) >>> 0;
+      }
+      return OURS + (h % 1000000000);
+    }
+
+    // Everything with a future due time, soonest first.
+    function dueItems() {
+      var now = Date.now();
+      var out = [];
+      try {
+        taskLists().forEach(function (l) {
+          loadTasks(l.storageKey).forEach(function (t) {
+            if (t.done || t.deleted || !t.due || t.due <= now) return;
+            out.push({ id: "t:" + (t.id || t.text), text: t.text, due: t.due,
+                       listId: l.id, listTitle: l.title });
+          });
+        });
+        loadScheduled().forEach(function (w) {
+          if (w.deleted || !w.dueAt || w.dueAt <= now || wsFinished(w)) return;
+          out.push({ id: "w:" + w.id, text: w.name, due: w.dueAt,
+                     listId: "runs", listTitle: "Scheduled" });
+        });
+      } catch (e) {
+        errRecord("native", "could not read tasks to schedule: " + e.message, "dueItems");
+        return [];
+      }
+      out.sort(function (a, b) { return a.due - b.due; });
+      return out.slice(0, CAP);
+    }
+
+    var lastPlan = "";
+
+    function reschedule() {
+      if (!LN) return Promise.resolve();
+      var items = dueItems();
+      // Rescheduling identical work on every resume would ask iOS to churn
+      // through 48 notifications for nothing.
+      var plan = items.map(function (i) { return i.id + "@" + i.due; }).join("|");
+      if (plan === lastPlan) return Promise.resolve();
+
+      return LN.getPending().then(function (p) {
+        var mine = (p && p.notifications || []).filter(function (n) {
+          return Number(n.id) >= OURS;
+        }).map(function (n) { return { id: Number(n.id) }; });
+        return mine.length ? LN.cancel({ notifications: mine }) : null;
+      }).then(function () {
+        if (!items.length) return null;
+        return LN.schedule({
+          notifications: items.map(function (i) {
+            return {
+              id: nid(i.id),
+              title: i.text,
+              body: "Due " + formatDateTime(i.due) +
+                    (i.listTitle ? "  ·  " + i.listTitle : ""),
+              schedule: { at: new Date(i.due), allowWhileIdle: true },
+              extra: { listId: i.listId, taskId: i.id }
+            };
+          })
+        });
+      }).then(function () {
+        lastPlan = plan;
+      }).catch(function (e) {
+        lastPlan = "";
+        errRecord("native", "scheduling reminders failed: " + (e && e.message), "reschedule");
+      });
+    }
+
+    // ── what the home screen widget reads ──
+    // Written into the App Group so the widget can read it with no network
+    // and no token. If the group is unavailable (a free signing team may
+    // refuse it) the widget falls back to the public feed on its own.
+    function writeWidget() {
+      if (!Prefs) return Promise.resolve();
+      var now = Date.now();
+      var end = new Date(); end.setHours(23, 59, 59, 999);
+      var payload = { build: BUILD, at: now, lists: [], today: 0, overdue: 0 };
+      try {
+        taskLists().forEach(function (l) {
+          var open = loadTasks(l.storageKey).filter(function (t) {
+            return !t.done && !t.deleted;
+          });
+          open.forEach(function (t) {
+            if (!t.due) return;
+            if (t.due < now) payload.overdue++;
+            else if (t.due <= end.getTime()) payload.today++;
+          });
+          open.sort(function (a, b) {
+            if (!!a.due !== !!b.due) return a.due ? -1 : 1;
+            return (a.due || 0) - (b.due || 0);
+          });
+          payload.lists.push({
+            id: l.id, title: l.title, tint: l.tint || null,
+            count: open.length,
+            items: open.slice(0, 8).map(function (t) {
+              return { text: t.text, due: t.due || null };
+            })
+          });
+        });
+      } catch (e) {
+        errRecord("native", "could not build the widget payload: " + e.message, "writeWidget");
+        return Promise.resolve();
+      }
+      return Prefs.configure({ group: GROUP })
+        .then(function () {
+          return Prefs.set({ key: "widgetData", value: JSON.stringify(payload) });
+        })
+        .then(function () { if (Widget && Widget.reload) return Widget.reload(); })
+        .catch(function (e) {
+          errRecord("native", "widget payload not written: " + (e && e.message), "writeWidget");
+        });
+    }
+
+    var pending = null;
+    function sync() {
+      clearTimeout(pending);
+      pending = setTimeout(function () {
+        reschedule();
+        writeWidget();
+      }, 1200);
+    }
+
+    // Every task write goes through these two, so this is the whole set of
+    // places the device needs to hear about.
+    var _saveTasks = saveTasks, _saveScheduled = saveScheduled;
+    saveTasks = function (key, arr) { _saveTasks(key, arr); sync(); };
+    saveScheduled = function (arr) { _saveScheduled(arr); sync(); };
+
+    // Tapping a reminder opens the list it came from.
+    if (LN && LN.addListener) {
+      LN.addListener("localNotificationActionPerformed", function (ev) {
+        var extra = (ev && ev.notification && ev.notification.extra) || {};
+        try {
+          if (extra.listId) {
+            if (typeof showToday === "function") showToday(false);
+            setMobileTab(extra.listId);
+          }
+          if (ev.notification && ev.notification.title) {
+            flashStatus("Due now: " + ev.notification.title);
+          }
+        } catch (e) {
+          errRecord("native", "opening a tapped reminder failed: " + e.message, "tap");
+        }
+      });
+    }
+
+    // Resume is when the data may have changed under us — a sync pull on
+    // another device, or midnight passing.
+    if (AppPlug && AppPlug.addListener) {
+      AppPlug.addListener("appStateChange", function (s) {
+        if (s && s.isActive) { lastPlan = ""; sync(); }
+      });
+    }
+
+    if (LN && LN.requestPermissions) {
+      LN.requestPermissions().then(function (r) {
+        if (!r || r.display !== "granted") {
+          flashStatus("Reminders are off — enable notifications in Settings.");
+          return;
+        }
+        reschedule();
+      }).catch(function () { /* nothing to do if iOS refuses to ask */ });
+    }
+    writeWidget();
+    document.body.classList.add("native");
   })();
 })();
 </script>
