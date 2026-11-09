@@ -120,3 +120,21 @@ no Done/Snooze buttons on the notification. Each panel keeps its task array in
 a closure, so writing to storage from outside and not re-rendering gets the
 old array saved back over it later — the resurrection trap in `STABILITY.md`.
 Notification actions need a cross-panel mutation API first.
+
+## The app icon
+
+It is the web app's own `apple-touch-icon.png`, so the icon on the home screen
+is the icon you already had. Rebuild it after changing that file:
+
+```bash
+python3 make-app-icon.py
+```
+
+That script upscales rather than redraws, and the comment in it explains why:
+an iPhone home screen renders the icon at 60pt @3x = **180px**, which is the
+source file's exact size, and every other slot iOS uses is smaller. So the
+1024x1024 the asset catalog demands is scaled straight back down, and a plain
+upscale survives that round trip ten times closer to the original than a
+careful redraw does — 0.52 versus 5.16 mean difference per channel. Redraw only
+if the icon ever needs to be sharp at full size, and expect it not to match the
+phone exactly when you do.
