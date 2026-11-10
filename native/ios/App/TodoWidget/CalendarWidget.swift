@@ -170,6 +170,29 @@ struct CalTodayView: View {
     let entry: CalEntry
 
     var body: some View {
+        // Every widget family must adopt a container background on iOS 17
+        // and later — the lock-screen accessories included. Failing to is
+        // not a build error, which is exactly why this got through: WidgetKit
+        // silently replaces the view with a "Please adopt containerBackground"
+        // notice. It was applied only to the home-screen branch, so the home
+        // screen looked right and the lock screen showed the notice.
+        //
+        // On the lock screen the system draws its own backdrop and renders
+        // the content in one tint, so there the correct background is none
+        // at all — a paper rectangle would be a grey smear over the wallpaper.
+        inner.containerBackground(for: .widget) { backdrop }
+    }
+
+    @ViewBuilder private var backdrop: some View {
+        switch family {
+        case .accessoryInline, .accessoryCircular, .accessoryRectangular:
+            Color.clear
+        default:
+            paper
+        }
+    }
+
+    @ViewBuilder private var inner: some View {
         switch family {
         case .accessoryInline:
             // One line, no colour, no layout. All it can do is be the
@@ -261,7 +284,6 @@ struct CalTodayView: View {
             }
         }
         .padding(13)
-        .containerBackground(paper, for: .widget)
     }
 }
 
@@ -272,6 +294,29 @@ struct CalWeekView: View {
     let entry: CalEntry
 
     var body: some View {
+        // Every widget family must adopt a container background on iOS 17
+        // and later — the lock-screen accessories included. Failing to is
+        // not a build error, which is exactly why this got through: WidgetKit
+        // silently replaces the view with a "Please adopt containerBackground"
+        // notice. It was applied only to the home-screen branch, so the home
+        // screen looked right and the lock screen showed the notice.
+        //
+        // On the lock screen the system draws its own backdrop and renders
+        // the content in one tint, so there the correct background is none
+        // at all — a paper rectangle would be a grey smear over the wallpaper.
+        inner.containerBackground(for: .widget) { backdrop }
+    }
+
+    @ViewBuilder private var backdrop: some View {
+        switch family {
+        case .accessoryInline, .accessoryCircular, .accessoryRectangular:
+            Color.clear
+        default:
+            paper
+        }
+    }
+
+    @ViewBuilder private var inner: some View {
         switch family {
         case .accessoryInline:
             Text(weekSummary())
@@ -346,7 +391,6 @@ struct CalWeekView: View {
             }
         }
         .padding(13)
-        .containerBackground(paper, for: .widget)
     }
 
     private func isToday(_ d: Date) -> Bool { Calendar.current.isDateInToday(d) }

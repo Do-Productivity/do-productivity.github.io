@@ -261,6 +261,29 @@ struct TodoWidgetView: View {
     private var openCount: Int { lists.reduce(0) { $0 + $1.count } }
 
     var body: some View {
+        // Every widget family must adopt a container background on iOS 17
+        // and later — the lock-screen accessories included. Failing to is
+        // not a build error, which is exactly why this got through: WidgetKit
+        // silently replaces the view with a "Please adopt containerBackground"
+        // notice. It was applied only to the home-screen branch, so the home
+        // screen looked right and the lock screen showed the notice.
+        //
+        // On the lock screen the system draws its own backdrop and renders
+        // the content in one tint, so there the correct background is none
+        // at all — a paper rectangle would be a grey smear over the wallpaper.
+        inner.containerBackground(for: .widget) { backdrop }
+    }
+
+    @ViewBuilder private var backdrop: some View {
+        switch family {
+        case .accessoryInline, .accessoryCircular, .accessoryRectangular:
+            Color.clear
+        default:
+            Color.paper
+        }
+    }
+
+    @ViewBuilder private var inner: some View {
         switch family {
         // ── The lock screen ──
         // No colour, no background of our own, and in the inline case no
@@ -314,7 +337,6 @@ struct TodoWidgetView: View {
                     content
                 }
             }
-            .containerBackground(for: .widget) { Color.paper }
         }
     }
 
