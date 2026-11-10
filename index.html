@@ -859,6 +859,33 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
   }
 
+  /* Things with a date but no hour, above the grid rather than buried in
+     it. Superhuman puts them in the same place, and so does every calendar
+     that has had to solve this, which is usually a sign it is right. */
+  .cal-allday {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    margin: 0 0 6px;
+  }
+  .cal-allchip {
+    font-family: var(--sans); font-size: 10.5px;
+    color: var(--ink); text-align: left;
+    background: color-mix(in srgb, var(--violet, #735a99) 14%, transparent);
+    border: none; border-left: 3px solid #735a99;
+    border-radius: 4px; padding: 4px 8px; cursor: pointer;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* A meeting is not yours to tick off, so it does not look like something
+     with a circle waiting for you. Filled and outlined, no action implied. */
+  .cal-item.cal-event {
+    background: color-mix(in srgb, var(--item, #735a99) 16%, transparent);
+    outline: 1px solid color-mix(in srgb, var(--item, #735a99) 35%, transparent);
+    outline-offset: -1px;
+  }
+  .cal-item.cal-event .cal-text { font-style: italic; }
+  .cal-wline.cal-event-line .cal-wtext { font-style: italic; }
+
   /* The slot composer. It sits where you pointed, so the time it is about
      is never in doubt, and it carries the list chips with it because a task
      in the wrong list is worse than no task at all. */
@@ -4564,7 +4591,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1335";
+  var BUILD = "2026-11-10-1342";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5574,6 +5601,99 @@
   var calReloaders = [];
   function refreshCalendar() { calReloaders.forEach(function (fn) { fn(); }); }
 
+  // ── Reading the real calendar ────────────────────────────
+  // The connection already exists and the scope already allows this.
+  // Calendars.ReadWrite is what lets Do. put a dated task in your calendar;
+  // read is the half of it that was never used. So your actual meetings can
+  // appear beside your tasks with nothing for you to connect.
+  //
+  // Read only, deliberately. Do. edits the events it created and nothing
+  // else — see syncTaskToOutlook, which tracks them by msEventId. A to-do
+  // app that can silently delete a meeting is a bad idea however carefully
+  // it is written, so anything wider than that needs a setting and a
+  // decision, not a default.
+  //
+  // The answers are cached on the device and survive a reload, so a day you
+  // have already looked at still draws with no network at all. That matters
+  // more than freshness here: a calendar that is blank on a bad connection
+  // is worse than one that is five minutes old.
+  var MS_EV_KEY = "dia_todo_msevents_v1";
+  var MS_EV_FRESH = 5 * 60 * 1000;
+  var msEvents = {};         // "YYYY-MM-DD" -> [event]
+  var msEventsAt = {};       // the same keys -> when they were last filled
+  (function () {
+    try {
+      var c = JSON.parse(localStorage.getItem(MS_EV_KEY) || "{}");
+      msEvents = c.days || {};
+      msEventsAt = c.at || {};
+    } catch (e) { /* a corrupt cache is just an empty one */ }
+  })();
+
+  function dayKey(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + "-" +
+      ("0" + (d.getMonth() + 1)).slice(-2) + "-" +
+      ("0" + d.getDate()).slice(-2);
+  }
+
+  function msEventsFor(dayStart) { return msEvents[dayKey(dayStart)] || []; }
+
+  var msFetching = {};
+  function ensureMsEvents(fromTs, days, done) {
+    if (!msConnected()) return;
+    var i, stale = false;
+    for (i = 0; i < days; i++) {
+      var k = dayKey(startOfDay(fromTs, i));
+      if (!msEventsAt[k] || Date.now() - msEventsAt[k] > MS_EV_FRESH) stale = true;
+    }
+    if (!stale) return;
+    var toTs = startOfDay(fromTs, days);
+    var range = fromTs + ":" + toTs;
+    if (msFetching[range]) return;
+    msFetching[range] = true;
+
+    var url = "/me/calendarView" +
+      "?startDateTime=" + encodeURIComponent(new Date(fromTs).toISOString()) +
+      "&endDateTime=" + encodeURIComponent(new Date(toTs).toISOString()) +
+      "&$select=id,subject,start,end,isAllDay,showAs,location" +
+      "&$orderby=start/dateTime&$top=200";
+
+    graph(url).then(function (res) {
+      return res && res.ok ? res.json() : null;
+    }).then(function (data) {
+      msFetching[range] = false;
+      if (!data || !data.value) return;
+      // The range is cleared before it is refilled, so an event deleted in
+      // Outlook disappears here too rather than lingering for ever.
+      for (var j = 0; j < days; j++) {
+        var kk = dayKey(startOfDay(fromTs, j));
+        msEvents[kk] = [];
+        msEventsAt[kk] = Date.now();
+      }
+      data.value.forEach(function (ev) {
+        if (!ev.start || !ev.end) return;
+        // Graph answers in UTC unless asked otherwise, and says so in
+        // timeZone. Parsing without the Z is how an event lands an hour out.
+        var st = Date.parse(ev.start.dateTime + "Z");
+        var en = Date.parse(ev.end.dateTime + "Z");
+        if (isNaN(st) || isNaN(en)) return;
+        var key = dayKey(ev.isAllDay ? st + 60000 : st);
+        if (!msEvents[key]) return;      // outside the range we just filled
+        msEvents[key].push({
+          id: ev.id,
+          subject: ev.subject || "(no subject)",
+          start: st, end: en,
+          allDay: !!ev.isAllDay,
+          where: (ev.location && ev.location.displayName) || ""
+        });
+      });
+      try {
+        localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
+      } catch (e) { /* a full quota should not break the calendar */ }
+      if (done) done();
+    }).catch(function () { msFetching[range] = false; });
+  }
+
   function createCalendarPanel() {
     var cTint = tintFor("cal", null);
     var panel = el("section", "panel cal" + (cTint ? " themed" : ""));
@@ -5616,6 +5736,12 @@
     modes.appendChild(dayTab);
     modes.appendChild(weekTab);
     panel.appendChild(modes);
+
+    // Things with a date but no hour. They have no place on an hour grid
+    // and squeezing them in as a block from midnight to midnight would bury
+    // the day under them, so they sit above it.
+    var allDay = el("div", "cal-allday");
+    panel.appendChild(allDay);
 
     var scroller = el("div", "cal-scroll");
     var grid = el("div", "cal-grid");
@@ -5693,6 +5819,18 @@
                    listId: "runs", listTitle: "Scheduled tasks",
                    tint: tintFor("runs", "amber") });
       });
+      // Real meetings, read from the calendar you already connected. They
+      // are not Do.'s to change, so they carry no listId and tapping one
+      // tells you about it rather than taking you somewhere.
+      msEventsFor(dayStart).forEach(function (ev) {
+        if (ev.allDay) return;            // the strip above handles those
+        if (ev.end <= dayStart || ev.start >= dayEnd) return;
+        out.push({ kind: "event", text: ev.subject,
+                   start: Math.max(ev.start, dayStart),
+                   end: Math.min(ev.end, dayEnd),
+                   listId: null, listTitle: ev.where || "Calendar",
+                   tint: "violet" });
+      });
       out.sort(function (a, b) { return (a.start - b.start) || (a.end - b.end); });
       return out;
     }
@@ -5750,11 +5888,26 @@
         week.style.display = "";
         scroller.style.display = "none";
         empty.style.display = "none";
+        allDay.style.display = "none";
+        ensureMsEvents(startOfWeek(day), 7, render);
         renderWeek();
         return;
       }
       week.style.display = "none";
+      ensureMsEvents(day, 1, render);
       var list = itemsFor(day);
+
+      allDay.textContent = "";
+      var whole = msEventsFor(day).filter(function (e) { return e.allDay; });
+      whole.forEach(function (ev) {
+        var chip = el("button", "cal-allchip", ev.subject);
+        chip.title = "All day \u00b7 " + ev.subject;
+        chip.addEventListener("click", function () {
+          flashStatus("All day \u2014 " + ev.subject);
+        });
+        allDay.appendChild(chip);
+      });
+      allDay.style.display = whole.length ? "" : "none";
       var s = span(list, day);
       lastSpan = s;
       grid.style.height = ((s.to - s.from) * PX_H) + "px";
@@ -5786,6 +5939,7 @@
         box.appendChild(el("span", "cal-text", it.text));
         box.title = it.text + "  \u00b7  " + it.listTitle;
         box.addEventListener("click", function () {
+          if (!it.listId) { flashStatus(clock(it.start) + " \u2014 " + it.text); return; }
           setMobileTab(it.listId);
           flashStatus(it.text + " \u2014 " + it.listTitle);
         });
@@ -5847,13 +6001,14 @@
           lines.appendChild(el("span", "cal-wnone", "\u2014"));
         } else {
           list.forEach(function (it) {
-            var line = el("button", "cal-wline");
+            var line = el("button", "cal-wline" + (it.kind === "event" ? " cal-event-line" : ""));
             line.style.setProperty("--item", tint(it.tint).solid);
             if (it.start < Date.now()) line.classList.add("cal-past");
             line.appendChild(el("span", "cal-wtime", clock(it.start)));
             line.appendChild(el("span", "cal-wtext", it.text));
             line.title = it.text + "  \u00b7  " + it.listTitle;
             line.addEventListener("click", function () {
+              if (!it.listId) { flashStatus(clock(it.start) + " \u2014 " + it.text); return; }
               setMobileTab(it.listId);
               flashStatus(it.text + " \u2014 " + it.listTitle);
             });
