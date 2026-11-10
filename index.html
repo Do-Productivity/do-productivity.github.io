@@ -809,6 +809,44 @@
   .task-row:hover .task-delete { opacity: 1; }
   .task-delete:hover { color: var(--red); }
 
+  /* The week strip. Seven targets, each one a date you can point at. */
+  .cal-strip {
+    display: flex; gap: 2px; margin: 0 0 8px;
+  }
+  .cal-sday {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    background: none; border: none; cursor: pointer;
+    padding: 5px 0 4px; border-radius: 10px;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease;
+  }
+  .cal-sday:hover { background: rgba(43, 38, 32, .05); }
+  .cal-sdow {
+    font-family: var(--sans); font-size: 8.5px; font-weight: 700;
+    letter-spacing: .8px; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .cal-snum {
+    font-family: var(--serif); font-size: 17px; font-weight: 700;
+    line-height: 1.15; color: var(--ink);
+  }
+  /* Today is coloured; the day you are looking at is filled. Two different
+     questions, so two different marks — Superhuman separates them the same
+     way and it is the reason you can always find your way home. */
+  .cal-sday.today .cal-snum,
+  .cal-sday.today .cal-sdow { color: var(--red); }
+  .cal-sday.on { background: var(--ink); }
+  .cal-sday.on .cal-snum,
+  .cal-sday.on .cal-sdow { color: var(--paper); }
+  .cal-sday.on.today .cal-snum,
+  .cal-sday.on.today .cal-sdow { color: #ffb4a2; }
+  .cal-sdots { display: flex; gap: 2px; height: 4px; align-items: center; }
+  .cal-sdots i {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--ink-faint); display: block;
+  }
+  .cal-sday.on .cal-sdots i { background: var(--paper); opacity: .7; }
+
   /* Day or week. Two words, not icons: an icon for "week" is a grid, and a
      grid is exactly what this week view deliberately is not. */
   .cal-modes {
@@ -1029,7 +1067,7 @@
   /* A meeting is not yours to tick off, so it does not look like something
      with a circle waiting for you. Filled and outlined, no action implied. */
   .cal-item.cal-event {
-    background: color-mix(in srgb, var(--item, #735a99) 16%, transparent);
+    background: color-mix(in srgb, var(--item, #735a99) 22%, transparent);
     outline: 1px solid color-mix(in srgb, var(--item, #735a99) 35%, transparent);
     outline-offset: -1px;
   }
@@ -1143,11 +1181,11 @@
 
   .cal-item {
     position: absolute;
-    display: flex; flex-direction: column; justify-content: flex-start; gap: 1px;
+    display: flex; flex-direction: column; justify-content: flex-start; gap: 2px;
     overflow: hidden; text-align: left;
-    padding: 3px 7px;
-    border: none; border-left: 3px solid var(--item, var(--ink-soft));
-    border-radius: 5px;
+    padding: 5px 9px;
+    border: none; border-left: 4px solid var(--item, var(--ink-soft));
+    border-radius: 7px;
     background: color-mix(in srgb, var(--item, #888) 13%, transparent);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -1160,6 +1198,13 @@
   /* A moment reads as one line — time, then what it is — because stacking
      them gave the text a second line it had no height for and cut it in
      half. A window has a height worth filling, so it keeps the stack. */
+  .cal-item.tight { padding: 4px 6px; }
+  .cal-item.tight .cal-when { display: none; }
+  .cal-item.tight .cal-text { font-size: 12px; line-height: 1.25; }
+  /* A moment keeps its time even when tight: a one-line row has the room,
+     and without it the row is a word floating next to an hour line. */
+  .cal-item.cal-task.tight .cal-when { display: block; }
+
   .cal-item.cal-task {
     background: transparent;
     flex-direction: row; align-items: baseline; gap: 6px;
@@ -1179,12 +1224,14 @@
   }
   .cal-item.cal-live .cal-when { color: var(--red); font-weight: 700; }
   .cal-when {
-    font-family: var(--sans); font-size: 9px; letter-spacing: .3px;
-    color: var(--ink-soft); white-space: nowrap;
+    font-family: var(--sans); font-size: 9.5px; letter-spacing: .3px;
+    font-weight: 700; color: var(--ink-soft); white-space: nowrap;
   }
+  /* The writing is the point. A meeting you cannot read is a coloured
+     rectangle telling you that you are busy, which you already knew. */
   .cal-text {
-    font-family: var(--sans); font-size: 12px; line-height: 1.3;
-    color: var(--ink); overflow: hidden; min-width: 0;
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.32;
+    font-weight: 600; color: var(--ink); overflow: hidden; min-width: 0;
   }
 
   /* Where you actually are. The only thing on this panel that moves by
@@ -4764,7 +4811,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1634";
+  var BUILD = "2026-11-10-1654";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6500,6 +6547,42 @@
     // column of five does not have either — so the week is an agenda, seven
     // days stacked, rather than a grid turned on its side. It answers the
     // question a week view is actually asked: what is coming.
+    // The week, as seven numbers. Both the calendars worth copying put this
+    // at the top, and the reason is that a date is a place: you do not step
+    // to Thursday one arrow at a time, you look at the week and point at
+    // it. The arrows remain for crossing a week boundary.
+    var strip = el("div", "cal-strip");
+    panel.appendChild(strip);
+
+    function paintStrip() {
+      strip.textContent = "";
+      var from = startOfWeek(day);
+      var now = Date.now();
+      for (var i = 0; i < 7; i++) {
+        var d0 = startOfDay(from, i);
+        var dd = new Date(d0);
+        var cell = el("button", "cal-sday");
+        if (isSameDay(d0, now)) cell.classList.add("today");
+        if (isSameDay(d0, day) && mode === "day") cell.classList.add("on");
+        cell.appendChild(el("span", "cal-sdow",
+          dd.toLocaleDateString(undefined, { weekday: "narrow" })));
+        cell.appendChild(el("span", "cal-snum", String(dd.getDate())));
+        // A dot rather than a number: how busy, without the arithmetic.
+        var load = itemsFor(d0).length;
+        var dots = el("span", "cal-sdots");
+        for (var k = 0; k < Math.min(load, 3); k++) dots.appendChild(el("i", null));
+        cell.appendChild(dots);
+        (function (target) {
+          cell.addEventListener("click", function () {
+            day = target;
+            if (mode !== "day") setMode("day");
+            else { render(); landSomewhereUseful(); }
+          });
+        })(d0);
+        strip.appendChild(cell);
+      }
+    }
+
     var modes = el("div", "cal-modes");
     var dayTab = el("button", "cal-mode", "Day");
     var weekTab = el("button", "cal-mode", "Week");
@@ -6869,8 +6952,12 @@
     // Everything downstream goes through yFor and tsFor rather than
     // multiplying by a constant, because once the hours differ there is no
     // constant to multiply by. That is the whole of the complexity here.
-    var QUIET_H = 15;        // an hour with nothing in it
-    var BUSY_H = 46;         // an hour with something in it
+    // An empty hour is a ruled line and a label, nothing more — it exists
+    // to be found and tapped, not to be looked at. A busy hour is the
+    // thing you came for. The ratio between these two numbers is the whole
+    // argument: what you have on is worth four times what you have not.
+    var QUIET_H = 11;        // an hour with nothing in it
+    var BUSY_H = 52;         // an hour with something in it
 
     function layoutFor(list) {
       var busy = [];
@@ -6906,7 +6993,7 @@
       if (room > plain && busyCount > 0) {
         grow = (room - plain) / busyCount;
         // Past a point an hour that tall stops reading as an hour.
-        grow = Math.min(grow, 120 - BUSY_H);
+        grow = Math.min(grow, 150 - BUSY_H);
       }
 
       var tops = [0];
@@ -7026,6 +7113,13 @@
         box.style.height = Math.round(h) + "px";
         box.style.left = (it.lane * (100 / n)) + "%";
         box.style.width = "calc(" + (100 / n) + "% - 4px)";
+        // Three meetings at once on a phone is three columns of about a
+        // hundred pixels, and a title in a hundred pixels is four words
+        // and an ellipsis. When a lane gets that narrow the time label
+        // goes: the block's position on the grid already says when it is,
+        // so the only thing it is adding is the reason you cannot read
+        // what the meeting is.
+        if (itemsLayer.clientWidth / n < 150) box.classList.add("tight");
         box.style.setProperty("--item", tint(it.tint).solid);
         if (it.end > it.start && it.end - it.start >= MIN_SLOT) box.classList.add("cal-block");
         var rightNow = Date.now();
@@ -7055,6 +7149,7 @@
         ? "Nothing with a time on it today."
         : "Nothing on " + dayTitle(day).toLowerCase() + ".";
       paintSource();
+      paintStrip();
       dayBtn.textContent = dayTitle(day);
       dayBtn.classList.toggle("away", !isSameDay(day, Date.now()));
       headCount.textContent = String(list.length);
@@ -7127,6 +7222,7 @@
       dayBtn.textContent = isSameDay(startOfWeek(Date.now()), from) ? "This week" : label;
       dayBtn.classList.toggle("away", !isSameDay(startOfWeek(Date.now()), from));
       paintSource();
+      paintStrip();
       headCount.textContent = String(total);
       countLabel.textContent = total
         ? total + (total === 1 ? " thing this week" : " things this week")
