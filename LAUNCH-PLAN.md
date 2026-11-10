@@ -8,8 +8,9 @@
 
 The name is **Do.** — the mark that is already on the icon.
 
-Goal: a paid app, **$9.99 once** worldwide and **EGP 99 once** in Egypt, sold on
-what it does when the phone unfolds.
+Goal: a **free** app with a real month inside it, then **$0.99/month, cancel
+anytime** or **$9.99 once for life** (EGP 10 / EGP 99 in Egypt) — sold on what it
+does when the phone unfolds.
 
 This plan is written in the order the risks actually bite, not in the order the
 work feels exciting. The first section is the one that can stop everything.
@@ -147,12 +148,12 @@ which is the actual test:
 | 6 | Focus filters | 1 day | Work Focus shows Business only |
 | 7 | Native swipe actions and haptics | 1 day | The list feels like a list, not a page |
 
-1–4 are the minimum I would submit on. 5–7 are what make it worth **$9.99**
-rather than merely approvable.
+1–4 are the minimum I would submit on. 5–7 are what make someone keep paying
+after the free month rather than merely approve the app.
 
 **The deeper question, stated once and then dropped.** A web layer is a ceiling
-on how iOS the app can ever feel, and at $9.99 you compete with apps that are
-native to the bone. The alternative is rebuilding the interface in SwiftUI over
+on how iOS the app can ever feel, and you compete with apps that are native to
+the bone. The alternative is rebuilding the interface in SwiftUI over
 the same model: weeks, and it throws away something that works beautifully today
 and deploys in sixty seconds. **I would not do it yet.** Ship the hardened
 hybrid, find out whether people buy it, and let revenue — not taste — decide.
@@ -191,35 +192,97 @@ is: **the day you actually have, on a phone that opens.**
 
 ---
 
-## 4. Price and economics
+## 4. Price: free for a month, then a dollar or ten
 
-**Structure:** paid up front, one purchase, no subscription, no in-app
-purchases. It matches the product's character and it is what you asked for.
+Free to download. Every feature works for a full month. After that, either
+**$0.99 a month**, cancel whenever you like, or **$9.99 once** and never again.
 
-**Enrol in the App Store Small Business Program before the first sale.** It is
-not automatic. It takes the commission from 30% to **15%** for developers under
-$1M a year, which is you.
+This replaces the paid-up-front model, and it is the right change. The hardest
+thing to sell is an unknown app at $9.99 from a product page. The easiest is a
+month of the whole thing for nothing. The price stops being a decision people
+make before they have used it.
 
-| | $9.99 tier | EGP 99 tier |
+### One detail that decides how this gets built
+
+Apple's free trial is an *introductory offer*, and it attaches to a
+**subscription** — the person must subscribe, card and all, to start it. That
+does not give you what you asked for, because the lifetime buyer would never get
+a trial at all.
+
+So the month is **ours, not Apple's**: the app runs its own thirty days, with no
+card and no account, and at the end shows one screen with both options on it.
+That is allowed, it is a far lower barrier, and it is the only way one trial
+covers both prices.
+
+The trade is real: a card-up-front trial converts better, because people forget
+to cancel. A no-card trial gets many more people through the door and converts
+worse at the end of it. For an unknown app whose first job is word of mouth, more
+people through the door is the right side of that trade — and it earns no "it
+charged me" one-star reviews.
+
+### What actually reaches you
+
+Enrol in the **Small Business Program** before the first sale. It is not
+automatic, and when you are enrolled the 15% rate applies to subscriptions **from
+the first payment** rather than only after a year.
+
+| | gross | Apple at 15% | you receive |
+|---|---|---|---|
+| Lifetime, once | $9.99 | $1.50 | **$8.49** |
+| Subscription, per month | $0.99 | $0.15 | **$0.84** |
+| Subscription, twelve months | $11.88 | $1.78 | **$10.10** |
+
+### The number to notice: ten months
+
+A subscriber passes the lifetime buyer at **ten months** ($8.49 ÷ $0.84). Anyone
+who expects to still be using Do. past next summer is better off buying lifetime,
+and most people who like it will work that out. **Expect lifetime to carry most of
+the revenue**, with the subscription as the low-commitment door for everyone else.
+
+That is fine, and I would keep your numbers. If you ever want the subscription to
+do more of the work, the lever is the **lifetime** price, not the monthly one — at
+$19.99 the crossover moves to twenty months. Early on, adoption and word of mouth
+matter more than revenue per user, and a $9.99 lifetime is an easy yes.
+
+### $1.00 is not a price point
+
+Apple sells at fixed tiers. The one you mean is **$0.99**. Likewise EGP 99 for
+lifetime should keep its ten-to-one shape, so about **EGP 10 a month**, rounded to
+whichever tier Apple actually offers. *Unverified:* I could not confirm Apple's
+exact EGP tiers. Check the price grid in App Store Connect.
+
+### What this might earn
+
+**These are assumptions, not measurements.** Nobody has real numbers until the
+beta. They are here so the shape is visible, not so anybody budgets against them.
+
+| step | assumed | people |
 |---|---|---|
-| Apple takes (SBP, 15%) | ~$1.50 | ~EGP 15 |
-| you receive | **~$8.49** | **~EGP 84** |
-| at 30%, if you forget to enrol | $6.99 | EGP 69 |
+| Downloads | — | 10,000 |
+| Still using it on day 30 | 35% | 3,500 |
+| Pay at the end of the month | 10% | 350 |
+| …choose lifetime | 60% | 210 |
+| …choose monthly | 40% | 140 |
 
-Forgetting to enrol costs you $1.50 on every single sale. Do it first.
+| revenue, net of Apple | working | |
+|---|---|---|
+| Lifetime | 210 × $8.49 | $1,783 |
+| Subscriptions | 140 × 5 months × $0.84 | $588 |
+| **Total per 10,000 downloads** | | **$2,371** |
+| Per download | | $0.24 |
 
-**Regional pricing is supported.** Apple lets you set a base price and override
-it per storefront, so $9.99 globally with EGP 99 in Egypt is a normal
-configuration. *Unverified:* I could not confirm Apple's exact EGP price points
-from here — 99 may need to round to the nearest available one. Check the price
-grid in App Store Connect.
+Five months is a deliberately unkind average subscriber life; cheap utility
+subscriptions churn hard.
 
-**On the price being defensible.** $9.99 against a free, pre-installed Reminders
-was a hard argument when the pitch was "nicer lists." It is a better one now. The
-calendar is the feature people pay for in Fantastical and Structured, and the
-fold is something nobody else has. That does not make it easy — Things 3 sets the
-craft bar — but the thing being sold is now larger than the thing being compared
-to.
+**Why this beats $9.99 up front.** To earn the same $2,371 at $9.99 you would need
+**279 sales**. The problem is not the 279 — it is that a paid app never gets the
+ten thousand downloads in the first place. People do not try paid apps. Free with
+a real month inside it is the only version of this that gets word of mouth, and
+word of mouth is the entire distribution plan for a solo developer with no ad
+budget.
+
+**Breaking even:** $99 of Apple membership is **12 lifetime sales**, or 118
+subscriber-months. That is a low bar, and lower than it was at $9.99 on the door.
 
 ---
 
@@ -269,6 +332,12 @@ for an individual account.
 *Side effect worth having:* the 7-day expiry dies the moment we sign with a paid
 team — profiles go to 365 days.
 
+**Phase 1b — purchases and the paywall (me, ~1 week)**
+StoreKit 2: the two products, the thirty-day clock, the paywall, the entitlement
+check in one place, and a **Restore Purchases** button — mandatory, or rejection.
+No server needed: StoreKit 2 verifies signed transactions on the device, so
+hosting stays at zero.
+
 **Phase 1 — native hardening (me, ~1 week)**
 Items 1–4 from section 2, each behind the existing `NATIVE` guard so the web
 version is untouched and keeps deploying in sixty seconds.
@@ -292,7 +361,7 @@ Screenshots, preview videos, description, keywords, privacy nutrition label.
 
 **Phase 6 — launch and marketing (section 7)**
 
-Realistic first submission: **4–6 weeks** from the day you enrol.
+Realistic first submission: **5–7 weeks** from the day you enrol.
 
 ---
 
@@ -363,6 +432,9 @@ unsearchable and generic, and still the app's real name today (see Phase 2).
 
 **Subtitle (30 chars):** the fold, or the day. Not both.
 
+**Price on the listing:** **Free**, with in-app purchases. The store badge saying
+*Free* is most of the battle.
+
 **Keywords:** fold, folding, todo, tasks, calendar, agenda, reminders, widget,
 lock screen, offline, privacy.
 
@@ -403,6 +475,17 @@ Stated plainly so nobody builds on sand:
   reviewer to ask why a to-do app needs it. The answer is good — it shows your
   meetings beside your tasks — but it has to be visibly true in the first screen
   after the prompt, or it reads as data collection.
+- **Guideline 3.1.2 — what does the subscription keep giving?** A reviewer may
+  ask what a monthly fee buys in an app that works offline. The answer is sync,
+  calendar sources and continued updates — and the lifetime option shows the
+  subscription is a convenience, not a toll.
+- **The free month is ours, so a reinstall can reset it.** Keychain and iCloud
+  key-value storage survive deletion and make it awkward. At a dollar a month,
+  some leakage is cheaper than annoying honest people.
+- **Two products double the edge cases** for one developer: restore, upgrading
+  monthly → lifetime, refunds, Family Sharing. Write the entitlement check once.
+- **The reviewer will never see the paywall** behind a thirty-day trial unless
+  the review notes say how to reach it.
 - **TestFlight builds expire after 90 days**, so a long beta needs re-uploads.
 - **Review outcomes are never certain.** Section 2 reduces the 4.2 risk; it
   cannot eliminate it.
@@ -413,8 +496,8 @@ Stated plainly so nobody builds on sand:
 
 1. **You:** enrol in the Apple Developer Program, one Apple ID, and enrol in the
    Small Business Program in App Store Connect the same day.
-2. **Me:** rename the app to **Do.**, then replace the web date input with a
-   native picker. The name has to be right before any asset exists; the picker is
+2. **Me:** rename the app to **Do.**, build the paywall and the thirty-day
+   clock, then replace the web date input with a native picker. The name has to be right before any asset exists; the picker is
    the one visible flaw.
 3. **Both:** shoot the unfold once, roughly, on a phone. Before any polish. If
    those fifteen seconds do not make someone say "wait, do that again," the

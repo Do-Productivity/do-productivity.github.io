@@ -189,8 +189,8 @@ A(P("Your tasks and your meetings on one timeline,<br/>"
     "on a phone that opens.", "cover_s"))
 A(Spacer(1, 16 * mm))
 A(tbl([
-    ["Product", "Do. - iOS, paid once"],
-    ["Price", "USD 9.99 worldwide  /  EGP 99 in Egypt"],
+    ["Product", "Do. - iOS, free to download"],
+    ["Price", "A free month, then USD 0.99/mo or USD 9.99 once (EGP 10 / EGP 99)"],
     ["Owner", "Ahmed Hassaan"],
     ["Status", "Running on device, build 2026-11-10-1715"],
     ["Date", "10 November 2026 - revised after the calendar shipped"],
@@ -367,6 +367,8 @@ A(tbl([
      "Reads the phone's real calendar accounts - a website cannot do this at all"],
     ["Five WidgetKit widgets, including the lock screen",
      "Accessory families under the clock; emphatically not web content"],
+    ["StoreKit 2 purchases and a native paywall",
+     "Coming with the pricing work in section five - more native surface, and a reviewer always sees it"],
     ["Genuine offline behaviour",
      "No browser error page, no spinner, no login that forgets you"],
 ], [58 * mm, 84 * mm]))
@@ -374,7 +376,8 @@ A(tbl([
 A(P("What I would add before submitting", "h3"))
 A(P("Each of these is something a website cannot do, which is the actual "
     "test. Items 1 to 4 are the minimum I would submit on; 5 to 7 are what "
-    "make it worth USD 9.99 rather than merely approvable."))
+    "make someone keep paying after the free month, rather than merely "
+    "approve the app."))
 A(tbl([
     ["#", "Addition", "Effort", "Why"],
     ["1", "Native date and time picker", "1 day", "Removes the one visible flaw"],
@@ -387,8 +390,8 @@ A(tbl([
 ], [8 * mm, 46 * mm, 16 * mm, 72 * mm]))
 
 A(P("The deeper question, stated once", "h3"))
-A(P("A web layer is a ceiling on how native this app can ever feel, and at "
-    "USD 9.99 it competes with apps that are native to the bone. The "
+A(P("A web layer is a ceiling on how native this app can ever feel, and it "
+    "competes with apps that are native to the bone. The "
     "alternative is rebuilding the interface in SwiftUI over the same model: "
     "weeks of work, and it throws away something that works beautifully today "
     "and deploys in sixty seconds. <b>My recommendation is not to do it "
@@ -504,49 +507,112 @@ A(PageBreak())
 
 # ───────────────────────── 5. price ─────────────────────────
 A(P("SECTION FIVE", "kicker"))
-A(P("Price and what reaches you", "h1"))
+A(P("Price: free for a month, then a dollar or ten", "h1"))
 A(Spacer(1, 3 * mm))
-A(P("Paid up front, one purchase, no subscription, no in-app purchases. It "
-    "suits the product's character and it is what you asked for."))
+A(P("Free to download. Every feature works for a full month. After that, "
+    "either USD 0.99 a month, cancel whenever you like, or USD 9.99 once and "
+    "never again."))
+A(P("This replaces the paid-up-front model in the first draft, and it is the "
+    "right change. The hardest thing to sell is an unknown app at USD 9.99 "
+    "from a product page. The easiest is a month of the whole thing for "
+    "nothing. The price stops being a decision people make before they have "
+    "used it."))
 
-A(P("Enrol in the Small Business Program before the first sale", "h3"))
-A(P("It is <b>not automatic</b>. It takes Apple's commission from 30% to 15% "
-    "for developers under USD 1M a year, which is you. Forgetting costs you "
-    "USD 1.50 on every single copy, forever."))
+A(P("One detail that decides how this is built", "h3"))
+A(P("Apple's free trial is an <i>introductory offer</i>, and it attaches to a "
+    "subscription - the person must subscribe, card and all, to start it. "
+    "That does not give you what you asked for, because the lifetime buyer "
+    "would never get a trial at all."))
+A(P("So the month is <b>ours, not Apple's</b>: the app runs its own thirty "
+    "days, with no card and no account, and at the end shows one screen with "
+    "both options on it. That is allowed, it is a far lower barrier, and it "
+    "is the only way the trial covers both prices."))
+A(P("The trade is real and worth naming: a card-up-front trial converts "
+    "better, because people forget to cancel. A no-card trial gets many more "
+    "people through the door and converts worse at the end of it. For an "
+    "unknown app whose first job is word of mouth, more people through the "
+    "door is the right side of that trade - and it earns no 'it charged me' "
+    "one-star reviews.", "small"))
+
+A(P("What actually reaches you", "h3"))
+A(P("Enrol in the <b>Small Business Program</b> before the first sale. It is "
+    "not automatic, and when you are enrolled the 15% rate applies to "
+    "subscriptions <i>from the first payment</i> rather than after a year."))
 A(tbl([
-    ["", "USD 9.99", "EGP 99"],
-    ["Apple takes at 15% (Small Business Program)", "1.50", "15"],
-    ["You receive", "8.49", "84"],
-    ["Apple takes at 30% (if you forget to enrol)", "3.00", "30"],
-    ["You receive", "6.99", "69"],
-], [84 * mm, 29 * mm, 29 * mm], align={1: "RIGHT", 2: "RIGHT"}))
-A(P("Figures before local taxes, which Apple collects and remits.", "cap"))
+    ["", "Gross", "Apple at 15%", "You receive"],
+    ["Lifetime, once", "9.99", "1.50", "8.49"],
+    ["Subscription, per month", "0.99", "0.15", "0.84"],
+    ["Subscription, twelve months", "11.88", "1.78", "10.10"],
+], [58 * mm, 26 * mm, 28 * mm, 30 * mm], align={1: "RIGHT", 2: "RIGHT", 3: "RIGHT"}))
+A(P("Figures in USD, before local taxes, which Apple collects and remits.", "cap"))
 
-A(P("Regional pricing is supported", "h3"))
-A(P("Apple lets you set a base price and override it per storefront, so USD "
-    "9.99 worldwide with EGP 99 in Egypt is an ordinary configuration, not a "
-    "workaround. <b>Unverified:</b> I could not confirm Apple's exact EGP "
-    "price points from here - 99 may have to round to the nearest available "
-    "point. Check the price grid in App Store Connect."))
+A(P("The number to notice: ten months", "h3"))
+A(P("A subscriber passes the lifetime buyer at <b>ten months</b> "
+    "(8.49 divided by 0.84). Anyone who expects to keep using Do. past next "
+    "summer is better off buying lifetime, and most people who like it will "
+    "work that out. <b>Expect the lifetime price to carry most of the "
+    "revenue</b>, with the subscription as the low-commitment door for "
+    "everyone else."))
+A(P("That is fine, and I would keep your numbers. If you ever want the "
+    "subscription to do more of the work, the lever is the lifetime price, "
+    "not the monthly one - at USD 19.99 the crossover moves to twenty months "
+    "and far more people stay monthly. Early on, adoption and word of mouth "
+    "matter more than revenue per user, and a USD 9.99 lifetime is an easy "
+    "yes.", "small"))
 
-A(P("The honest risk on price", "h3"))
-A(P("USD 9.99 once, against a free and pre-installed Reminders app, is a hard "
-    "sell on features alone. It works for the premium apps in this category "
-    "because their craft is undeniable in the first three seconds. That is "
-    "the bar - and it is the strongest argument for doing section two "
-    "properly rather than minimally. One-time pricing also means no recurring "
-    "revenue to fund years of iOS updates; that is a real trade you are "
-    "choosing deliberately."))
+A(P("USD 1.00 is not a price point", "h3"))
+A(P("Apple sells at fixed tiers. The one you mean is <b>USD 0.99</b>. "
+    "Likewise EGP 99 for lifetime should hold its ten-to-one shape, so about "
+    "<b>EGP 10 a month</b> - rounded to whichever tier Apple actually offers. "
+    "<b>Unverified:</b> I could not confirm Apple's exact EGP tiers from "
+    "here. Check the price grid in App Store Connect before printing "
+    "anything."))
+A(PageBreak())
 
-A(P("What it takes to break even", "h3"))
+A(P("SECTION FIVE, CONTINUED", "kicker"))
+A(P("What this might actually earn", "h1"))
+A(Spacer(1, 3 * mm))
+A(P("<b>These are assumptions, not measurements.</b> Nobody has the real "
+    "numbers until the beta, and the conversion rates below are the ones I "
+    "would plan with, not ones I can evidence. They are here so the shape is "
+    "visible, not so anybody budgets against them."))
 A(tbl([
-    ["Year one cost to recover", "Copies at USD 8.49 net", "Or copies at EGP 84 net"],
-    ["USD 99 (minimum: Apple only)", "12", "~60"],
-    ["USD 128 (Apple + domain)", "16", "~78"],
-    ["USD 428 (with a freelance editor for the film)", "51", "~250"],
-], [58 * mm, 42 * mm, 42 * mm], align={1: "RIGHT", 2: "RIGHT"}))
-A(P("EGP conversions are indicative only and move with the exchange rate.",
-    "cap"))
+    ["Step", "Assumed", "People"],
+    ["Downloads", "-", "10,000"],
+    ["Still using it on day 30", "35%", "3,500"],
+    ["Pay at the end of the month", "10%", "350"],
+    ["   of those, choose lifetime", "60%", "210"],
+    ["   of those, choose monthly", "40%", "140"],
+], [62 * mm, 30 * mm, 30 * mm], align={1: "RIGHT", 2: "RIGHT"}))
+A(Spacer(1, 2 * mm))
+A(tbl([
+    ["Revenue, net of Apple", "Working", "USD"],
+    ["Lifetime", "210 x 8.49", "1,783"],
+    ["Subscriptions", "140 x 5 months x 0.84", "588"],
+    ["Total, per 10,000 downloads", "", "2,371"],
+    ["Per download", "", "0.24"],
+], [50 * mm, 46 * mm, 26 * mm], align={1: "RIGHT", 2: "RIGHT"}))
+A(P("Five months is a deliberately unkind average subscriber life. Cheap "
+    "utility subscriptions churn hard.", "cap"))
+
+A(P("Why this beats USD 9.99 up front", "h3"))
+A(P("To earn the same USD 2,371 selling at USD 9.99 up front you would need "
+    "<b>279 sales</b>. The problem is not the 279 - it is that a paid app "
+    "never gets the ten thousand downloads in the first place. People do not "
+    "try paid apps; they try free ones. Free with a real month inside it is "
+    "the only version of this that gets word of mouth, and word of mouth is "
+    "the entire distribution plan for a solo developer with no ad budget."))
+
+A(P("Breaking even", "h3"))
+A(tbl([
+    ["Year one cost to recover", "Lifetime sales at 8.49", "Or subscriber-months at 0.84"],
+    ["USD 99 (Apple membership only)", "12", "118"],
+    ["USD 128 (Apple + domain)", "16", "153"],
+    ["USD 428 (with a freelance editor for the film)", "51", "510"],
+], [56 * mm, 40 * mm, 46 * mm], align={1: "RIGHT", 2: "RIGHT"}))
+A(P("Twelve people buying lifetime pays for the year. That is a low bar, and "
+    "it is lower than it was when the only option was USD 9.99 at the door.",
+    "small"))
 A(PageBreak())
 
 # ───────────────────────── 6. hosting ─────────────────────────
@@ -688,22 +754,24 @@ A(tbl([
      "Apple Developer Program, ONE Apple ID. Enrol in the Small Business Program the same day. Reserve the app name."],
     ["1. Rename to Do.", "Me", "~1 hour",
      "DO THIS FIRST. The app is still called 'My To Do List' on the home screen and in the widget gallery while everything inside says Do. Every screenshot and every frame of video will show that name."],
-    ["2. Native hardening", "Me", "~1 week",
+    ["2. Purchases and the paywall", "Me", "~1 week",
+     "StoreKit 2: the two products, the thirty-day clock, the paywall, entitlement checks and a Restore Purchases button (mandatory, or rejection)."],
+    ["3. Native hardening", "Me", "~1 week",
      "Items 1-4 from section two, each behind the existing NATIVE guard so the web version is untouched."],
-    ["3. The fold, deliberately", "Me", "~2 days",
+    ["4. The fold, deliberately", "Me", "~2 days",
      "The layout already adapts; make it perform. Tune the transition, make state survive the hinge, test half-open. This is the footage."],
-    ["4. Sync on CloudKit", "Me", "3-4 days",
+    ["5. Sync on CloudKit", "Me", "3-4 days",
      "Removes the only recurring infrastructure cost and improves the privacy story. Optional for v1."],
-    ["5. Beta", "Both", "~1 week",
+    ["6. Beta", "Both", "~1 week",
      "TestFlight, 10-20 people, at least three on folding hardware. Watch where they stop."],
-    ["6. Store assets", "Both", "~3 days",
+    ["7. Store assets", "Both", "~3 days",
      "Screenshots, preview videos, description, keywords, privacy label."],
-    ["7. Submit", "Me", "1-3 days review",
+    ["8. Submit", "Me", "1-3 days review",
      "With review notes explaining the native surface explicitly."],
-    ["8. Launch and film", "Both", "ongoing", "Section nine."],
+    ["9. Launch and film", "Both", "ongoing", "Section nine."],
 ], [30 * mm, 14 * mm, 20 * mm, 78 * mm], small=True))
 A(Spacer(1, 3 * mm))
-A(P("<b>Realistic first submission: four to six weeks from the day you "
+A(P("<b>Realistic first submission: five to seven weeks from the day you "
     "enrol</b>, assuming the app keeps working while we add to it - which is "
     "what the preflight and the harness are for."))
 
@@ -773,6 +841,8 @@ A(P("TikTok, Reels, Shorts. One idea each, hook in the first half second, "
 for b in bullets([
     "<i>'Your to-do app wasn't made for this phone. Mine was.'</i> then the unfold.",
     "<i>'One list. Unfold. Three.'</i> Nothing else.",
+    "<i>'Free for a month. Then a dollar.'</i> The easiest line you now have - "
+    "lead with it wherever the price comes up.",
     "<i>'My tasks and my meetings, same screen.'</i> The calendar, scrolling "
     "one day.",
     "<i>'I wrote this for myself in a single HTML file.'</i> then the unfold. "
@@ -791,14 +861,15 @@ A(Spacer(1, 3 * mm))
 A(tbl([
     ["Element", "Guidance"],
     ["Name", "'Do.' as the mark, with a qualifier for search: 'Do. - Lists that fold'. NOTE: the app is still literally named 'My To Do List' today. Rename before any asset is made. Check availability before printing anything."],
-    ["Subtitle (30 chars)", "The fold, or the speed. Not both."],
+    ["Price on the listing", "FREE, with in-app purchases. This is now the headline: the store badge says Free, which is most of the battle."],
+    ["Subtitle (30 chars)", "The fold, or the free month. Not both."],
     ["Keywords", "fold, folding, todo, tasks, calendar, agenda, reminders, widget, lock screen, offline, privacy"],
     ["Screenshot 1", "Three columns on the unfolded screen. It is the only screenshot in the category that looks like that, so it must be first."],
     ["Screenshot 2", "The calendar: meetings and tasks on one timeline. This is the feature people pay for."],
     ["Screenshots 3-5", "The lock screen widget under the clock, the folded list, natural date entry."],
     ["Description", "First two lines are all most people read. Lead with the fold."],
     ["Privacy label", "Still an advantage, but no longer trivial: the app now asks for calendar access. Declare calendar data as read on device, never transmitted, NOT linked to the user and NOT used for tracking - all true. Nothing else leaves the device unless sync is on; no account; no analytics."],
-    ["Review notes", "Explicitly list the native surface: notifications, widgets, App Intents, Spotlight, share extension. Make the reviewer's job easy."],
+    ["Review notes", "List the native surface explicitly: notifications, widgets, lock screen, EventKit, App Intents, Spotlight, share extension. AND tell the reviewer how to reach the paywall without waiting thirty days, or they will never see it."],
 ], [30 * mm, 112 * mm], small=True))
 
 A(P("Launch sequence", "h2"))
@@ -828,7 +899,13 @@ A(tbl([
      "Was High. EventKit and the lock-screen widgets are both things a website cannot do. Still needs section two, items 1-4, and explicit review notes"],
     ["Calendar permission invites a reviewer's question", "Medium",
      "The answer is good - it shows your meetings beside your tasks - but it must be visibly true in the first screen after the prompt, or it reads as data collection"],
-    ["USD 9.99 does not convert against free Reminders", "Medium",
+    ["Guideline 3.1.2: what does the subscription keep giving?", "Medium",
+     "A reviewer may ask what a monthly fee buys in an app that works offline. The answer is sync, calendar sources and continued updates - and the lifetime option shows the subscription is a convenience, not a toll"],
+    ["The free month is ours, so a reinstall can reset it", "Low",
+     "Keychain and iCloud key-value storage survive deletion and make it awkward; at a dollar a month, some leakage is cheaper than annoying honest people"],
+    ["Two products double the edge cases for one developer", "Medium",
+     "Restore, upgrade from monthly to lifetime, refunds, family sharing. Write the entitlement check once, in one place"],
+    ["The price does not convert against free Reminders", "Medium",
      "Craft in the first three seconds; the fold as a reason to look"],
     ["One-time price funds no future development", "Medium",
      "Accepted deliberately. Revisit with a paid major version, not a subscription"],
@@ -872,9 +949,9 @@ A(Spacer(1, 6 * mm))
 A(tbl([
     ["", "Who", "Action"],
     ["1", "You",
-     "Enrol in the Apple Developer Program on ONE Apple ID, and enrol in the Small Business Program in App Store Connect the same day. Reserve the app name while you are there. This also kills the 7-day expiry immediately."],
+     "Enrol in the Apple Developer Program on ONE Apple ID, and enrol in the Small Business Program in App Store Connect the same day - with a subscription, that is the difference between 15% and 30% from the very first payment. Reserve the app name while you are there. This also kills the 7-day expiry immediately."],
     ["2", "Me",
-     "Rename the app to Do., then replace the web date input with a native picker. The name has to be right before any asset exists; the picker is the one visible flaw."],
+     "Rename the app to Do., build the paywall and the thirty-day clock, then replace the web date input with a native picker. The name has to be right before any asset exists, and nothing can be sold until there is something to buy."],
     ["3", "Both",
      "Shoot the unfold once, roughly, on a phone, before any polish. If fifteen seconds of that does not make someone say 'wait, do that again', the positioning is wrong - and we would rather learn it in week one than week six."],
 ], [8 * mm, 16 * mm, 118 * mm]))
@@ -882,8 +959,8 @@ A(Spacer(1, 12 * mm))
 A(P("The product is real, it runs, and the two things that make it unusual "
     "- the fold, and your whole day on one timeline - are already built and "
     "already verified on hardware. What stands between here and a listing is "
-    "about three weeks of native surface, one very good fifteen second clip, "
-    "and USD 99.", "quote"))
+    "about four weeks of native surface, one very good fifteen second clip, "
+    "and USD 99. Twelve people buying lifetime pays that back.", "quote"))
 A(Spacer(1, 10 * mm))
 A(P("Prepared 9 November 2026, revised 10 November 2026 after the calendar "
     "and the lock-screen widgets shipped. Every task, meeting and name in the "
