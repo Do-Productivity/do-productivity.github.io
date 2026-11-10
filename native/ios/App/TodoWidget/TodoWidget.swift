@@ -251,22 +251,71 @@ struct TodoWidgetView: View {
         }
     }
 
-    var body: some View {
-        Group {
-            if entry.payload == nil {
-                VStack(spacing: 4) {
-                    Text("No data yet")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.ink)
-                    Text("Open the app once")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color.soft)
-                }
-            } else {
-                content
-            }
+    /// Every open task in whatever this widget is scoped to, soonest first.
+    private var flat: [TodoItem] {
+        lists.flatMap { $0.items }.sorted { a, b in
+            if (a.due != nil) != (b.due != nil) { return a.due != nil }
+            return (a.due ?? 0) < (b.due ?? 0)
         }
-        .containerBackground(for: .widget) { Color.paper }
+    }
+    private var openCount: Int { lists.reduce(0) { $0 + $1.count } }
+
+    var body: some View {
+        switch family {
+        // ── The lock screen ──
+        // No colour, no background of our own, and in the inline case no
+        // layout at all: the system draws these in one tint over whatever
+        // wallpaper is there. A design that assumes paper and rust would be
+        // a grey smear. So these say the one true thing they have room for.
+        case .accessoryInline:
+            if let first = flat.first {
+                Text("\(openCount) to do · \(first.text)")
+            } else {
+                Text("Nothing to do")
+            }
+
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 0) {
+                    Text("\(openCount)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                    Text("to do").font(.system(size: 9))
+                }
+            }
+
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(openCount) TO DO")
+                    .font(.system(size: 10, weight: .bold))
+                    .widgetAccentable()
+                ForEach(Array(flat.prefix(2)), id: \.self) { t in
+                    Text(t.text)
+                        .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                }
+                if flat.isEmpty {
+                    Text("Nothing open").font(.system(size: 12, weight: .semibold))
+                }
+            }
+
+        default:
+            Group {
+                if entry.payload == nil {
+                    VStack(spacing: 4) {
+                        Text("No data yet")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                        Text("Open the app once")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.soft)
+                    }
+                } else {
+                    content
+                }
+            }
+            .containerBackground(for: .widget) { Color.paper }
+        }
     }
 
     private var header: some View {
@@ -331,9 +380,12 @@ struct TodoAllWidget: Widget {
         StaticConfiguration(kind: "TodoAllWidget", provider: TodoProvider(listId: nil)) {
             TodoWidgetView(entry: $0)
         }
-        .configurationDisplayName("To Do — everything")
+        .configurationDisplayName("Do. — every list")
         .description("Your open tasks across every list.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge,
+            .accessoryInline, .accessoryCircular, .accessoryRectangular
+        ])
     }
 }
 
@@ -343,9 +395,12 @@ struct TodoPersonalWidget: Widget {
                             provider: TodoProvider(listId: "personal")) {
             TodoWidgetView(entry: $0)
         }
-        .configurationDisplayName("To Do — Personal")
+        .configurationDisplayName("Do. — Personal")
         .description("The Personal list only.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge,
+            .accessoryInline, .accessoryCircular, .accessoryRectangular
+        ])
     }
 }
 
@@ -355,15 +410,22 @@ struct TodoBusinessWidget: Widget {
                             provider: TodoProvider(listId: "business")) {
             TodoWidgetView(entry: $0)
         }
-        .configurationDisplayName("To Do — Business")
+        .configurationDisplayName("Do. — Business")
         .description("The Business list only.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge,
+            .accessoryInline, .accessoryCircular, .accessoryRectangular
+        ])
     }
 }
 
 @main
 struct TodoWidgetBundle: WidgetBundle {
     var body: some Widget {
+        // Calendar first: it is the one most people add, and the gallery
+        // shows them in this order.
+        CalTodayWidget()
+        CalWeekWidget()
         TodoAllWidget()
         TodoPersonalWidget()
         TodoBusinessWidget()

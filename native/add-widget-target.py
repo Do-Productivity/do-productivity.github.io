@@ -229,6 +229,26 @@ else:
 
     changed.append(WIDGET + " target created, embedded and made a dependency")
 
+# ── 5. extra sources in the widget target ─────────────────────────────────
+# The widget grew past one file. Adding them here rather than in Xcode means
+# a re-added platform does not silently lose half the widgets — they would
+# simply stop appearing in the gallery, with nothing to explain why.
+widget_target = project.get_target_by_name(WIDGET)
+if widget_target is not None:
+    wsources = phase_of(widget_target, "PBXSourcesBuildPhase")
+    wgroup = group_by(name=WIDGET)
+    for extra in ("CalendarWidget.swift",):
+        if project.get_files_by_name(extra):
+            continue
+        if wsources is None or wgroup is None:
+            print("  ! cannot reach the " + WIDGET + " sources phase for " + extra)
+            break
+        ref = new(PBXFileReference, path=WIDGET + "/" + extra,
+                  sourceTree="<group>", lastKnownFileType="sourcecode.swift")
+        wgroup.children.append(ref.get_id())
+        wsources.files.append(new(PBXBuildFile, fileRef=ref.get_id()).get_id())
+        changed.append(extra + " added to the " + WIDGET + " target")
+
 set_team(WIDGET)
 
 if changed:

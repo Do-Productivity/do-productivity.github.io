@@ -2416,7 +2416,6 @@
     }
     body.view-today .today { flex: 1; }
     .today-card { height: 100%; }
-    .panel-footer { margin-top: auto; }
 
     .panel { padding: 13px 12px 5px; border-radius: 12px; }
     .panel-header .panel-title { font-size: 18px; }
@@ -4811,7 +4810,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1654";
+  var BUILD = "2026-11-10-1709";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -10710,7 +10709,41 @@
       if (!Prefs) return Promise.resolve();
       var now = Date.now();
       var end = new Date(); end.setHours(23, 59, 59, 999);
-      var payload = { build: BUILD, at: now, lists: [], today: 0, overdue: 0 };
+      var payload = { build: BUILD, at: now, lists: [], today: 0, overdue: 0,
+                      events: [], days: [] };
+
+      // The calendar goes to the widget too, so a lock screen can answer
+      // "what is next" without the app being opened. Seven days of it, so
+      // a week widget has something to draw; the day widgets take what
+      // they need off the front.
+      try {
+        var weekFrom = startOfDay(now, -0);
+        for (var di = 0; di < 7; di++) {
+          var d0 = startOfDay(weekFrom, di);
+          var d1 = startOfDay(weekFrom, di + 1);
+          var dayItems = [];
+          taskLists().forEach(function (l) {
+            loadTasks(l.storageKey).forEach(function (t) {
+              if (t.done || t.deleted || !t.due) return;
+              if (t.due < d0 || t.due >= d1) return;
+              dayItems.push({ text: t.text, start: t.due, end: t.due,
+                              kind: "task", tint: l.tint || "amber" });
+            });
+          });
+          msEventsFor(d0).forEach(function (ev) {
+            if (ev.end <= d0 || ev.start >= d1) return;
+            dayItems.push({ text: ev.subject, start: ev.start, end: ev.end,
+                            kind: ev.allDay ? "allday" : "event", tint: "violet" });
+          });
+          dayItems.sort(function (a, b) { return a.start - b.start; });
+          payload.days.push({ at: d0, count: dayItems.length,
+                              items: dayItems.slice(0, 6) });
+          if (di === 0) payload.events = dayItems.slice(0, 8);
+        }
+      } catch (e) {
+        payload.events = [];
+        payload.days = [];
+      }
       try {
         taskLists().forEach(function (l) {
           var open = loadTasks(l.storageKey).filter(function (t) {
