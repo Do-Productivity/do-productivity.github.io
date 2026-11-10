@@ -872,6 +872,44 @@
   }
   .cal-source.bad { color: #fff; background: var(--red); }
 
+  .cal-feedbox {
+    background: var(--surface, #fff);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 8px; margin: 0 0 7px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .cal-feedlist { display: flex; flex-direction: column; gap: 3px; }
+  .cal-feeditem {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--sans); font-size: 10.5px; color: var(--ink);
+  }
+  .cal-feedname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-feedkill {
+    flex: none; background: none; border: none; cursor: pointer;
+    font-size: 15px; line-height: 1; color: var(--ink-faint); padding: 2px 5px;
+  }
+  .cal-feedkill:hover { color: var(--red); }
+  .cal-feedrow { display: flex; gap: 6px; }
+  .cal-feedinput {
+    flex: 1; min-width: 0;
+    font-family: var(--sans); font-size: 16px;
+    border: 1px solid var(--rule); border-radius: 7px;
+    padding: 7px 9px; background: var(--paper); color: var(--ink);
+    outline: none;
+  }
+  .cal-feedinput:focus { border-color: var(--tint, var(--ink-soft)); }
+  .cal-feedadd {
+    flex: none; font-family: var(--sans); font-size: 10px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    color: #fff; background: var(--tint, var(--ink-soft));
+    border: none; border-radius: 7px; padding: 0 14px; cursor: pointer;
+  }
+  .cal-feedhint {
+    font-family: var(--sans); font-size: 9.5px; line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
   /* Things with a date but no hour, above the grid rather than buried in
      it. Superhuman puts them in the same place, and so does every calendar
      that has had to solve this, which is usually a sign it is right. */
@@ -4607,7 +4645,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1408";
+  var BUILD = "2026-11-10-1419";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5666,6 +5704,240 @@
     msEvListeners.forEach(function (fn) { fn(); });
   }
 
+  // ── Calendars by link (.ics) ─────────────────────────────
+  // The way in that asks nobody's permission. Outlook, Google and iCloud
+  // can all publish a calendar as a secret URL, which needs no app
+  // registration, no OAuth client, no tenant administrator and no sign-in
+  // on our side — three things that between them stopped the Graph route
+  // dead in a corporate tenant.
+  //
+  // The URL is a secret: anyone holding it can read that calendar. It is
+  // kept on the device like everything else here, and never sent anywhere
+  // except to the calendar that issued it.
+  var ICS_KEY = "dia_todo_icsfeeds_v1";
+
+  function icsFeeds() {
+    try {
+      var v = JSON.parse(localStorage.getItem(ICS_KEY) || "[]");
+      return v.slice ? v.filter(function (f) { return f && f.url && !f.deleted; }) : [];
+    } catch (e) { return []; }
+  }
+  function saveIcsFeeds(list) {
+    try { localStorage.setItem(ICS_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  // ── The parser ──
+  // Unfolding first: iCalendar wraps long lines at 75 octets and continues
+  // them with a leading space, so SUMMARY can arrive in three pieces. Every
+  // parser that skips this truncates half the meetings in a work calendar.
+  function icsUnfold(text) {
+    return String(text || "").replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+  }
+
+  // "20261110T140000Z", "20261110T140000", or "20261110" for a whole day.
+  function icsTime(value, params) {
+    if (!value) return null;
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(value.trim());
+    if (!m) return null;
+    var y = +m[1], mo = +m[2] - 1, d = +m[3];
+    if (!m[4]) return { ts: new Date(y, mo, d).getTime(), allDay: true };
+    var hh = +m[4], mi = +m[5], ss = +m[6];
+    // Z means UTC. Without it the time is in the TZID the event names, and
+    // guessing that from a browser is worse than taking it as local — which
+    // is right whenever the calendar and the reader share a timezone, and
+    // that is the overwhelmingly common case for one person's own diary.
+    if (m[7]) return { ts: Date.UTC(y, mo, d, hh, mi, ss), allDay: false };
+    return { ts: new Date(y, mo, d, hh, mi, ss).getTime(), allDay: false };
+  }
+
+  function icsParse(text) {
+    var lines = icsUnfold(text).split("\n");
+    var out = [];
+    var cur = null;
+    lines.forEach(function (raw) {
+      var line = raw.replace(/\s+$/, "");
+      if (line === "BEGIN:VEVENT") { cur = {}; return; }
+      if (line === "END:VEVENT") {
+        if (cur && cur.start) out.push(cur);
+        cur = null;
+        return;
+      }
+      if (!cur) return;
+      var at = line.indexOf(":");
+      if (at === -1) return;
+      var left = line.slice(0, at);
+      var value = line.slice(at + 1);
+      var parts = left.split(";");
+      var name = parts[0].toUpperCase();
+      if (name === "SUMMARY") cur.summary = icsText(value);
+      else if (name === "LOCATION") cur.where = icsText(value);
+      else if (name === "UID") cur.uid = value;
+      else if (name === "RRULE") cur.rrule = value;
+      else if (name === "STATUS") cur.status = value;
+      else if (name === "DTSTART") {
+        var a = icsTime(value, parts);
+        if (a) { cur.start = a.ts; cur.allDay = a.allDay; }
+      } else if (name === "DTEND") {
+        var b = icsTime(value, parts);
+        if (b) cur.end = b.ts;
+      }
+    });
+    return out;
+  }
+
+  // Escaped commas, semicolons and newlines come back as themselves.
+  function icsText(v) {
+    return String(v || "")
+      .replace(/\\n/gi, " ")
+      .replace(/\\,/g, ",")
+      .replace(/\\;/g, ";")
+      .replace(/\\\\/g, "\\")
+      .trim();
+  }
+
+  // ── Repeats ──
+  // Most of a working week is a repeating meeting, so a reader that shows
+  // only the first occurrence shows almost nothing. This covers DAILY,
+  // WEEKLY (with BYDAY), MONTHLY and YEARLY with INTERVAL, COUNT and UNTIL,
+  // which is what ordinary calendars actually emit. Anything stranger shows
+  // on its first date and no more, which is wrong but visibly wrong rather
+  // than silently absent.
+  function icsExpand(ev, fromTs, toTs) {
+    var span = (ev.end || ev.start) - ev.start;
+    if (!ev.rrule) {
+      if (ev.start < toTs && (ev.end || ev.start) > fromTs) return [ev.start];
+      return [];
+    }
+    var rule = {};
+    ev.rrule.split(";").forEach(function (bit) {
+      var kv = bit.split("=");
+      if (kv.length === 2) rule[kv[0].toUpperCase()] = kv[1];
+    });
+    var freq = (rule.FREQ || "").toUpperCase();
+    var interval = Math.max(1, parseInt(rule.INTERVAL || "1", 10) || 1);
+    var count = rule.COUNT ? parseInt(rule.COUNT, 10) : Infinity;
+    var until = Infinity;
+    if (rule.UNTIL) {
+      var u = icsTime(rule.UNTIL);
+      if (u) until = u.ts;
+    }
+    var days = null;
+    if (rule.BYDAY) {
+      var map = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+      days = rule.BYDAY.split(",").map(function (d) {
+        return map[d.replace(/^[-+]?\d+/, "").toUpperCase()];
+      }).filter(function (d) { return d !== undefined; });
+    }
+
+    var hits = [];
+    var seen = 0;
+    var cursor = new Date(ev.start);
+    // A hard ceiling on iterations: a malformed rule must not spin for ever
+    // on the main thread, and nobody needs more than a few years of a daily
+    // meeting to draw one week.
+    for (var guard = 0; guard < 4000; guard++) {
+      var ts = cursor.getTime();
+      if (ts > until || seen >= count) break;
+      if (ts > toTs + span) break;
+      var matches = true;
+      if (freq === "WEEKLY" && days && days.length) {
+        matches = days.indexOf(cursor.getDay()) !== -1;
+      }
+      if (matches) {
+        seen++;
+        if (ts + span > fromTs && ts < toTs) hits.push(ts);
+      }
+      if (freq === "DAILY") cursor.setDate(cursor.getDate() + interval);
+      else if (freq === "WEEKLY") {
+        if (days && days.length) cursor.setDate(cursor.getDate() + 1);
+        else cursor.setDate(cursor.getDate() + 7 * interval);
+      }
+      else if (freq === "MONTHLY") cursor.setMonth(cursor.getMonth() + interval);
+      else if (freq === "YEARLY") cursor.setFullYear(cursor.getFullYear() + interval);
+      else break;
+    }
+    return hits;
+  }
+
+  // ── Fetching ──
+  // In the app the request goes through CapacitorHttp, which is a native
+  // request and therefore not subject to CORS. In a browser it is a plain
+  // fetch, and a published calendar that does not send CORS headers will
+  // refuse it — which is reported rather than hidden, because the remedy
+  // (open it in the app, or import the file) depends on knowing.
+  function icsFetch(url) {
+    var http = (window.Capacitor && window.Capacitor.Plugins &&
+                window.Capacitor.Plugins.CapacitorHttp) || null;
+    if (http && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      return http.get({ url: url, responseType: "text" }).then(function (r) {
+        if (r && (r.status === undefined || (r.status >= 200 && r.status < 300))) {
+          return typeof r.data === "string" ? r.data : String(r.data || "");
+        }
+        throw new Error("HTTP " + (r && r.status));
+      });
+    }
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    });
+  }
+
+  function ensureIcsEvents(fromTs, days, done) {
+    var feeds = icsFeeds();
+    if (!feeds.length) return;
+    var toTs = startOfDay(fromTs, days);
+    var range = "i" + fromTs + ":" + toTs;
+    if (msFetching[range]) return;
+
+    var i, stale = false;
+    for (i = 0; i < days; i++) {
+      var k = dayKey(startOfDay(fromTs, i));
+      if (!msEventsAt[k] || Date.now() - msEventsAt[k] > MS_EV_FRESH) stale = true;
+    }
+    if (!stale) return;
+    msFetching[range] = true;
+
+    Promise.all(feeds.map(function (f) {
+      return icsFetch(f.url).then(function (text) {
+        return { feed: f, events: icsParse(text) };
+      }).catch(function (e) {
+        return { feed: f, events: [], error: (e && e.message) || "failed" };
+      });
+    })).then(function (results) {
+      msFetching[range] = false;
+      var bad = results.filter(function (r) { return r.error; });
+      msEvNote(bad.length === results.length
+        ? (bad[0].error === "Failed to fetch" ? "blocked by the browser" : bad[0].error)
+        : "");
+      for (var j = 0; j < days; j++) {
+        var kk = dayKey(startOfDay(fromTs, j));
+        msEvents[kk] = [];
+        msEventsAt[kk] = Date.now();
+      }
+      results.forEach(function (res) {
+        res.events.forEach(function (ev) {
+          if (ev.status === "CANCELLED") return;
+          var span = (ev.end || ev.start) - ev.start;
+          icsExpand(ev, fromTs, toTs).forEach(function (ts) {
+            var key = dayKey(ev.allDay ? ts + 60000 : ts);
+            if (!msEvents[key]) return;
+            msEvents[key].push({
+              id: (ev.uid || ev.summary) + ":" + ts,
+              subject: ev.summary || "(no title)",
+              start: ts, end: ts + (span || 1800000),
+              allDay: !!ev.allDay,
+              where: ev.where || res.feed.name || ""
+            });
+          });
+        });
+      });
+      try {
+        localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
+      } catch (e) {}
+      if (done) done();
+    });
+  }
+
   // ── The same calendar, read from the phone instead ───────
   // Inside the app there is a far better source than any one provider's
   // API: whatever accounts iOS already has. Outlook, Google and iCloud all
@@ -5745,8 +6017,15 @@
   // One door for both. The phone has its own calendars; a browser has
   // whatever account was connected to it.
   function ensureExternalEvents(fromTs, days, done) {
+    // A pasted link beats everything: it is the one the person set up on
+    // purpose, it works the same on every device, and it needed nobody's
+    // permission to exist.
+    if (icsFeeds().length) return ensureIcsEvents(fromTs, days, done);
     if (calBridge()) return ensureNativeEvents(fromTs, days, done);
     return ensureMsEvents(fromTs, days, done);
+  }
+  function anyCalendarSource() {
+    return icsFeeds().length > 0 || !!calBridge() || msConnected();
   }
 
   var msFetching = {};
@@ -5865,6 +6144,14 @@
     // Where the meetings come from, and why they are missing when they are.
     var source = el("button", "cal-source", "");
     source.addEventListener("click", function () {
+      // No source at all: the thing to offer is the one that works
+      // everywhere and needs nobody's permission.
+      if (!anyCalendarSource() || icsFeeds().length) {
+        var open = feedBox.style.display === "none";
+        feedBox.style.display = open ? "" : "none";
+        if (open) { paintFeeds(); feedInput.focus(); }
+        return;
+      }
       var btn = document.getElementById("sync-btn");
       if (btn) btn.click();          // the Outlook connection lives in Sync
       // ...inside a collapsed <details> most of the way down it, which is
@@ -5879,6 +6166,72 @@
       }, 120);
     });
     panel.appendChild(source);
+
+    // Paste a published calendar link. Deliberately here rather than
+    // buried in settings: this is the moment someone wants it, having just
+    // been told the calendar is showing half their day.
+    var feedBox = el("div", "cal-feedbox");
+    feedBox.style.display = "none";
+    var feedList = el("div", "cal-feedlist");
+    feedBox.appendChild(feedList);
+    var feedRow = el("div", "cal-feedrow");
+    var feedInput = el("input", "cal-feedinput");
+    feedInput.type = "url";
+    feedInput.placeholder = "Paste a calendar link (.ics)";
+    var feedAdd = el("button", "cal-feedadd", "Add");
+    feedRow.appendChild(feedInput);
+    feedRow.appendChild(feedAdd);
+    feedBox.appendChild(feedRow);
+    var feedHint = el("div", "cal-feedhint", "");
+    feedHint.innerHTML = "Outlook: <b>Settings \u203a Calendar \u203a Shared calendars</b> " +
+      "\u2192 publish your calendar, <b>Can view all details</b>, then copy the <b>ICS</b> link. " +
+      "Google and iCloud have the same thing. The link is a secret \u2014 it stays on this device.";
+    feedBox.appendChild(feedHint);
+    panel.appendChild(feedBox);
+
+    function paintFeeds() {
+      feedList.textContent = "";
+      icsFeeds().forEach(function (f) {
+        var row = el("div", "cal-feeditem");
+        row.appendChild(el("span", "cal-feedname", f.name || f.url.slice(0, 44)));
+        var kill = el("button", "cal-feedkill", "\u00d7");
+        kill.title = "Remove this calendar";
+        kill.addEventListener("click", function () {
+          saveIcsFeeds(icsFeeds().filter(function (x) { return x.id !== f.id; }));
+          for (var k in msEventsAt) { if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k]; }
+          paintFeeds();
+          render();
+        });
+        row.appendChild(kill);
+        feedList.appendChild(row);
+      });
+    }
+
+    function addFeed() {
+      var url = feedInput.value.trim();
+      if (!url) return;
+      // webcal:// is the subscribe scheme; it is https underneath and a
+      // fetch cannot speak it, so it is rewritten rather than refused.
+      url = url.replace(/^webcal:\/\//i, "https://");
+      if (!/^https?:\/\//i.test(url)) { flashStatus("That does not look like a calendar link."); return; }
+      var feeds = icsFeeds();
+      feeds.push({
+        id: "f" + Date.now().toString(36),
+        url: url,
+        name: (url.split("/").filter(Boolean).pop() || "Calendar").slice(0, 40)
+      });
+      saveIcsFeeds(feeds);
+      feedInput.value = "";
+      // Everything cached was drawn without this calendar in it.
+      for (var k in msEventsAt) { if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k]; }
+      paintFeeds();
+      flashStatus("Reading that calendar\u2026");
+      render();
+    }
+    feedAdd.addEventListener("click", addFeed);
+    feedInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); addFeed(); }
+    });
 
     var allDay = el("div", "cal-allday");
     panel.appendChild(allDay);
@@ -6303,7 +6656,9 @@
         return;
       }
       if (!msConnected()) {
-        source.textContent = "Only your tasks \u2014 tap to connect Outlook";
+        source.textContent = icsFeeds().length
+          ? "Calendars: " + icsFeeds().length + " linked \u2014 tap to manage"
+          : "Only your tasks \u2014 tap to add a calendar link";
         source.className = "cal-source off";
         source.style.display = "";
         return;

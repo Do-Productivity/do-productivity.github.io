@@ -61,7 +61,7 @@ scripts.forEach(function (src, i) {
   try { new vm.Script(pair[1], { filename: pair[0] }); }
   catch (e) { fail(pair[0] + " does not compile", e.message); }
 });
-["test-search.js", "test-due-dates.js", "test-app.js"].forEach(function (name) {
+["test-search.js", "test-due-dates.js", "test-app.js", "test-ics.js"].forEach(function (name) {
   var p = path.join(here, name);
   if (!fs.existsSync(p)) return;
   try { new vm.Script(fs.readFileSync(p, "utf8"), { filename: name }); }
