@@ -788,6 +788,224 @@
   .task-row:hover .task-delete { opacity: 1; }
   .task-delete:hover { color: var(--red); }
 
+  /* Day or week. Two words, not icons: an icon for "week" is a grid, and a
+     grid is exactly what this week view deliberately is not. */
+  .cal-modes {
+    display: flex; gap: 3px; margin: 0 0 7px;
+    background: rgba(43, 38, 32, .05);
+    border-radius: 8px; padding: 2px;
+    align-self: flex-start;
+  }
+  .cal-mode {
+    font-family: var(--sans); font-size: 10px; font-weight: 700;
+    letter-spacing: .8px; text-transform: uppercase;
+    color: var(--ink-soft); background: none; border: none;
+    padding: 5px 13px; border-radius: 6px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease, color .15s ease;
+  }
+  .cal-mode.on {
+    background: var(--surface, #fff);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(43, 38, 32, .12);
+  }
+
+  .cal-week { flex: 1; min-height: 0; overflow-y: auto; }
+  .cal-wday {
+    display: flex; gap: 10px;
+    padding: 7px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .cal-wday:first-child { border-top: none; }
+  .cal-wday.is-empty { opacity: .55; }
+  .cal-whead {
+    flex: none; width: 46px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+    background: none; border: none; padding: 2px 0 0; cursor: pointer;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-wname {
+    font-family: var(--sans); font-size: 9px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .cal-wnum {
+    font-family: var(--serif); font-size: 19px; font-weight: 700;
+    line-height: 1.1; color: var(--ink);
+  }
+  /* Today is the only day that gets a colour, so finding it costs nothing. */
+  .cal-wday.is-today .cal-wnum { color: var(--red); }
+  .cal-wday.is-today .cal-wname { color: var(--red); }
+  .cal-wcount {
+    font-family: var(--sans); font-size: 9px; color: var(--ink-faint);
+  }
+  .cal-wlines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .cal-wnone { font-family: var(--serif); font-style: italic; color: var(--ink-faint); font-size: 13px; }
+  .cal-wline {
+    display: flex; align-items: baseline; gap: 7px;
+    background: none; border: none;
+    border-left: 3px solid var(--item, var(--ink-soft));
+    border-radius: 3px;
+    padding: 2px 6px; cursor: pointer; text-align: left; width: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-wline:hover { background: color-mix(in srgb, var(--item, #888) 12%, transparent); }
+  .cal-wtime {
+    flex: none; font-family: var(--sans); font-size: 9.5px;
+    color: var(--ink-soft); white-space: nowrap;
+  }
+  .cal-wtext {
+    font-family: var(--sans); font-size: 12px; line-height: 1.3; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+  }
+
+  /* The slot composer. It sits where you pointed, so the time it is about
+     is never in doubt, and it carries the list chips with it because a task
+     in the wrong list is worse than no task at all. */
+  .cal-new {
+    position: absolute; left: 0; right: 2px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--item, var(--rule));
+    border-left: 3px solid var(--item, var(--ink-soft));
+    border-radius: 6px;
+    padding: 5px 7px 6px;
+    box-shadow: 0 6px 18px rgba(43, 38, 32, .14);
+    z-index: 6;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .cal-newhead { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .cal-newtime {
+    font-family: var(--sans); font-size: 9.5px; font-weight: 700;
+    letter-spacing: .4px; color: var(--ink-soft); white-space: nowrap;
+  }
+  .cal-chips { display: flex; gap: 3px; flex-wrap: wrap; }
+  .cal-chip {
+    font-family: var(--sans); font-size: 9px; font-weight: 700;
+    letter-spacing: .4px;
+    color: var(--ink-soft); background: rgba(43, 38, 32, .06);
+    border: none; border-radius: 20px; padding: 3px 8px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-chip.on { background: var(--chip); color: #fff; }
+  .cal-newinput {
+    font-family: var(--sans); font-size: 16px;
+    color: var(--ink); background: transparent;
+    border: none; border-bottom: 1px solid var(--rule);
+    padding: 3px 1px; width: 100%; min-width: 0;
+    outline: none;
+  }
+  .cal-newinput:focus { border-bottom-color: var(--item, var(--ink-soft)); }
+
+  /* An empty slot should look like it will take a tap. */
+  .cal-items { cursor: copy; }
+  .cal-item, .cal-new { cursor: pointer; }
+
+  .cal-nowlab {
+    position: absolute; left: -42px; top: -7px;
+    font-family: var(--sans); font-size: 9px; font-weight: 700;
+    color: var(--red); background: var(--surface, transparent);
+    padding-right: 4px; white-space: nowrap;
+  }
+
+  /* ── Calendar ───────────────────────────────────────────
+     Quiet on purpose. A calendar earns its keep by being read at a glance,
+     so the grid is hairlines and the writing is what you see. The only
+     saturated things on it are the items themselves and the line showing
+     where you are in the day. */
+  .cal-nav {
+    display: flex; align-items: center; gap: 4px;
+    margin-bottom: 6px;
+  }
+  .cal-step {
+    flex: none;
+    font-family: var(--sans); font-size: 17px; line-height: 1;
+    color: var(--ink-soft); background: none; border: none;
+    padding: 6px 10px; border-radius: 8px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-step:hover { background: rgba(43, 38, 32, .06); }
+  .cal-day {
+    flex: 1;
+    font-family: var(--serif); font-size: 17px; font-weight: 700;
+    color: var(--ink); background: none; border: none;
+    padding: 5px 6px; border-radius: 8px; cursor: pointer;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Away from today the label stops being a statement and becomes the way
+     back, so it says so. */
+  .cal-day.away { color: var(--tint, var(--ink-soft)); text-decoration: underline dotted; }
+
+  .cal-scroll {
+    flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cal-grid { position: relative; }
+  .cal-hours, .cal-items { position: absolute; inset: 0; }
+  .cal-items { left: 52px; right: 2px; }
+
+  .cal-hour {
+    position: absolute; left: 0; right: 0; height: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .cal-hourlab {
+    position: absolute; left: 0; top: -7px;
+    font-family: var(--sans); font-size: 9.5px; letter-spacing: .4px;
+    color: var(--ink-faint); background: var(--surface, transparent);
+    padding-right: 6px;
+  }
+
+  .cal-item {
+    position: absolute;
+    display: flex; flex-direction: column; justify-content: flex-start; gap: 1px;
+    overflow: hidden; text-align: left;
+    padding: 3px 7px;
+    border: none; border-left: 3px solid var(--item, var(--ink-soft));
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--item, #888) 13%, transparent);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s ease;
+  }
+  .cal-item:hover { background: color-mix(in srgb, var(--item, #888) 22%, transparent); }
+  /* A window of work is a block you can see the length of; a task is a
+     moment, and pretending it lasts half an hour would be a lie told in
+     pixels. The block gets the fill, the moment gets a line. */
+  /* A moment reads as one line — time, then what it is — because stacking
+     them gave the text a second line it had no height for and cut it in
+     half. A window has a height worth filling, so it keeps the stack. */
+  .cal-item.cal-task {
+    background: transparent;
+    flex-direction: row; align-items: baseline; gap: 6px;
+  }
+  .cal-item.cal-task:hover { background: color-mix(in srgb, var(--item, #888) 12%, transparent); }
+  .cal-item.cal-task .cal-when { flex: none; }
+  .cal-item.cal-task .cal-text {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cal-past { opacity: .5; }
+  .cal-when {
+    font-family: var(--sans); font-size: 9px; letter-spacing: .3px;
+    color: var(--ink-soft); white-space: nowrap;
+  }
+  .cal-text {
+    font-family: var(--sans); font-size: 12px; line-height: 1.3;
+    color: var(--ink); overflow: hidden; min-width: 0;
+  }
+
+  /* Where you actually are. The only thing on this panel that moves by
+     itself, which is exactly why it is the only thing in full colour. */
+  .cal-now {
+    position: absolute; left: 44px; right: 0; height: 0;
+    border-top: 1.5px solid var(--red);
+    pointer-events: none; z-index: 3;
+  }
+  .cal-nowdot {
+    position: absolute; left: -4px; top: -4px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red);
+  }
+
   .empty-state {
     font-style: italic;
     font-size: 15px;
@@ -2058,8 +2276,23 @@
   @media (min-width: 721px) {
     body.hide-runs .panels > .panel.runs { display: none; }
   }
+  /* Same for the Calendar column. Five columns is a lot of width to ask
+     for; this is how you ask for four. */
+  @media (min-width: 721px) {
+    body.hide-cal .panels > .panel.cal { display: none; }
+    /* A row of icons is a phone thing: there is one list and width to
+       spare. A column of any width is narrow by comparison, and the row
+       pushed the delete button past the card's right edge. */
+    .task-actions { flex-direction: column; gap: 0; }
+    /* The body carries a 7em floor so a task never becomes a column of
+       single letters. In a track it cannot have that much and still leave
+       room for the circle and the buttons, so it stopped shrinking and
+       pushed them out of the card instead — 38px past the edge at five
+       columns. Columns are kept readable by --track-min, not by this. */
+    .task-body { min-width: 0; }
+  }
   @media (max-width: 720px) {
-    #runs-btn { display: none; }
+    #runs-btn, #cal-btn { display: none; }
   }
   .toolbar-btn.on { color: var(--ink); border-color: var(--ink-faint); }
   /* Esc is not a key a phone has. Opening a drawer is the one thing search
@@ -2169,6 +2402,7 @@
     <button class="toolbar-btn" id="search-btn" title="Search everything (press / )">Search</button>
     <button class="toolbar-btn" id="today-btn">Today</button>
     <button class="toolbar-btn" id="runs-btn" title="Show or hide the Scheduled tasks column">Scheduled</button>
+    <button class="toolbar-btn" id="cal-btn" title="Show or hide the Calendar column">Calendar</button>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
   </div>
 
@@ -2864,6 +3098,7 @@
   function saveScheduled(arr) {
     localStorage.setItem(WS_KEY, JSON.stringify(arr));
     scheduleSyncPush();
+    refreshCalendar();          // windows are half of what the calendar shows
   }
 
   function liveScheduled() {
@@ -3060,6 +3295,10 @@
 
   function saveTasks(key, tasks) {
     localStorage.setItem(key, JSON.stringify(tasks));
+    // The calendar reads every list, so it is the one panel that goes stale
+    // when a different panel is the one being written to. Each panel renders
+    // itself after a save; this is the one that cannot.
+    refreshCalendar();
   }
 
   // ── Helpers ──────────────────────────────────────────────
@@ -4325,7 +4564,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-09-1801";
+  var BUILD = "2026-11-10-1335";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5318,6 +5557,467 @@
     return panel;
   }
 
+  // ── Calendar ─────────────────────────────────────────────
+  // The lists answer "what is there to do". This answers "when", which is a
+  // different question and was previously only answerable by reading every
+  // due date in turn.
+  //
+  // It is a view, not a store. Everything on it already exists as a task
+  // with a due date or a scheduled task with a window; nothing is created
+  // here and nothing is kept here. That is deliberate — two places that
+  // both own a date is how calendars and task lists drift apart.
+  //
+  // Shape borrowed from the good calendars and then dressed as this app:
+  // one day at a time on a phone, hours down the side, a line showing where
+  // in the day you actually are, and the quietest possible grid so the
+  // writing is what you see.
+  var calReloaders = [];
+  function refreshCalendar() { calReloaders.forEach(function (fn) { fn(); }); }
+
+  function createCalendarPanel() {
+    var cTint = tintFor("cal", null);
+    var panel = el("section", "panel cal" + (cTint ? " themed" : ""));
+    if (cTint) {
+      panel.style.setProperty("--tint", tint(cTint).solid);
+      panel.style.setProperty("--tint-soft", softTint(tint(cTint).solid));
+    }
+
+    var header = el("div", "panel-header");
+    var title = el("h2", "panel-title", "Calendar");
+    title.appendChild(el("span", "dot", "."));
+    var headCount = el("span", "panel-count", "0");
+    title.appendChild(headCount);
+    header.appendChild(title);
+    header.appendChild(el("div", "panel-subtitle", "WHEN IT ALL LANDS"));
+    header.appendChild(el("div", "panel-peek"));
+    header.appendChild(el("div", "divider"));
+    panel.appendChild(header);
+
+    var nav = el("div", "cal-nav");
+    var prev = el("button", "cal-step", "\u2039");
+    prev.title = "Previous day";
+    var dayBtn = el("button", "cal-day", "");
+    dayBtn.title = "Back to today";
+    var next = el("button", "cal-step", "\u203a");
+    next.title = "Next day";
+    nav.appendChild(prev);
+    nav.appendChild(dayBtn);
+    nav.appendChild(next);
+    panel.appendChild(nav);
+
+    // Day or week. A week of seven columns needs about 90px each before the
+    // writing stops being readable, which a phone does not have and a
+    // column of five does not have either — so the week is an agenda, seven
+    // days stacked, rather than a grid turned on its side. It answers the
+    // question a week view is actually asked: what is coming.
+    var modes = el("div", "cal-modes");
+    var dayTab = el("button", "cal-mode", "Day");
+    var weekTab = el("button", "cal-mode", "Week");
+    modes.appendChild(dayTab);
+    modes.appendChild(weekTab);
+    panel.appendChild(modes);
+
+    var scroller = el("div", "cal-scroll");
+    var grid = el("div", "cal-grid");
+    var hoursLayer = el("div", "cal-hours");
+    var itemsLayer = el("div", "cal-items");
+    var nowLine = el("div", "cal-now");
+    nowLine.appendChild(el("span", "cal-nowdot"));
+    var nowLabel = el("span", "cal-nowlab", "");
+    nowLine.appendChild(nowLabel);
+    grid.appendChild(hoursLayer);
+    grid.appendChild(itemsLayer);
+    grid.appendChild(nowLine);
+    scroller.appendChild(grid);
+    panel.appendChild(scroller);
+
+    var week = el("div", "cal-week");
+    panel.appendChild(week);
+
+    var empty = el("div", "empty-state", "Nothing on this day.");
+    panel.appendChild(empty);
+
+    var footer = el("div", "panel-footer");
+    var countLabel = el("span", null, "");
+    footer.appendChild(countLabel);
+    panel.appendChild(footer);
+
+    var CAL_MODE_KEY = "dia_todo_calmode_v1";
+    var mode = localStorage.getItem(CAL_MODE_KEY) === "week" ? "week" : "day";
+    var day = startOfDay(Date.now());
+    var PX_H = 46;               // one hour of the day, in pixels
+    var MIN_SLOT = 25 * 60000;   // a task is a moment; give it room to be read
+
+    function clock(ts) {
+      var d = new Date(ts);
+      var h = d.getHours();
+      var m = d.getMinutes();
+      var ampm = h < 12 ? "am" : "pm";
+      var h12 = h % 12 === 0 ? 12 : h % 12;
+      return h12 + (m ? ":" + (m < 10 ? "0" + m : m) : "") + ampm;
+    }
+    function hourLabel(h) {
+      if (h === 0 || h === 24) return "12am";
+      if (h === 12) return "noon";
+      return (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? "am" : "pm");
+    }
+    function dayTitle(ts) {
+      var now = Date.now();
+      if (isSameDay(ts, now)) return "Today";
+      if (isSameDay(ts, startOfDay(now, 1))) return "Tomorrow";
+      if (isSameDay(ts, startOfDay(now, -1))) return "Yesterday";
+      return new Date(ts).toLocaleDateString(undefined,
+        { weekday: "short", day: "numeric", month: "short" });
+    }
+
+    // Everything with a time on it, for one day. A task is a moment; a
+    // scheduled task is a window, and is clipped to the day so a run that
+    // crosses midnight shows on both of its days rather than neither.
+    function itemsFor(dayStart) {
+      var dayEnd = startOfDay(dayStart, 1);
+      var out = [];
+      taskLists().forEach(function (l) {
+        loadTasks(l.storageKey).forEach(function (t) {
+          if (t.done || t.deleted || !t.due) return;
+          if (t.due < dayStart || t.due >= dayEnd) return;
+          out.push({ kind: "task", text: t.text, start: t.due, end: t.due,
+                     listId: l.id, listTitle: l.title, tint: l.tint || "amber" });
+        });
+      });
+      loadScheduled().forEach(function (w) {
+        if (w.deleted || !w.dueAt || wsFinished(w)) return;
+        var from = (typeof w.startAt === "number") ? w.startAt : w.dueAt;
+        if (w.dueAt < dayStart || from >= dayEnd) return;
+        out.push({ kind: "sched", text: w.name,
+                   start: Math.max(from, dayStart), end: Math.min(w.dueAt, dayEnd),
+                   listId: "runs", listTitle: "Scheduled tasks",
+                   tint: tintFor("runs", "amber") });
+      });
+      out.sort(function (a, b) { return (a.start - b.start) || (a.end - b.end); });
+      return out;
+    }
+
+    // Which hours to draw. A working day by default, stretched to cover
+    // anything outside it — an alarm at 5am should not be off the top.
+    function span(list, dayStart) {
+      var from = 8, to = 19;
+      list.forEach(function (it) {
+        var s = new Date(it.start), e = new Date(it.end);
+        from = Math.min(from, s.getHours());
+        to = Math.max(to, e.getHours() + (e.getMinutes() ? 1 : 0), s.getHours() + 1);
+      });
+      if (isSameDay(Date.now(), dayStart)) {
+        var h = new Date().getHours();
+        from = Math.min(from, h);
+        to = Math.max(to, h + 1);
+      }
+      from = Math.max(0, from);
+      to = Math.min(24, Math.max(to, from + 5));
+      return { from: from, to: to };
+    }
+
+    // Two things at the same hour sit side by side rather than on top of
+    // each other. Lanes are assigned greedily, which is all this needs:
+    // a day with enough overlap to defeat it is not a day a phone can show.
+    function lanes(list) {
+      var ends = [];
+      var most = 1;
+      list.forEach(function (it) {
+        it.slot = Math.max(it.end - it.start, MIN_SLOT);
+        var lane = 0;
+        while (ends[lane] !== undefined && ends[lane] > it.start) lane++;
+        ends[lane] = it.start + it.slot;
+        it.lane = lane;
+        most = Math.max(most, lane + 1);
+      });
+      return most;
+    }
+
+    function placeNow(s) {
+      if (mode !== "day" || !isSameDay(Date.now(), day)) {
+        nowLine.style.display = "none";
+        return;
+      }
+      nowLine.style.display = "block";
+      var mins = (Date.now() - day) / 60000 - s.from * 60;
+      nowLine.style.top = Math.round(mins / 60 * PX_H) + "px";
+      nowLabel.textContent = clock(Date.now());
+    }
+
+    var lastSpan = null;
+    function render() {
+      if (mode === "week") {
+        week.style.display = "";
+        scroller.style.display = "none";
+        empty.style.display = "none";
+        renderWeek();
+        return;
+      }
+      week.style.display = "none";
+      var list = itemsFor(day);
+      var s = span(list, day);
+      lastSpan = s;
+      grid.style.height = ((s.to - s.from) * PX_H) + "px";
+
+      hoursLayer.textContent = "";
+      for (var h = s.from; h <= s.to; h++) {
+        var line = el("div", "cal-hour");
+        line.style.top = ((h - s.from) * PX_H) + "px";
+        line.appendChild(el("span", "cal-hourlab", hourLabel(h)));
+        hoursLayer.appendChild(line);
+      }
+
+      itemsLayer.textContent = "";
+      var n = lanes(list);
+      list.forEach(function (it) {
+        var top = ((it.start - day) / 3600000 - s.from) * PX_H;
+        var h = Math.max((it.slot / 3600000) * PX_H - 3, 23);
+        var box = el("button", "cal-item cal-" + it.kind);
+        box.style.top = Math.round(top) + "px";
+        box.style.height = Math.round(h) + "px";
+        box.style.left = (it.lane * (100 / n)) + "%";
+        box.style.width = "calc(" + (100 / n) + "% - 4px)";
+        box.style.setProperty("--item", tint(it.tint).solid);
+        if (it.end > it.start && it.end - it.start >= MIN_SLOT) box.classList.add("cal-block");
+        if (it.start < Date.now() && isSameDay(day, Date.now())) box.classList.add("cal-past");
+        var when = el("span", "cal-when", clock(it.start) +
+          (it.end - it.start >= MIN_SLOT ? "\u2013" + clock(it.end) : ""));
+        box.appendChild(when);
+        box.appendChild(el("span", "cal-text", it.text));
+        box.title = it.text + "  \u00b7  " + it.listTitle;
+        box.addEventListener("click", function () {
+          setMobileTab(it.listId);
+          flashStatus(it.text + " \u2014 " + it.listTitle);
+        });
+        itemsLayer.appendChild(box);
+      });
+
+      placeNow(s);
+      scroller.style.display = list.length ? "" : "none";
+      empty.style.display = list.length ? "none" : "";
+      empty.textContent = isSameDay(day, Date.now())
+        ? "Nothing with a time on it today."
+        : "Nothing on " + dayTitle(day).toLowerCase() + ".";
+      dayBtn.textContent = dayTitle(day);
+      dayBtn.classList.toggle("away", !isSameDay(day, Date.now()));
+      headCount.textContent = String(list.length);
+      countLabel.textContent = list.length
+        ? list.length + (list.length === 1 ? " thing" : " things")
+        : "clear";
+    }
+
+    // ── Week: seven days stacked, each with its own short agenda ────────
+    function startOfWeek(ts) {
+      var d = new Date(ts);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - d.getDay());      // weeks start Sunday here
+      return d.getTime();
+    }
+
+    function renderWeek() {
+      var from = startOfWeek(day);
+      week.textContent = "";
+      var total = 0;
+      for (var i = 0; i < 7; i++) {
+        var d0 = startOfDay(from, i);
+        var list = itemsFor(d0);
+        total += list.length;
+        var today = isSameDay(d0, Date.now());
+
+        var dayBox = el("div", "cal-wday" + (today ? " is-today" : "") +
+                                (list.length ? "" : " is-empty"));
+        var head = el("button", "cal-whead");
+        var dd = new Date(d0);
+        head.appendChild(el("span", "cal-wname",
+          dd.toLocaleDateString(undefined, { weekday: "short" })));
+        head.appendChild(el("span", "cal-wnum", String(dd.getDate())));
+        if (list.length) head.appendChild(el("span", "cal-wcount", String(list.length)));
+        // Tapping a day is how you get from "what is this week" to "what is
+        // this day", which is the only reason to look at a week.
+        (function (target) {
+          head.addEventListener("click", function () {
+            day = target;
+            setMode("day");
+          });
+        })(d0);
+        dayBox.appendChild(head);
+
+        var lines = el("div", "cal-wlines");
+        if (!list.length) {
+          lines.appendChild(el("span", "cal-wnone", "\u2014"));
+        } else {
+          list.forEach(function (it) {
+            var line = el("button", "cal-wline");
+            line.style.setProperty("--item", tint(it.tint).solid);
+            if (it.start < Date.now()) line.classList.add("cal-past");
+            line.appendChild(el("span", "cal-wtime", clock(it.start)));
+            line.appendChild(el("span", "cal-wtext", it.text));
+            line.title = it.text + "  \u00b7  " + it.listTitle;
+            line.addEventListener("click", function () {
+              setMobileTab(it.listId);
+              flashStatus(it.text + " \u2014 " + it.listTitle);
+            });
+            lines.appendChild(line);
+          });
+        }
+        dayBox.appendChild(lines);
+        week.appendChild(dayBox);
+      }
+      var label = new Date(from).toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
+        " \u2013 " + new Date(startOfDay(from, 6)).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      dayBtn.textContent = isSameDay(startOfWeek(Date.now()), from) ? "This week" : label;
+      dayBtn.classList.toggle("away", !isSameDay(startOfWeek(Date.now()), from));
+      headCount.textContent = String(total);
+      countLabel.textContent = total
+        ? total + (total === 1 ? " thing this week" : " things this week")
+        : "clear week";
+    }
+
+    function setMode(next) {
+      mode = next;
+      try { localStorage.setItem(CAL_MODE_KEY, mode); } catch (e) {}
+      dayTab.classList.toggle("on", mode === "day");
+      weekTab.classList.toggle("on", mode === "week");
+      render();
+      if (mode === "day") setTimeout(scrollToNow, 0);
+    }
+    dayTab.addEventListener("click", function () { setMode("day"); });
+    weekTab.addEventListener("click", function () { setMode("week"); });
+
+    // ── Tapping an empty slot makes something there ─────────────────────
+    // The calendar stays a view of the lists rather than a second place
+    // that owns dates: this writes a task into a real list, with a due
+    // date, exactly as typing it into that list would. The only thing the
+    // calendar contributes is the time you pointed at.
+    var CAL_LIST_KEY = "dia_todo_callist_v1";
+    var composer = null;
+
+    function closeComposer() {
+      if (composer) { composer.remove(); composer = null; }
+    }
+
+    function defaultList() {
+      var lists = taskLists();
+      var saved = localStorage.getItem(CAL_LIST_KEY);
+      var found = lists.filter(function (l) { return l.id === saved; })[0];
+      return found || lists[0];
+    }
+
+    function openComposer(ts) {
+      closeComposer();
+      if (!lastSpan) return;
+      var chosen = defaultList();
+      if (!chosen) return;
+
+      composer = el("div", "cal-new");
+      composer.style.top = Math.round(((ts - day) / 3600000 - lastSpan.from) * PX_H) + "px";
+      composer.style.setProperty("--item", tint(chosen.tint || "amber").solid);
+
+      var head = el("div", "cal-newhead");
+      head.appendChild(el("span", "cal-newtime", clock(ts)));
+      // Which list it lands in, chosen here rather than assumed, because a
+      // task in the wrong list is worse than no task at all.
+      var chips = el("div", "cal-chips");
+      taskLists().forEach(function (l) {
+        var chip = el("button", "cal-chip" + (l.id === chosen.id ? " on" : ""), l.title);
+        chip.style.setProperty("--chip", tint(l.tint || "amber").solid);
+        chip.addEventListener("mousedown", function (e) { e.preventDefault(); });
+        chip.addEventListener("click", function () {
+          chosen = l;
+          localStorage.setItem(CAL_LIST_KEY, l.id);
+          composer.style.setProperty("--item", tint(l.tint || "amber").solid);
+          [].forEach.call(chips.children, function (c) { c.classList.remove("on"); });
+          chip.classList.add("on");
+          input.focus();
+        });
+        chips.appendChild(chip);
+      });
+      head.appendChild(chips);
+      composer.appendChild(head);
+
+      var input = el("input", "cal-newinput");
+      input.type = "text";
+      input.placeholder = "What happens at " + clock(ts) + "?";
+      composer.appendChild(input);
+
+      function save() {
+        var text = input.value.trim();
+        closeComposer();
+        if (!text) return;
+        var key = chosen.storageKey;
+        var arr = loadTasks(key);
+        arr.push({
+          text: text,
+          done: false,
+          id: "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          mt: Date.now(),
+          due: ts
+        });
+        saveTasks(key, arr);          // this refreshes the calendar itself
+        panelReloaders.forEach(function (r) { r(); });
+        ensureNotifyPermission();
+        flashStatus(text + " \u2014 " + clock(ts) + ", " + chosen.title);
+      }
+
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); save(); }
+        else if (e.key === "Escape") { e.preventDefault(); closeComposer(); }
+      });
+      // A tap elsewhere is a change of mind, not a save: an accidental slot
+      // tap should cost nothing, and a half-typed line is not a task.
+      input.addEventListener("blur", function () {
+        setTimeout(function () {
+          if (composer && !composer.contains(document.activeElement)) closeComposer();
+        }, 120);
+      });
+
+      itemsLayer.appendChild(composer);
+      input.focus();
+    }
+
+    itemsLayer.addEventListener("click", function (e) {
+      if (mode !== "day") return;
+      if (e.target !== itemsLayer) return;     // a tap on an item is not a tap on the day
+      if (!lastSpan) return;
+      var box = itemsLayer.getBoundingClientRect();
+      var mins = (e.clientY - box.top) / PX_H * 60 + lastSpan.from * 60;
+      mins = Math.max(0, Math.min(24 * 60 - 15, Math.round(mins / 15) * 15));
+      openComposer(day + mins * 60000);
+    });
+
+    function go(days) {
+      closeComposer();
+      day = startOfDay(day, mode === "week" ? days * 7 : days);
+      render();
+      scroller.scrollTop = 0;
+    }
+    prev.addEventListener("click", function () { go(-1); });
+    next.addEventListener("click", function () { go(1); });
+    dayBtn.addEventListener("click", function () {
+      day = startOfDay(Date.now());
+      render();
+      scrollToNow();
+    });
+
+    // Opening on 8am when it is four in the afternoon is a calendar showing
+    // you the part of the day you cannot change.
+    function scrollToNow() {
+      if (!lastSpan || !isSameDay(Date.now(), day)) return;
+      var mins = (Date.now() - day) / 60000 - lastSpan.from * 60;
+      scroller.scrollTop = Math.max(0, Math.round(mins / 60 * PX_H) - 90);
+    }
+
+    calReloaders.push(render);
+    panelReloaders.push(render);
+    dayTab.classList.toggle("on", mode === "day");
+    weekTab.classList.toggle("on", mode === "week");
+    render();
+    setTimeout(scrollToNow, 0);
+    // The line is the only thing on this panel that moves on its own.
+    setInterval(function () { if (lastSpan) placeNow(lastSpan); }, 30000);
+    return panel;
+  }
+
   var panelReloaders = [];
   var panelSyncers = [];
   var panelsRoot = document.getElementById("panels");
@@ -5330,6 +6030,7 @@
   // Always present: it is where a scheduled task is made, so hiding it until
   // one exists would leave nowhere to make the first.
   panelsRoot.appendChild(createScheduledPanel());
+  panelsRoot.appendChild(createCalendarPanel());
 
   // Phone layout: all three cards stay on screen; tapping one opens it and
   // shrinks the others to a title + count. Keeps the whole picture visible
@@ -5365,6 +6066,13 @@
       tint: tintFor("runs", "amber"),
       themed: !!tintFor("runs", null)
     };
+    // Last card in the fan: it is the one you go to to look, not to write.
+    PANEL_IDS.push("cal");
+    PANEL_META.cal = {
+      title: "Calendar", sub: "WHEN IT ALL LANDS", unit: "today",
+      tint: tintFor("cal", "teal"),
+      themed: !!tintFor("cal", null)
+    };
   }
   rebuildPanelIndex();
 
@@ -5379,7 +6087,13 @@
     if (!n) return;
     var w = panelsRoot.clientWidth;
     if (!w) return;
-    var ideal = Math.floor((w - (n - 1) * 12) / n);
+    // The gap is read, not assumed. It was hard-coded at 12 while the
+    // stylesheet said 28, which four columns had enough slack to absorb and
+    // five did not: the tracks were sized for 1194px of room and asked for
+    // 1257, so the last column hung off the right edge.
+    var cs = getComputedStyle(panelsRoot);
+    var gap = parseFloat(cs.columnGap || cs.gap || "") || 12;
+    var ideal = Math.floor((w - (n - 1) * gap) / n);
     panelsRoot.style.setProperty("--track-min",
       Math.max(132, Math.min(240, ideal)) + "px");
   }
@@ -5403,6 +6117,41 @@
     if (saved === null) return window.innerWidth > 980;   // narrow: away by default
     return saved === "1";
   }
+
+  // ── The Calendar column is optional too ──────────────────
+  // Five columns on an unfolded phone is 215px each, which is enough but
+  // not generous. This is how you ask for four. Phones never hide it: there
+  // it is one card in the fan and nothing is competing for width.
+  var CAL_SHOW_KEY = "dia_todo_showcal_v1";
+
+  function calShown() {
+    var saved = localStorage.getItem(CAL_SHOW_KEY);
+    if (saved === null) return window.innerWidth > 1180;
+    return saved === "1";
+  }
+
+  function applyCalVisibility() {
+    var on = calShown();
+    document.body.classList.toggle("hide-cal", !on);
+    var btn = document.getElementById("cal-btn");
+    if (btn) {
+      btn.classList.toggle("on", on);
+      btn.classList.toggle("off", !on);
+      btn.title = on ? "Hide the Calendar column" : "Show the Calendar column";
+    }
+    fitPanelTracks();
+  }
+
+  (function () {
+    var btn = document.getElementById("cal-btn");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        localStorage.setItem(CAL_SHOW_KEY, calShown() ? "0" : "1");
+        applyCalVisibility();
+      });
+    }
+    applyCalVisibility();
+  })();
 
   function applyRunsVisibility() {
     var on = runsShown();
@@ -6079,8 +6828,22 @@
         fanRoot.classList.remove("squeezed");
         return;
       }
+      // A measurement of zero means the fan was not on screen to be
+      // measured — above 720px it is display:none and the tab row takes
+      // over. Condensing something to a share of zero pins it at 0px, and
+      // the inline height then survives into a narrow window, where it
+      // reads as the app having lost its cards. Never condense what you
+      // could not measure; hand it back to the CSS instead.
+      if (!full) {
+        fanRoot.style.height = "";
+        fanRoot.classList.remove("squeezed");
+        return;
+      }
       fanRoot.classList.add("squeezed");
-      fanRoot.style.height = Math.round(full - k * full * (1 - KEEP)) + "px";
+      // KEEP is a floor as well as a target: whatever k does, a card keeps
+      // enough of itself to be seen and to be tapped.
+      var h = Math.max(Math.round(full * KEEP), Math.round(full - k * full * (1 - KEEP)));
+      fanRoot.style.height = h + "px";
     }
 
     function setK(next, el) {
