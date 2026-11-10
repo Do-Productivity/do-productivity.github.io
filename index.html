@@ -2434,6 +2434,8 @@
      for; this is how you ask for four. */
   @media (min-width: 721px) {
     body.hide-cal .panels > .panel.cal { display: none; }
+    /* Solo: the calendar alone, with the whole window. */
+    body.cal-solo .panels > .panel:not(.cal) { display: none; }
     /* A row of icons is a phone thing: there is one list and width to
        spare. A column of any width is narrow by comparison, and the row
        pushed the delete button past the card's right edge. */
@@ -4722,7 +4724,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1526";
+  var BUILD = "2026-11-10-1528";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5767,7 +5769,33 @@
       ("0" + d.getDate()).slice(-2);
   }
 
-  function msEventsFor(dayStart) { return msEvents[dayKey(dayStart)] || []; }
+  // Filtered on the way OUT, not only on the way in. Filtering at fetch
+  // time leaves every echo already sitting in the cache — on a device that
+  // has been running this for days, that is all of them — and they would
+  // survive until each day happened to be re-read. A read-time filter
+  // cleans the past as well as the future.
+  function msEventsFor(dayStart) {
+    var all = msEvents[dayKey(dayStart)] || [];
+    return all.filter(function (ev) {
+      return !isOwnEcho(ev.subject, ev.calendar || ev.where);
+    });
+  }
+
+  // Do. publishes a calendar — reminders.ics, "My To Do List", with every
+  // dated task as "To do: ...". Subscribe to that on the phone, as you
+  // would, and EventKit hands those events straight back, so every dated
+  // task appeared twice: once as itself and once as a meeting about
+  // itself. The app has to recognise its own reflection.
+  //
+  // Matched on the title Do. writes and on the calendar name it publishes
+  // under. A real meeting actually called "To do: something" would be
+  // hidden by this, which is a trade worth making against every dated task
+  // being doubled.
+  function isOwnEcho(subject, calendarName) {
+    if (/^to do:\s/i.test(String(subject || ""))) return true;
+    if (/my\s*:?\s*to\s*do\s*list/i.test(String(calendarName || ""))) return true;
+    return false;
+  }
 
   // Why the meetings are or are not there. Swallowing this was a mistake:
   // an empty calendar looked identical whether Outlook was not connected,
@@ -6152,6 +6180,7 @@
       results.forEach(function (res) {
         res.events.forEach(function (ev) {
           if (ev.status === "CANCELLED") return;
+          if (isOwnEcho(ev.summary, res.feed.name)) return;
           var span = (ev.end || ev.start) - ev.start;
           icsExpand(ev, fromTs, toTs).forEach(function (ts) {
             var key = dayKey(ev.allDay ? ts + 60000 : ts);
@@ -6228,6 +6257,7 @@
       }
       (res.events || []).forEach(function (ev) {
         if (ev.declined) return;
+        if (isOwnEcho(ev.title, ev.calendar)) return;
         var key = dayKey(ev.allDay ? ev.start + 60000 : ev.start);
         if (!msEvents[key]) return;
         msEvents[key].push({
@@ -6633,6 +6663,7 @@
       if (imported) {
         imported.events.forEach(function (ev) {
           if (ev.allDay) return;
+          if (isOwnEcho(ev.summary, imported.name)) return;
           icsExpand(ev, dayStart, dayEnd).forEach(function (ts) {
             var span = (ev.end || ev.start) - ev.start;
             out.push({ kind: "event", text: ev.summary || "(no title)",
@@ -7113,6 +7144,14 @@
     var cs = getComputedStyle(panelsRoot);
     var gap = parseFloat(cs.columnGap || cs.gap || "") || 12;
     var ideal = Math.floor((w - (n - 1) * gap) / n);
+    // The 240px cap keeps columns from sprawling when there are several.
+    // With one panel filling the screen on purpose it would do the
+    // opposite — pin the calendar to 240px in the corner of a 1250px
+    // window — so the cap does not apply to a solo panel.
+    if (n === 1) {
+      panelsRoot.style.setProperty("--track-min", Math.max(132, ideal) + "px");
+      return;
+    }
     panelsRoot.style.setProperty("--track-min",
       Math.max(132, Math.min(240, ideal)) + "px");
   }
@@ -7143,20 +7182,21 @@
   // it is one card in the fan and nothing is competing for width.
   var CAL_SHOW_KEY = "dia_todo_showcal_v1";
 
-  function calShown() {
-    var saved = localStorage.getItem(CAL_SHOW_KEY);
-    if (saved === null) return window.innerWidth > 1180;
-    return saved === "1";
-  }
+  // Pressing Calendar opens the calendar, by itself, filling the screen.
+  // As a sixth column it was 215px of hour grid, which is enough to see
+  // that a day is busy and not enough to read it. A calendar wants width
+  // more than it wants company, and the lists are one press away.
+  function calSolo() { return localStorage.getItem(CAL_SHOW_KEY) === "solo"; }
 
   function applyCalVisibility() {
-    var on = calShown();
-    document.body.classList.toggle("hide-cal", !on);
+    var solo = calSolo();
+    document.body.classList.toggle("cal-solo", solo);
+    document.body.classList.toggle("hide-cal", !solo);
     var btn = document.getElementById("cal-btn");
     if (btn) {
-      btn.classList.toggle("on", on);
-      btn.classList.toggle("off", !on);
-      btn.title = on ? "Hide the Calendar column" : "Show the Calendar column";
+      btn.classList.toggle("on", solo);
+      btn.classList.toggle("off", !solo);
+      btn.title = solo ? "Back to the lists" : "Open the calendar on its own";
     }
     fitPanelTracks();
   }
@@ -7165,7 +7205,7 @@
     var btn = document.getElementById("cal-btn");
     if (btn) {
       btn.addEventListener("click", function () {
-        localStorage.setItem(CAL_SHOW_KEY, calShown() ? "0" : "1");
+        localStorage.setItem(CAL_SHOW_KEY, calSolo() ? "0" : "solo");
         applyCalVisibility();
       });
     }
