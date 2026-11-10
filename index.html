@@ -859,6 +859,19 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
   }
 
+  /* One quiet line that only appears when something is wrong, or when the
+     calendar is showing half the picture and you might not know it. */
+  .cal-source {
+    display: block; width: 100%;
+    font-family: var(--sans); font-size: 10px; letter-spacing: .2px;
+    text-align: left; color: var(--ink-soft);
+    background: rgba(43, 38, 32, .05);
+    border: none; border-radius: 6px;
+    padding: 5px 8px; margin: 0 0 6px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-source.bad { color: #fff; background: var(--red); }
+
   /* Things with a date but no hour, above the grid rather than buried in
      it. Superhuman puts them in the same place, and so does every calendar
      that has had to solve this, which is usually a sign it is right. */
@@ -4591,7 +4604,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1342";
+  var BUILD = "2026-11-10-1347";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5638,9 +5651,21 @@
 
   function msEventsFor(dayStart) { return msEvents[dayKey(dayStart)] || []; }
 
+  // Why the meetings are or are not there. Swallowing this was a mistake:
+  // an empty calendar looked identical whether Outlook was not connected,
+  // the token had expired, or the day was genuinely clear. This app's whole
+  // posture is that it says when it breaks.
+  var msEvState = "";        // "" ok | "off" | "HTTP 401" | "offline"
+  var msEvListeners = [];
+  function msEvNote(state) {
+    if (msEvState === state) return;
+    msEvState = state;
+    msEvListeners.forEach(function (fn) { fn(); });
+  }
+
   var msFetching = {};
   function ensureMsEvents(fromTs, days, done) {
-    if (!msConnected()) return;
+    if (!msConnected()) { msEvNote("off"); return; }
     var i, stale = false;
     for (i = 0; i < days; i++) {
       var k = dayKey(startOfDay(fromTs, i));
@@ -5659,7 +5684,15 @@
       "&$orderby=start/dateTime&$top=200";
 
     graph(url).then(function (res) {
-      return res && res.ok ? res.json() : null;
+      if (!res) { msEvNote("no answer"); return null; }
+      if (!res.ok) {
+        // 401 after a refresh means the consent is gone, not a blip, and
+        // the only cure is reconnecting — so say the number.
+        msEvNote("HTTP " + res.status);
+        return null;
+      }
+      msEvNote("");
+      return res.json();
     }).then(function (data) {
       msFetching[range] = false;
       if (!data || !data.value) return;
@@ -5691,7 +5724,10 @@
         localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
       } catch (e) { /* a full quota should not break the calendar */ }
       if (done) done();
-    }).catch(function () { msFetching[range] = false; });
+    }).catch(function (e) {
+      msFetching[range] = false;
+      msEvNote(navigator.onLine === false ? "offline" : ("failed: " + (e && e.message ? String(e.message).slice(0, 60) : "unknown")));
+    });
   }
 
   function createCalendarPanel() {
@@ -5740,6 +5776,14 @@
     // Things with a date but no hour. They have no place on an hour grid
     // and squeezing them in as a block from midnight to midnight would bury
     // the day under them, so they sit above it.
+    // Where the meetings come from, and why they are missing when they are.
+    var source = el("button", "cal-source", "");
+    source.addEventListener("click", function () {
+      var btn = document.getElementById("sync-btn");
+      if (btn) btn.click();          // the Outlook connection lives in Sync
+    });
+    panel.appendChild(source);
+
     var allDay = el("div", "cal-allday");
     panel.appendChild(allDay);
 
@@ -5952,6 +5996,7 @@
       empty.textContent = isSameDay(day, Date.now())
         ? "Nothing with a time on it today."
         : "Nothing on " + dayTitle(day).toLowerCase() + ".";
+      paintSource();
       dayBtn.textContent = dayTitle(day);
       dayBtn.classList.toggle("away", !isSameDay(day, Date.now()));
       headCount.textContent = String(list.length);
@@ -6022,6 +6067,7 @@
         " \u2013 " + new Date(startOfDay(from, 6)).toLocaleDateString(undefined, { day: "numeric", month: "short" });
       dayBtn.textContent = isSameDay(startOfWeek(Date.now()), from) ? "This week" : label;
       dayBtn.classList.toggle("away", !isSameDay(startOfWeek(Date.now()), from));
+      paintSource();
       headCount.textContent = String(total);
       countLabel.textContent = total
         ? total + (total === 1 ? " thing this week" : " things this week")
@@ -6139,6 +6185,23 @@
       mins = Math.max(0, Math.min(24 * 60 - 15, Math.round(mins / 15) * 15));
       openComposer(day + mins * 60000);
     });
+
+    function paintSource() {
+      if (!msConnected()) {
+        source.textContent = "Only your tasks \u2014 tap to connect Outlook";
+        source.className = "cal-source off";
+        source.style.display = "";
+        return;
+      }
+      if (msEvState && msEvState !== "off") {
+        source.textContent = "Meetings could not load (" + msEvState + ") \u2014 tap to check";
+        source.className = "cal-source bad";
+        source.style.display = "";
+        return;
+      }
+      source.style.display = "none";   // working: say nothing
+    }
+    msEvListeners.push(function () { paintSource(); });
 
     function go(days) {
       closeComposer();
