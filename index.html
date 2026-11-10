@@ -2608,7 +2608,10 @@
         <p class="modal-hint"><b>Blocked from registering apps?</b> Many companies restrict this. Use the no-permission route instead: in Outlook on the web, <b>Calendar</b> → <b>Add calendar</b> → <b>Subscribe from web</b>, and paste the feed address from the "Use Outlook instead of Apple Calendar?" section above. Your tasks then show in Outlook everywhere, while Apple Calendar keeps ringing them exactly on time.</p>
       </div>
       <div id="ms-on" style="display:none">
-        <p>✅ Connected to <b id="ms-account-name">your Mylo calendar</b>. Dated tasks are added automatically and ring on time.</p>
+        <p>✅ Connected to <b id="ms-account-name">your Mylo calendar</b>. Dated tasks are added automatically and ring on time, and your meetings show in the Calendar.</p>
+        <p class="modal-hint">Setting up another device? It needs this same <b>Application (client) ID</b> — the registration is done, so there is nothing to create again. It is a public identifier, not a secret.</p>
+        <input class="sync-token" id="ms-client-show" readonly>
+        <button class="modal-btn" id="ms-copy-client-btn">Copy the client ID</button>
         <button class="modal-btn" id="ms-disconnect-btn">Disconnect Outlook</button>
       </div>
       <p class="modal-hint" id="ms-status-line"></p>
@@ -4604,7 +4607,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1401";
+  var BUILD = "2026-11-10-1408";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -8865,6 +8868,20 @@
     } catch (e) { return null; }
   }
   function saveMsCfg(cfg) { localStorage.setItem(MS_CFG_KEY, JSON.stringify(cfg)); }
+  (function () {
+    var btn = document.getElementById("ms-copy-client-btn");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var box = document.getElementById("ms-client-show");
+      if (!box || !box.value) return;
+      box.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) {}
+      if (navigator.clipboard && !ok) navigator.clipboard.writeText(box.value);
+      msStatus("Client ID copied \u2014 paste it on the other device.");
+    });
+  })();
+
   function msConnected() {
     var c = getMsCfg();
     return !!(c && c.refreshToken);
@@ -9031,6 +9048,10 @@
     document.getElementById("ms-redirect-box").value = MS_REDIRECT;
     var cfg = getMsCfg();
     if (on && cfg && cfg.account) document.getElementById("ms-account-name").textContent = cfg.account;
+    // The client id is what a second device needs, and hiding it once
+    // connected meant the only way to get it was back through the portal.
+    var show = document.getElementById("ms-client-show");
+    if (show && cfg && cfg.clientId) show.value = cfg.clientId;
   }
 
   document.getElementById("ms-connect-btn").addEventListener("click", function () {
