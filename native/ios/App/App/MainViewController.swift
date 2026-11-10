@@ -24,5 +24,7 @@ class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(WidgetBridgePlugin())
         bridge?.registerPluginInstance(CalendarBridgePlugin())
+        bridge?.registerPluginInstance(SecureStorePlugin())
+        bridge?.registerPluginInstance(StoreBridgePlugin())
     }
 }

@@ -12,5 +12,6 @@
       "smallIcon": "ic_stat_icon",
       "iconColor": "#00A86B"
     }
-  }
+  },
+  "loggingBehavior": "none"
 }

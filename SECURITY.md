@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, against build `2026-11-10-2123`.
+on purpose. Written 10 November 2026, against build `2026-11-10-2307`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -52,7 +52,8 @@ Worth stating, because it is why the fixes were small:
 - **No secrets in the repository**, which matters because GitHub Pages requires
   it to be public. The server-side keys live in environment variables; history
   is clean too.
-- **Zero `console.log` calls**, so nothing leaks into a device log.
+- **Zero `console.log` calls**, so nothing leaks into a device log — and the
+  native bridge is told to keep quiet too (see 5 below; it was not, at first).
 - **The Supabase key in the file is the publishable one** — that is its job.
   Row-level security is on with no policies, which is deny-everything, and the
   only way in is three `security definer` functions granted narrowly.
@@ -102,19 +103,59 @@ bridge still works because `WKUserScript` injection is not subject to page CSP.
 `connect-src` allows any `https:` host deliberately. A calendar feed can live
 anywhere, and an allow-list would break the moment somebody pasted their own.
 
+### 4. The sync token sat in `localStorage` — moved to the Keychain on iOS
+
+Four things are secrets: the GitHub sync token, the cloud session, the feed
+token and the Microsoft calendar session. On the iPhone they now live in the
+**Keychain**, through a small native plugin (`SecureStore.swift`), stored
+`AfterFirstUnlockThisDeviceOnly` and not synchronised — so they are encrypted
+with the device, never ride along in an iCloud or computer backup, and are no
+longer sitting in the web view's storage file.
+
+The move happens by itself on first launch of the new build: anything found in
+`localStorage` is written to the Keychain and the `localStorage` copy is deleted
+**only after the Keychain confirms the write**. If the Keychain ever refuses, the
+value stays where it was rather than being lost, and the Sync sheet says
+"partly" instead of pretending. The Sync sheet shows which of the three states
+the device is in.
+
+What this does and does not buy, stated plainly:
+
+- It protects the token **at rest** — from a backup, from another app, from
+  someone pulling files off the phone.
+- It does **not** protect it from script running inside the app. The app has to
+  be able to read its own token, so anything that could run code in the page
+  could ask for it. The Content-Security-Policy above is the defence against
+  that, not the Keychain.
+- **On the web there is no Keychain.** The browser version still keeps the token
+  in `localStorage`, bound to the origin. That is as good as a web page gets.
+
+*Verified:* against a mocked bridge — migration, the delete-only-after-confirm
+ordering, the refusal fallback, removal on disconnect. In the iOS simulator the
+plugin loads, answers, and the Sync sheet reports the Keychain. **Not verified:**
+a real token making the round trip on a real phone; that is checked by using the
+app, not by reading the Keychain from a computer.
+
+### 5. The native bridge was logging every call — silenced
+
+Capacitor, in a debug build, prints every message between the web layer and
+Swift to the device console, results included. The build that goes onto the
+phone over the cable *is* a debug build, so the moment the Keychain plugin
+existed, its answer — the token — would have been printed to a log anyone with
+the phone and a Mac could read. `loggingBehavior` is now `none`.
+
+This one was found by looking at the simulator's console rather than by
+reasoning, which is the argument for looking.
+
 ---
 
 ## What is open, on purpose
 
-### The sync token sits in `localStorage`
+### The web version keeps the sync token in `localStorage`
 
-Not encrypted, not in the Keychain. On iOS it is inside the app sandbox and
-encrypted at rest with the device; on the web it is bound to the origin. The
-realistic way to steal it was cross-site scripting, which the policy above now
-makes very hard.
-
-**It should still move to the Keychain on iOS.** That is the next piece of work,
-not a finished one.
+On the iPhone it is in the Keychain now (4, above). In a browser there is
+nowhere better to put it: it is bound to the origin, and the realistic way to
+steal it is cross-site scripting, which the policy above makes very hard.
 
 ### A "secret" gist is unlisted, not private
 
@@ -148,8 +189,15 @@ It always does, for every app. See below.
 
 ## Money
 
-Purchases are not built yet. These are the rules for when they are, and they are
-rules rather than suggestions because the mistakes here are expensive.
+The purchase layer is **built and switched off**. `StoreBridge.swift` holds the
+whole of it — the products, the thirty-day clock, the paywall — behind one
+constant, `Store.enforced = false`. While it is false nobody is ever asked to
+pay and nothing is gated. It stays false until the two products exist in App
+Store Connect, because an enforced paywall with nothing on sale behind it is a
+locked door with no handle.
+
+These are the rules it was built to, and they are rules rather than suggestions
+because the mistakes here are expensive.
 
 **For the user's money — the only one that really matters:**
 
@@ -169,12 +217,47 @@ rules rather than suggestions because the mistakes here are expensive.
   Never from a boolean in JavaScript, never from a flag in `localStorage`, and
   never from anything the web layer hands down. The web layer may be *told* the
   answer; it must not be the one that decides it.
-- **The thirty-day trial clock goes in the Keychain**, plus iCloud key-value
-  storage — both survive deleting the app, which `localStorage` does not.
-- **A Restore Purchases button is mandatory.** Without one, Apple rejects.
+- **The thirty-day trial clock is in the Keychain**, which survives deleting the
+  app; `localStorage` does not. It was meant to be in iCloud key-value storage
+  as well, so that a second device shares the clock. **That half is not built:**
+  iCloud entitlements need the paid developer account. Until then, a new device
+  is a new month.
+- **A Restore Purchases button is mandatory**, and it is on the paywall. Without
+  one, Apple rejects.
 - **A jailbroken device will beat all of this**, and that is fine. At a dollar a
   month, anti-tamper engineering costs more than the theft. Build it correctly,
   then stop.
+
+**How it is put together:**
+
+- The paywall is a native SwiftUI sheet. The web layer can ask for it to be
+  shown and is told the outcome; it never draws a price, a plan or a button that
+  takes money.
+- "Paid" is whatever `Transaction.currentEntitlements` returns *verified*.
+  Unverified transactions are ignored, not trusted and not argued with.
+- The web layer asks the bridge "may this person add things?" and acts on the
+  answer. Setting a flag in JavaScript or `localStorage` changes nothing — there
+  is a test that tries.
+- When it is enforced, the only thing that stops is **adding**: a task, a list, a
+  note, a scheduled task, a duplicate. Reading, ticking off, editing, deleting,
+  exporting and syncing never stop.
+
+**What is not verified, and why:**
+
+- **No real purchase has ever been made.** The products do not exist yet. In the
+  simulator the paywall opens and says the plans are not on sale, which is the
+  right answer to having nothing to sell.
+- `Do.storekit` is a local test catalogue with the two products in it, wired to
+  the shared Xcode scheme. It only takes effect when the app is run *from Xcode*;
+  that path has not been exercised.
+- The product ids the code expects are `com.ahmedmohsen.todolist.monthly` and
+  `com.ahmedmohsen.todolist.lifetime`. The ones created in App Store Connect
+  have to match exactly.
+
+**The hole that is a business decision, not a bug:** the web version is the same
+app, free, at a public address. A paywall in the iPhone app does not close that.
+Either the web version stays as the free tier on purpose, or it comes down when
+the App Store version goes up.
 
 ---
 

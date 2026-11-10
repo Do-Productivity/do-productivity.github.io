@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+MhPPGINiu16Z63Qx7OzOavfh+v9bbvek17SqwAN0Is=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dGZbwGPgk8Q8TB6PHRT04DmmZLw9mId01Je8ANclhbs=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -41,6 +41,10 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* An unstyled button on iOS is written in system blue and flashes grey
+     under the finger. Neither belongs on paper: a button says what colour
+     it is, or it takes the ink around it. */
+  button { color: inherit; -webkit-tap-highlight-color: transparent; }
 
   html, body {
     background-color: var(--paper);
@@ -454,6 +458,8 @@
     letter-spacing: 1.5px;
     text-transform: uppercase;
     color: #fff;
+    /* never the browser's own grey: white lettering on it cannot be read */
+    background: var(--ink);
     border: none;
     border-radius: 4px;
     padding: 0 22px;
@@ -1524,8 +1530,10 @@
     cursor: pointer;
     padding: 12px 2px;
   }
+  .completed-toggle { color: var(--ink-soft); }
   .panel.personal .completed-toggle { color: var(--red); }
   .panel.business .completed-toggle { color: var(--blue); }
+  .panel.notes .completed-toggle { color: var(--green); }
   .completed-toggle .arrow {
     display: inline-block;
     font-size: 9px;
@@ -1541,6 +1549,7 @@
   }
   .panel.personal .count-badge { background: #eebf8f; }
   .panel.business .count-badge { background: #a8c4d8; }
+  .panel.notes .count-badge { background: var(--green-soft); }
 
   .completed-list { list-style: none; display: none; }
   /* The drawer sits BESIDE the scrolling list, not inside it, so sixty-three
@@ -1745,7 +1754,10 @@
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    /* clear of the clock and the home bar: a sheet that slides under the
+       island has its first line read through the status bar */
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 24px
+             calc(24px + env(safe-area-inset-bottom, 0px));
     z-index: 10;
   }
   .modal-overlay.show { display: flex; }
@@ -1757,11 +1769,33 @@
     width: 100%;
     padding: 28px;
     max-height: calc(100vh - 40px);
-    max-height: calc(100dvh - 40px);
+    max-height: calc(100dvh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
   .modal h2 { font-size: 22px; margin-bottom: 8px; }
+  /* A way out that is always in reach. The sheet is longer than a phone, and
+     its only Close used to be at the very bottom of it — so the first thing
+     anyone met was a page they could not leave without scrolling to find out
+     how. This rides at the top corner however far the sheet has moved. */
+  .modal-top {
+    position: sticky; top: 0; z-index: 2;
+    height: 0; display: flex; justify-content: flex-end;
+  }
+  .modal-x {
+    flex: none; width: 34px; height: 34px; margin: -15px -15px 0 0;
+    border: none; border-radius: 50%; cursor: pointer;
+    background: #efe9dc; color: var(--ink-soft);
+    font-family: var(--sans); font-size: 19px; line-height: 34px; text-align: center;
+  }
+  .modal-x:active { transform: scale(.94); }
+  .modal-top + h2 { padding-right: 30px; }
+  #membership { border-top: 1px solid var(--rule); margin-top: 16px; padding-top: 14px; }
+  .member-h {
+    font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: 1.6px;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px;
+  }
   .modal p {
     font-family: var(--sans);
     font-size: 13px;
@@ -2746,6 +2780,7 @@
 
 <div class="modal-overlay" id="sync-modal">
   <div class="modal">
+    <div class="modal-top"><button class="modal-x" id="sync-modal-x" aria-label="Close">&times;</button></div>
     <h2>Sync across devices</h2>
 
     <div id="cloud-account">
@@ -2901,6 +2936,15 @@
     </div>
     </details>
     </details>
+    <div id="membership" style="display:none">
+      <h3 class="member-h">Membership</h3>
+      <p id="member-line"></p>
+      <button class="modal-btn primary" id="member-plans-btn">See the plans</button>
+      <button class="modal-btn" id="member-manage-btn" style="display:none">Manage or cancel the subscription</button>
+      <button class="modal-btn quiet" id="member-restore-btn">Restore purchases</button>
+      <p class="modal-hint">Payment is taken by Apple. Do. never asks for a card and never sees one. Whatever happens, your lists stay yours to read and export.</p>
+    </div>
+    <p class="modal-hint" id="secrets-line" style="display:none"></p>
     <div class="modal-actions">
       <button class="toolbar-btn" id="sync-modal-close">Close</button>
     </div>
@@ -2997,6 +3041,95 @@
   function plug(name) {
     return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null;
   }
+
+  // ── Secrets ──────────────────────────────────────────────
+  // Four things here are worth stealing: the GitHub sync token, the cloud
+  // session with its refresh token, the calendar feed token and the
+  // Microsoft refresh token. In a browser they live in localStorage, which
+  // is all a browser offers. In the iOS app they live in the Keychain —
+  // encrypted by the phone, never in a backup, never synced anywhere — and
+  // localStorage keeps no copy.
+  //
+  // The Keychain answers asynchronously and nearly everything that reads a
+  // token is synchronous, so the values are read once at launch into
+  // memory and served from there. Code that runs at startup and needs to
+  // know whether the device is signed in waits on whenReady(); in a
+  // browser that is immediate.
+  //
+  // Anything already in localStorage is moved across the first time this
+  // runs, and removed from localStorage only after the Keychain has
+  // confirmed it holds it. If the Keychain ever refuses a write the value
+  // stays where it was: a token stored less well beats a sync that
+  // silently stopped.
+  var secrets = (function () {
+    var KEYS = ["dia_todo_sync_v1", "dia_todo_cloud_session_v1",
+                "dia_todo_feed_token", "dia_todo_ms_v1"];
+    var store = plug("SecureStore");
+    var vault = {};
+    var ready = !store;
+    var waiting = [];
+    var refused = false;
+
+    function has(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+    function local(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+    function unlocal(key) { try { localStorage.removeItem(key); } catch (e) {} }
+
+    function push(key, value) {
+      store.set({ key: key, value: value }).then(function () {
+        // only if nothing has changed it again in the meantime
+        if (vault[key] === value) unlocal(key);
+      }, function () {
+        refused = true;
+        try { if (vault[key] === value) localStorage.setItem(key, value); } catch (e) {}
+      });
+    }
+
+    function getItem(key) {
+      if (!store) return local(key);
+      if (has(vault, key)) return vault[key];
+      return local(key);
+    }
+
+    function setItem(key, value) {
+      if (!store) { localStorage.setItem(key, value); return; }
+      vault[key] = String(value);
+      push(key, vault[key]);
+    }
+
+    function removeItem(key) {
+      if (!store) { localStorage.removeItem(key); return; }
+      vault[key] = null;
+      unlocal(key);
+      store.remove({ key: key }).catch(function () { refused = true; });
+    }
+
+    function whenReady(fn) {
+      if (ready) fn(); else waiting.push(fn);
+    }
+
+    function open(items) {
+      KEYS.forEach(function (key) {
+        if (has(vault, key)) return;            // written this session: newest
+        var here = local(key);
+        if (here !== null) { vault[key] = here; push(key, here); }
+        else if (items && has(items, key)) vault[key] = items[key];
+      });
+      ready = true;
+      var run = waiting; waiting = [];
+      run.forEach(function (fn) { try { fn(); } catch (e) {} });
+    }
+
+    if (store) {
+      store.getAll().then(function (r) { open(r && r.items); },
+                          function () { refused = true; open(null); });
+    }
+
+    return {
+      getItem: getItem, setItem: setItem, removeItem: removeItem,
+      whenReady: whenReady,
+      where: function () { return !store ? "browser" : (refused ? "partly" : "keychain"); }
+    };
+  })();
 
   // ── Error trap ───────────────────────────────────────────
   // Everything here is one script. An uncaught error stops whatever was
@@ -3516,8 +3649,12 @@
         }
       }
     } else if (!finished && w.closedAt) {
+      // Asked with the moment it was closed, not this one: the successor's
+      // id is derived from the date it was given then, and a later "now"
+      // can land on a different occurrence and withdraw nothing.
+      var closedWhen = w.closedAt;
       delete w.closedAt;
-      var heir = succeedScheduled(w, w.closedAt || now);
+      var heir = succeedScheduled(w, closedWhen || now);
       if (heir) {
         all.forEach(function (x) {
           if (x.id !== heir.id || x.deleted) return;
@@ -4494,6 +4631,7 @@
     function addTask() {
       var text = addInput.value.trim();
       if (!text) return;
+      if (!mayAdd()) return;
       var task = {
         text: text,
         done: false,
@@ -4891,7 +5029,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-2215";
+  var BUILD = "2026-11-10-2307";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5492,6 +5630,7 @@
         select.focus();
         return;
       }
+      if (!mayAdd()) return;
 
       var all = loadNotes();
       var now = Date.now();
@@ -5618,7 +5757,10 @@
   }
 
   function createScheduledPanel() {
-    var wsTint = tintFor("runs", null);
+    // The card above this panel is amber unless told otherwise, so the
+    // panel is too: a sheet in one colour under a card in another reads
+    // as two different things.
+    var wsTint = tintFor("runs", "amber");
     var panel = el("section", "panel runs" + (wsTint ? " themed" : ""));
     if (wsTint) {
       panel.style.setProperty("--tint", tint(wsTint).solid);
@@ -5648,6 +5790,7 @@
     function addScheduled() {
       var name = newInput.value.trim();
       if (!name) return;
+      if (!mayAdd()) return;
       var all = loadScheduled();
       all.push(newScheduled(name));
       saveScheduled(all);
@@ -5827,6 +5970,7 @@
       var dup = el("button", "runbook-act", "Duplicate");
       dup.title = "Make another just like it";
       dup.addEventListener("click", function () {
+        if (!mayAdd()) return;
         var all = loadScheduled();
         var copy = newScheduled(w.name, w.startAt, w.dueAt);
         copy.steps = w.steps.map(function (st, i) { return wsStep(st.text, copy.id, i); });
@@ -6628,7 +6772,7 @@
   }
 
   function createCalendarPanel() {
-    var cTint = tintFor("cal", null);
+    var cTint = tintFor("cal", "teal");
     var panel = el("section", "panel cal" + (cTint ? " themed" : ""));
     if (cTint) {
       panel.style.setProperty("--tint", tint(cTint).solid);
@@ -8593,19 +8737,41 @@
       fanRoot.classList.add("open");
       document.body.classList.add("deck-open");
       document.body.classList.remove("deck-closing");
+      // A keyboard on its way out is still moving the screen under us, and
+      // a spread measured against a moving screen lands under its own
+      // heading. Let go of the field, measure, and measure again once the
+      // screen has stopped.
+      var f = document.activeElement;
+      if (f && f !== document.body && f.blur) f.blur();
+      measureSpread(true);
+      retarget();
+      kick();
+      haptic("LIGHT");
+      [120, 320, 600].forEach(function (ms) { setTimeout(remeasure, ms); });
+    }
+
+    // The heading and the buttons are laid out by the stylesheet, around
+    // the notch and the home bar; the cards take what is left between.
+    function measureSpread(fresh) {
       VW = window.innerWidth;
-      // the heading and the buttons are laid out by the stylesheet, around
-      // the notch and the home bar; the cards take what is left between
       TOP = head.getBoundingClientRect().bottom + 16;
       var floor = foot.getBoundingClientRect().top - 20;
       var n = cards.length;
       SPREAD = clamp((floor - TOP - CH) / (n - 1), 58, Math.round(CH * 0.74));
       scrollMax = Math.max(0, TOP + (n - 1) * SPREAD + CH - floor);
       // a long deck opens with the card you are on in view
-      scroll = clamp(active * SPREAD - (floor - TOP - CH) / 2, 0, scrollMax);
-      retarget();
-      kick();
-      haptic("LIGHT");
+      scroll = fresh ? clamp(active * SPREAD - (floor - TOP - CH) / 2, 0, scrollMax)
+                     : clamp(scroll, 0, scrollMax);
+    }
+    function remeasure() {
+      if (mode !== "open" || g) return;
+      var was = TOP, gap = SPREAD;
+      measureSpread(false);
+      if (Math.abs(TOP - was) > 0.5 || Math.abs(SPREAD - gap) > 0.5) { retarget(); kick(); }
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", remeasure);
+      window.visualViewport.addEventListener("scroll", remeasure);
     }
 
     function close() {
@@ -8916,7 +9082,9 @@
       if (!tap) return;
       if (cond > 0.5) { haptic("LIGHT"); condenseTo(0); }
       else if (was.target.closest && was.target.closest(".fan-grip")) { haptic("LIGHT"); condenseTo(1); }
-      else open();
+      // People double-tap. The second tap of one lands on a deck that is
+      // still closing, and opening it again would undo what the first did.
+      else if (performance.now() - closedAt > 380) open();
     }
     fanRoot.addEventListener("pointerup", function (e) { release(e, false); });
     fanRoot.addEventListener("pointercancel", function (e) { release(e, true); });
@@ -9235,6 +9403,8 @@
     });
     var nt = tintFor("notes", null);
     applyPanelTint(document.querySelector(".panel.notes"), nt || "green", !!nt);
+    applyPanelTint(document.querySelector(".panel.runs"), tintFor("runs", "amber"), true);
+    applyPanelTint(document.querySelector(".panel.cal"), tintFor("cal", "teal"), true);
     if (!fanRoot) return;
     // only the two colours: the light and the grain over them are the
     // stylesheet's, and stay
@@ -9357,6 +9527,7 @@
   }
 
   function createList(title, sub, tintName) {
+    if (!mayAdd()) return;
     var def = { id: newListId(), title: title, sub: sub, tint: tintName, mt: Date.now() };
     var lists = loadCustomLists();
     lists.push(def);
@@ -9493,18 +9664,18 @@
   function loadCloudSession() {
     if (!cloudConfigured()) return null;
     try {
-      var s = JSON.parse(localStorage.getItem(CLOUD_SESSION_KEY));
+      var s = JSON.parse(secrets.getItem(CLOUD_SESSION_KEY));
       return (s && s.access_token && s.uid) ? s : null;
     } catch (e) { return null; }
   }
 
   function saveCloudSession(s) {
-    localStorage.setItem(CLOUD_SESSION_KEY, JSON.stringify(s));
+    secrets.setItem(CLOUD_SESSION_KEY, JSON.stringify(s));
   }
 
   function clearCloudSession() {
-    localStorage.removeItem(CLOUD_SESSION_KEY);
-    localStorage.removeItem("dia_todo_feed_token");
+    secrets.removeItem(CLOUD_SESSION_KEY);
+    secrets.removeItem("dia_todo_feed_token");
   }
 
   function cloudSignedIn() { return !!loadCloudSession(); }
@@ -9517,13 +9688,13 @@
   var FEED_TOKEN_KEY = "dia_todo_feed_token";
 
   function rememberFeedToken(tok) {
-    if (!tok || localStorage.getItem(FEED_TOKEN_KEY) === tok) return;
-    localStorage.setItem(FEED_TOKEN_KEY, tok);
+    if (!tok || secrets.getItem(FEED_TOKEN_KEY) === tok) return;
+    secrets.setItem(FEED_TOKEN_KEY, tok);
     refreshCloudAccount();
   }
 
   function feedToken() {
-    return cloudSignedIn() ? localStorage.getItem(FEED_TOKEN_KEY) : null;
+    return cloudSignedIn() ? secrets.getItem(FEED_TOKEN_KEY) : null;
   }
 
   // Whether the database is actually answering that address with a real
@@ -9964,7 +10135,7 @@
 
   function getSyncCfg() {
     try {
-      var cfg = JSON.parse(localStorage.getItem(SYNC_CFG_KEY));
+      var cfg = JSON.parse(secrets.getItem(SYNC_CFG_KEY));
       return (cfg && cfg.token && cfg.gistId) ? cfg : null;
     } catch (e) {
       return null;
@@ -9972,7 +10143,7 @@
   }
 
   function saveSyncCfg(cfg) {
-    localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(cfg));
+    secrets.setItem(SYNC_CFG_KEY, JSON.stringify(cfg));
   }
 
   // GitHub returns the token's expiry date in a response header. Capture it so
@@ -10381,7 +10552,7 @@
         if (!res.ok) throw new Error("Couldn't create the gist (HTTP " + res.status + ")");
         return res.json();
       }).then(function (gist) {
-        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({
+        secrets.setItem(SYNC_CFG_KEY, JSON.stringify({
           token: token, gistId: gist.id,
           owner: gist.owner && gist.owner.login
         }));
@@ -10415,7 +10586,119 @@
     var m = document.getElementById("sync-modal");
     if (m) m.classList.add("show");
     refreshCloudAccount();
+    refreshMembership();
   }
+
+  // ── Membership ───────────────────────────────────────────
+  // This is a display, not a decision. Whether somebody has paid is worked
+  // out in Swift from transactions Apple has signed; what arrives here is
+  // the answer, to be drawn. Nothing below can grant anything — changing
+  // `membership` in a web inspector changes what this screen says and not
+  // what the app will do on its next launch, because the next launch asks
+  // Swift again. There is no purchase call to make from here either: the
+  // only thing the web layer can do is open the native screen.
+  //
+  // In a browser there is no store, so there is no membership and nothing
+  // is ever held back.
+  var membership = { state: "trial", entitled: true, enforced: false, trialDaysLeft: 30, storeReady: false };
+
+  // An answer that was asked for before a newer one arrived is out of date
+  // by the time it lands, and must not paint over the newer one.
+  var memberSeq = 0;
+  function freshOnly() {
+    var asked = memberSeq;
+    return function (m) { if (asked === memberSeq) applyMembership(m); };
+  }
+
+  function applyMembership(m) {
+    if (!m || typeof m.state !== "string") return;
+    memberSeq++;
+    membership = {
+      state: m.state,
+      entitled: m.entitled !== false,
+      enforced: m.enforced === true,
+      trialDaysLeft: +m.trialDaysLeft || 0,
+      storeReady: m.storeReady === true
+    };
+    drawMembership();
+  }
+
+  function drawMembership() {
+    var box = document.getElementById("membership");
+    if (!box) return;
+    var shop = plug("StoreBridge");
+    box.style.display = shop ? "" : "none";
+    var note = document.getElementById("secrets-line");
+    if (note) {
+      var w = secrets.where();
+      note.style.display = w === "browser" ? "none" : "";
+      note.textContent = w === "keychain"
+        ? "Sign-in details on this iPhone are kept in the Keychain, not in the app's files."
+        : "The Keychain refused a write, so a sign-in detail is being kept in the app's own storage for now.";
+    }
+    if (!shop) return;
+    var d = membership.trialDaysLeft;
+    var line = {
+      lifetime: "Do. is yours for good. Thank you.",
+      subscribed: "You are subscribed. Thank you.",
+      trial: (d === 1 ? "One day" : d + " days") + " left of your free month. Everything works.",
+      expired: membership.enforced
+        ? "Your free month has ended. Your lists are all still here; adding to them needs a plan."
+        : "Your free month has ended. Nothing is locked."
+    }[membership.state] || "";
+    document.getElementById("member-line").textContent = line;
+    var paid = membership.state === "lifetime" || membership.state === "subscribed";
+    document.getElementById("member-plans-btn").style.display = membership.state === "lifetime" ? "none" : "";
+    document.getElementById("member-plans-btn").textContent = paid ? "See the lifetime plan" : "See the plans";
+    document.getElementById("member-manage-btn").style.display = membership.state === "subscribed" ? "" : "none";
+    document.getElementById("member-restore-btn").style.display = paid ? "none" : "";
+  }
+
+  function refreshMembership() {
+    drawMembership();
+    var shop = plug("StoreBridge");
+    if (!shop) return;
+    shop.status().then(freshOnly(), function () {});
+  }
+
+  function showPlans() {
+    var shop = plug("StoreBridge");
+    if (!shop) return;
+    shop.showPlans().then(freshOnly(), function () {});
+  }
+
+  // The one question the rest of the app asks. True in a browser, true
+  // during the free month, true for anyone who has paid, and true for
+  // everyone while enforcement is switched off in Swift.
+  function mayAdd() {
+    if (membership.entitled) return true;
+    flashStatus("Your free month has ended — everything you wrote is still here.");
+    showPlans();
+    return false;
+  }
+
+  (function () {
+    var shop = plug("StoreBridge");
+    if (!shop) return;
+    if (shop.addListener) shop.addListener("entitlement", applyMembership);
+    document.getElementById("member-plans-btn").addEventListener("click", showPlans);
+    document.getElementById("member-manage-btn").addEventListener("click", function () {
+      shop.manage().catch(function () {});
+    });
+    document.getElementById("member-restore-btn").addEventListener("click", function () {
+      var b = this; b.disabled = true;
+      shop.restore().then(function (m) {
+        b.disabled = false;
+        applyMembership(m);
+        flashStatus(m && (m.state === "lifetime" || m.state === "subscribed")
+          ? "Purchase restored." : "No earlier purchase found for this Apple ID.");
+      }, function () { b.disabled = false; });
+    });
+    refreshMembership();
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) refreshMembership();
+    });
+  })();
 
   function refreshCloudAccount() {
     var out = document.getElementById("cloud-signed-out");
@@ -10492,6 +10775,7 @@
     refreshSyncModal();
     refreshCloudAccount();
     refreshMsSection();
+    refreshMembership();
     // GitHub token names must be unique per account, so suggest a fresh one each time
     document.getElementById("sync-token-link").href =
       "https://github.com/settings/tokens/new?scopes=gist&description=todo-sync-" +
@@ -10499,9 +10783,25 @@
     document.getElementById("sync-modal").classList.add("show");
   });
 
-  document.getElementById("sync-modal-close").addEventListener("click", function () {
-    document.getElementById("sync-modal").classList.remove("show");
-  });
+  (function () {
+    var sheet = document.getElementById("sync-modal");
+    function shut() { sheet.classList.remove("show"); }
+    document.getElementById("sync-modal-close").addEventListener("click", shut);
+    document.getElementById("sync-modal-x").addEventListener("click", shut);
+    // The dimmed page around the sheet is the other way out, as it is for
+    // every sheet on the phone. Only a press that both starts and ends out
+    // there counts: selecting the text in a field and letting go a little
+    // outside the sheet must not throw away what was being typed.
+    var downOutside = false;
+    sheet.addEventListener("pointerdown", function (e) { downOutside = e.target === sheet; });
+    sheet.addEventListener("click", function (e) {
+      if (e.target === sheet && downOutside) shut();
+      downOutside = false;
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && sheet.classList.contains("show")) shut();
+    });
+  })();
 
   document.getElementById("sync-now-btn").addEventListener("click", syncNow);
 
@@ -10558,7 +10858,7 @@
   });
 
   document.getElementById("sync-disable-btn").addEventListener("click", function () {
-    localStorage.removeItem(SYNC_CFG_KEY);
+    secrets.removeItem(SYNC_CFG_KEY);
     refreshSyncModal();
     refreshCloudAccount();
     flashStatus("Sync turned off on this device. Your tasks stay put.");
@@ -10644,11 +10944,11 @@
 
   function getMsCfg() {
     try {
-      var c = JSON.parse(localStorage.getItem(MS_CFG_KEY));
+      var c = JSON.parse(secrets.getItem(MS_CFG_KEY));
       return (c && c.clientId) ? c : null;
     } catch (e) { return null; }
   }
-  function saveMsCfg(cfg) { localStorage.setItem(MS_CFG_KEY, JSON.stringify(cfg)); }
+  function saveMsCfg(cfg) { secrets.setItem(MS_CFG_KEY, JSON.stringify(cfg)); }
   (function () {
     var btn = document.getElementById("ms-copy-client-btn");
     if (!btn) return;
@@ -10854,25 +11154,25 @@
   });
 
   document.getElementById("ms-disconnect-btn").addEventListener("click", function () {
-    localStorage.removeItem(MS_CFG_KEY);
+    secrets.removeItem(MS_CFG_KEY);
     refreshMsSection();
     msStatus("Disconnected. Events already in Outlook are left alone.");
   });
 
   refreshMsSection();
-  msHandleRedirect();
+  secrets.whenReady(msHandleRedirect);
 
   // configs saved before the subscribe feature lack the owner login — backfill it
-  (function ensureOwner() {
+  secrets.whenReady(function ensureOwner() {
     var cfg = getSyncCfg();
     if (!cfg || cfg.owner) return;
     ghFetch(cfg.token, "/gists/" + cfg.gistId).then(function (r) { return r.json(); }).then(function (gist) {
       if (gist.owner && gist.owner.login) {
         cfg.owner = gist.owner.login;
-        localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(cfg));
+        secrets.setItem(SYNC_CFG_KEY, JSON.stringify(cfg));
       }
     }).catch(function () { /* retry next visit */ });
-  })();
+  });
 
   (function wireCloudButtons() {
     var g = document.getElementById("cloud-google-btn");
@@ -11102,24 +11402,31 @@
     } catch (e) { /* storage blocked, so there is nothing to count with */ }
   }
 
-  usagePing();
+  secrets.whenReady(usagePing);
   window.addEventListener("focus", usagePing);
   document.addEventListener("visibilitychange", function () {
     if (!document.hidden) usagePing();
   });
 
-  captureCloudRedirect().then(function (justSignedIn) {
-    refreshCloudAccount();
-    if (cloudResetMode) {
-      showSyncModal();
-      var np = document.getElementById("cloud-newpass-input");
-      if (np) np.focus();
-    }
-    if (!syncActive()) return;
-    setSyncDot("busy");
-    startSyncLoop();
-    if (justSignedIn) flashStatus("Signed in — syncing your lists…");
-    syncPullNow();
+  // Whether this device is signed in is a question for the Keychain on a
+  // phone, and the Keychain has to be asked. Nothing that depends on the
+  // answer starts before it has given one.
+  secrets.whenReady(function () {
+    captureCloudRedirect().then(function (justSignedIn) {
+      refreshCloudAccount();
+      refreshSyncModal();
+      refreshMsSection();
+      if (cloudResetMode) {
+        showSyncModal();
+        var np = document.getElementById("cloud-newpass-input");
+        if (np) np.focus();
+      }
+      if (!syncActive()) return;
+      setSyncDot("busy");
+      startSyncLoop();
+      if (justSignedIn) flashStatus("Signed in — syncing your lists…");
+      syncPullNow();
+    });
   });
 
   // ── Pull-to-refresh (touch devices) ──────────────────────

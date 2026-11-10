@@ -7,3 +7,4 @@ native/.tools/
 native/ios/DerivedData/
 native/ios/App/App/capacitor.config.json
 native/ios/DerivedData-sim/
+brand/demo/

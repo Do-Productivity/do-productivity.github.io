@@ -22,6 +22,8 @@
 		AF134E0FAB2ACDC35966F17A /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606544C19AFA6C2082FC8ED4 /* MainViewController.swift */; };
 		BEB3437DA7BADD696D6F7CBA /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE74B1B9EFDD5E0C051C6FB /* WidgetBridge.swift */; };
 		E0E14591ACD647C90EEA438C /* CalendarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05304E939BFF4EEF78ED524F /* CalendarBridge.swift */; };
+		570BE0B1D6E0A1B2C3D4E502 /* StoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */; };
+		5EC0DE5701A1B2C3D4E5F602 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +52,8 @@
 
 /* Begin PBXFileReference section */
 		05304E939BFF4EEF78ED524F /* CalendarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarBridge.swift; sourceTree = "<group>"; };
+		570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreBridge.swift; sourceTree = "<group>"; };
+		5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		3D554B27B1B7760C46E77233 /* TodoWidget/TodoWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TodoWidget/TodoWidget.entitlements; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
@@ -126,6 +130,8 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 				CEE74B1B9EFDD5E0C051C6FB /* WidgetBridge.swift */,
 				05304E939BFF4EEF78ED524F /* CalendarBridge.swift */,
+				570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */,
+				5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */,
 				606544C19AFA6C2082FC8ED4 /* MainViewController.swift */,
 			);
 			path = App;
@@ -234,6 +240,8 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				BEB3437DA7BADD696D6F7CBA /* WidgetBridge.swift in Sources */,
 				E0E14591ACD647C90EEA438C /* CalendarBridge.swift in Sources */,
+				570BE0B1D6E0A1B2C3D4E502 /* StoreBridge.swift in Sources */,
+				5EC0DE5701A1B2C3D4E5F602 /* SecureStore.swift in Sources */,
 				AF134E0FAB2ACDC35966F17A /* MainViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
