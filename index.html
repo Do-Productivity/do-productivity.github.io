@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dGZbwGPgk8Q8TB6PHRT04DmmZLw9mId01Je8ANclhbs=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Y+a3B7K90ndiXDvRg7BnzTp6lA9/alZXhLateGH9Q5A=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1624,9 +1624,15 @@
     width: 100%;
     max-width: 560px;
     margin: 0 auto;
-    border-radius: 18px 18px 0 0;
-    padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -8px 40px rgba(43, 38, 32, 0.3);
+    /* The sheet floats in the middle of the page — the overlay already keeps
+       it clear of the island and the home bar — so it is a card with four
+       round corners, not a drawer with a flat foot. */
+    border-radius: 22px;
+    padding: 18px 16px 18px;
+    max-height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 14px 44px rgba(43, 38, 32, 0.32);
     animation: picker-rise 0.22s ease;
   }
   @keyframes picker-rise {
@@ -1650,6 +1656,33 @@
     grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
     gap: 9px;
   }
+  /* The two card styles. Only a phone has cards, so only a phone is asked. */
+  .style-block { display: none; margin-bottom: 18px; }
+  .style-seg {
+    display: flex; gap: 3px; padding: 3px;
+    background: rgba(43, 38, 32, .07); border-radius: 13px;
+  }
+  .style-opt {
+    flex: 1; border: none; background: transparent; border-radius: 10px;
+    padding: 11px 8px 9px; cursor: pointer;
+    font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .4px;
+    color: var(--ink-faint); --seg: #f0ede4;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+  }
+  .style-opt[aria-checked="true"] {
+    background: var(--card); color: var(--ink); --seg: var(--card);
+    box-shadow: 0 1px 5px rgba(43, 38, 32, .2);
+  }
+  /* each option draws what it does: a card on a pile, a card between two */
+  .style-glyph { position: relative; display: block; width: 38px; height: 24px; margin: 0 auto 7px; }
+  .style-glyph i { position: absolute; background: currentColor; border-radius: 3.5px; }
+  .style-glyph.legacy i:nth-child(1) { left: 4px; right: 4px; top: 0; height: 14px; }
+  .style-glyph.legacy i:nth-child(2) { left: 6px; right: 6px; top: 16px; height: 3px; opacity: .55; border-radius: 2px; }
+  .style-glyph.legacy i:nth-child(3) { left: 5px; right: 5px; top: 21px; height: 3px; opacity: .32; border-radius: 2px; }
+  .style-glyph.ios27 i:nth-child(1) { left: 0; width: 14px; top: 5px; height: 14px; opacity: .4; }
+  .style-glyph.ios27 i:nth-child(2) { right: 0; width: 14px; top: 5px; height: 14px; opacity: .4; }
+  .style-glyph.ios27 i:nth-child(3) { left: 6px; right: 6px; top: 2px; height: 20px; box-shadow: 0 0 0 1.5px var(--seg); }
   .picker-tile.add-tile {
     border: 1px dashed var(--rule);
     border-top: 3px dashed var(--rule);
@@ -2381,6 +2414,36 @@
     .deck-act.quiet { color: var(--ink-soft); background: rgba(43, 38, 32, .07); box-shadow: none; }
     .deck-done:active, .deck-act:active { transform: scale(.96); }
 
+    /* ── The second card style: "iOS 27" ──────────────────
+       The same cards, laid out as a carousel instead of a stack. The front
+       card is narrower than the screen so the ones either side of it can
+       be seen looking out from behind, a little smaller and a little
+       dimmer; tapped, every card is dealt into a grid. Only sizes and the
+       dimming live here — where each card goes is the script's business,
+       exactly as it is for the stack. */
+    .style-block { display: block; }
+    .card-fan.theme-ios27 .fan-card {
+      height: clamp(132px, 42vw, 176px);
+      border-radius: 22px;
+    }
+    .card-fan.theme-ios27 .fan-card::before {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: 3;
+      background: #1c1611; opacity: var(--shade, 0); pointer-events: none;
+    }
+    .card-fan.theme-ios27 .fc-title { font-size: clamp(22px, 6.4vw, 28px); }
+    .card-fan.theme-ios27 .fc-title,
+    .card-fan.theme-ios27 .fc-count { transition: font-size .26s ease, opacity .18s ease; }
+    /* in the grid a card is drawn at about two thirds of its size, so what
+       is written on it is set larger to come out the size it should be */
+    .card-fan.theme-ios27.open .fc-title { font-size: clamp(29px, 8.4vw, 36px); }
+    .card-fan.theme-ios27.open .fc-count { font-size: clamp(19px, 5.6vw, 23px); }
+    .card-fan.theme-ios27.open .fc-sub { opacity: 0; }
+    /* nothing covers a card in the grid, so its count needs no second copy */
+    .card-fan.theme-ios27 .fc-peek { display: none; }
+    /* the list you are on, marked */
+    .card-fan.theme-ios27 .fan-card { outline: 4px solid rgba(43, 38, 32, 0); outline-offset: 4px; transition: outline-color .2s ease; }
+    .card-fan.theme-ios27.open .fan-card.pos-active { outline-color: rgba(43, 38, 32, .78); }
+
     /* the deck carries the identity now, so the card below drops its own
        heading and the spines it used to stack underneath */
     .panel.collapsed { display: none; }
@@ -2390,6 +2453,9 @@
 
     @media (prefers-reduced-motion: reduce) {
       .toolbar, .panels, .deck-head, .deck-foot { transition: none; }
+      .card-fan.theme-ios27 .fan-card,
+      .card-fan.theme-ios27 .fc-title,
+      .card-fan.theme-ios27 .fc-count { transition: none; }
     }
   }
 
@@ -2719,6 +2785,9 @@
       border-radius: 15px;
     }
     .fc-title { font-size: clamp(21px, 6vw, 26px); }
+    .card-fan.theme-ios27 .fan-card { height: clamp(104px, 31vw, 132px); border-radius: 18px; }
+    .card-fan.theme-ios27 .fc-title { font-size: clamp(20px, 5.6vw, 24px); }
+    .card-fan.theme-ios27.open .fc-title { font-size: clamp(27px, 7.8vw, 33px); }
     .fc-sub { margin-top: 3px; }
     .task-row { padding: 11px 0; }
     .task-meta { margin-top: 2px; }
@@ -2983,6 +3052,13 @@
 
 <div class="modal-overlay card-picker" id="card-picker">
   <div class="picker-sheet">
+    <div class="style-block">
+      <div class="picker-head">Card style</div>
+      <div class="style-seg" id="style-seg" role="radiogroup" aria-label="Card style">
+        <button class="style-opt" data-style="legacy" role="radio" aria-checked="true"><span class="style-glyph legacy" aria-hidden="true"><i></i><i></i><i></i></span>Legacy</button>
+        <button class="style-opt" data-style="ios27" role="radio" aria-checked="false"><span class="style-glyph ios27" aria-hidden="true"><i></i><i></i><i></i></span>iOS 27</button>
+      </div>
+    </div>
     <div class="picker-head">Choose a list</div>
     <div class="picker-grid" id="picker-grid"></div>
     <button class="picker-close" id="picker-close">Cancel</button>
@@ -5029,7 +5105,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-2307";
+  var BUILD = "2026-11-10-2358";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -8499,6 +8575,25 @@
     var press = null;             // the id of the card a finger is resting on
     var raf = 0, last = 0;
 
+    // Two ways of laying the same cards out, and the reader picks.
+    // "legacy" is the stack: the front card over a pile, spread down the
+    // screen when tapped. "ios27" is the carousel: the front card in the
+    // middle, its neighbours looking out from behind it on either side, and
+    // a grid of every card when tapped. Same cards, same springs — only
+    // where a card is told to go differs.
+    var THEME_KEY = "dia_todo_decktheme_v1";
+    var theme = "legacy";
+    try { if (localStorage.getItem(THEME_KEY) === "ios27") theme = "ios27"; } catch (e) {}
+    var car = theme === "ios27";
+    fanRoot.classList.toggle("theme-ios27", car);
+    // The carousel is one number: which card is at the front, in cards,
+    // and it is allowed to be between two. Everything else follows from it.
+    var pos = 0, pv = 0, pt = 0, drawn = NaN;
+    var OFF = 0, BULGE = 0, STEP = 1;
+    var PK = 200, PD = 2 * 0.76 * Math.sqrt(200);
+    var ticking = false, tickAt = 0;
+    var COLS = 2, CELL = 0, GSCALE = 1, GM = 18, GGAP = 12;
+
     var GAP = 10;                 // between the front card and the pile
     var K = 250, ZETA = 0.8;      // stiffness, and how quickly it stops ringing
     var calm = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
@@ -8514,7 +8609,10 @@
       var n = cards.length;
       return n > 1 ? clamp(40 / (n - 1), 3, 9) : 0;
     }
-    function fullHeight() { return CH + GAP + (cards.length - 1) * peek() + tuck; }
+    function fullHeight() {
+      if (car) return CH + 14 + tuck;          // no pile underneath to make room for
+      return CH + GAP + (cards.length - 1) * peek() + tuck;
+    }
     function awayHeight() { return strip + tuck; }
 
     // Read off the page rather than assumed: the card's size is a clamp()
@@ -8526,10 +8624,19 @@
       var w = fanRoot.clientWidth;
       if (!w) { W = 0; return false; }
       W = w;
-      CW = Math.min(W, 430);
+      CW = car ? Math.min(Math.round(W * 0.76), 340) : Math.min(W, 430);
       X0 = (W - CW) / 2;
       fanRoot.style.setProperty("--deck-w", CW + "px");
       CH = cards[0].el.offsetHeight;
+      if (car) {
+        // a neighbour's outer edge lines up with the edge of the page
+        OFF = Math.min(W / 2 - 0.42 * CW, CW * 0.3);
+        // and on the way past each other two cards move apart by this much,
+        // so one is never seen jumping through the other
+        BULGE = Math.max(0, 0.46 * CW - 4 - 0.707 * OFF);
+        // the front card leaves at very nearly the speed of the finger
+        STEP = (OFF * Math.PI / 2 + BULGE * Math.PI) / 1.08;
+      }
       strip = clamp(Math.round(CH * 0.38), 48, 62);
       // how much of the box the page below lies over
       if (!fixed) {
@@ -8540,11 +8647,82 @@
       return true;
     }
 
+    // ── The carousel ──────────────────────────────────────
+    // With three cards or more it is a ring: past the last is the first,
+    // and there is always a card looking out on both sides. With two there
+    // is nothing to go round, so it has ends and they give.
+    function mod(a, n) { return ((a % n) + n) % n; }
+    function ring() { return cards.length >= 3; }
+    // how far card i is from the front, in cards, signed
+    function dist(i) {
+      var n = cards.length, d = i - pos;
+      return ring() ? mod(d + n / 2, n) - n / 2 : d;
+    }
+    // A card one place away sits behind the front one and to the side. A
+    // card two away is directly behind it and cannot be seen — which is
+    // also where the ring joins, so a card going round the back is never
+    // seen to jump. Between the front and the side the two cards swing
+    // apart as they pass.
+    function carTarget(i) {
+      var d = dist(i), a = Math.abs(d), out, s;
+      if (a <= 1) {
+        out = Math.sin(a * Math.PI / 2) * OFF + Math.sin(a * Math.PI) * BULGE;
+        s = 1 - 0.16 * (1 - Math.cos(a * Math.PI)) / 2;
+      } else {
+        var far = ring() ? Math.min(2, cards.length / 2) : 2;
+        var u = clamp((a - 1) / (far - 1), 0, 1);
+        out = Math.cos(u * Math.PI / 2) * OFF;
+        s = lerp(0.84, 0.7, u);
+      }
+      return { x: X0 + (d < 0 ? -out : out), y: CH * (1 - s) / 2, s: s };
+    }
+    // Front to back is nearest to furthest, and how dim a card is says how
+    // far back it is. Spread into the grid nothing is behind anything.
+    function restack() {
+      var n = cards.length, order = [];
+      for (var i = 0; i < n; i++) {
+        var a = Math.abs(dist(i));
+        cards[i].tsh = mode === "open" ? 0 : 0.26 * Math.min(1, a);
+        order.push({ i: i, a: a });
+      }
+      order.sort(function (p, q) { return p.a - q.a || p.i - q.i; });
+      for (var r = 0; r < n; r++) {
+        var c = cards[order[r].i], z = 70 - r;      // under the heading, always
+        if (z !== c.z) { c.z = z; c.el.style.zIndex = String(z); }
+      }
+      drawn = pos;
+    }
+    // Turn to this card the short way round.
+    function aim(at, snap) {
+      var n = cards.length;
+      if (!ring()) pt = at;
+      else if (pt !== Math.round(pt) || mod(pt, n) !== at) pt = at + n * Math.round((pos - at) / n);
+      if (snap) { pos = pt; pv = 0; tickAt = Math.round(pt); ticking = false; }
+    }
+    // One tick for each card that comes to the front, like a dial.
+    function tick() {
+      var near = Math.round(pos);
+      if (near === tickAt) return;
+      tickAt = near;
+      if (ticking) haptic("LIGHT");
+    }
+    // Every card at once, two across — three where the screen is wide.
+    function gridTarget(i) {
+      var over = scroll < 0 ? -scroll : 0;
+      var col = i % COLS, row = Math.floor(i / COLS);
+      return {
+        x: GM + col * (CELL + GGAP) - CW * (1 - GSCALE) / 2,
+        y: TOP + row * (CH * GSCALE + GGAP + over * 0.12) + over * 0.5 - (scroll > 0 ? scroll : 0),
+        s: GSCALE
+      };
+    }
+
     // Where card i rests when the deck is put away. The pile keeps the
     // deck's own order, lowest and nearest last, each a touch wider than the
     // one behind it so the edges step outwards like a real stack seen from
     // slightly above.
     function dockTarget(i) {
+      if (car) return carTarget(i);
       if (i === active) return { x: X0, y: 0, s: 1 };
       var n = cards.length, j = i < active ? i : i - 1;
       return {
@@ -8578,16 +8756,17 @@
       var n = cards.length;
       for (var i = 0; i < n; i++) {
         var c = cards[i], t;
-        if (mode === "open") t = openTarget(i);
+        if (mode === "open") t = car ? gridTarget(i) : openTarget(i);
         else { t = dockTarget(i); t.x += bx; t.y += by; }
         c.tx = t.x; c.ty = t.y; c.ts = t.s; c.tr = 0;
         // the further a card is from the chosen one, the softer its spring,
         // so a deck in motion ripples instead of moving as one sheet
         c.k = K * (1 - 0.055 * Math.min(4, Math.abs(i - active)));
         c.d = 2 * ZETA * Math.sqrt(c.k);
-        if (c.id === press) c.ts *= 0.972;
+        if (c.id === press && !car) c.ts *= 0.972;
       }
-      if (swipe && mode !== "open" && n > 1) {
+      if (car) restack();
+      if (!car && swipe && mode !== "open" && n > 1) {
         // The front card goes with the thumb. The card it is making way for
         // comes up out of the pile by the same share of the distance, so by
         // the time one has left the other has arrived.
@@ -8610,10 +8789,14 @@
       c.el.style.transform =
         "translate3d(" + c.x.toFixed(2) + "px," + c.y.toFixed(2) + "px,0)" +
         (Math.abs(c.r) > 0.01 ? " rotate(" + c.r.toFixed(3) + "deg)" : "") +
-        " scale(" + c.s.toFixed(4) + ")";
+        " scale(" + (car ? c.s * c.pf : c.s).toFixed(4) + ")";
       // the light stays where it is while the card moves under it
       var sh = Math.round(16 + clamp((c.x - (fixed ? ox : 0) - X0) / (W || 1), -1, 1) * 46);
       if (sh !== c.sheen) { c.sheen = sh; c.el.style.setProperty("--sheen", sh + "%"); }
+      if (car) {
+        var q = Math.round(c.sh * 100);
+        if (q !== c.shq) { c.shq = q; c.el.style.setProperty("--shade", (q / 100).toFixed(2)); }
+      }
     }
 
     function axis(c, p, v, t, h, k, d) {
@@ -8631,9 +8814,54 @@
       var sub = Math.max(1, Math.ceil(dt / 0.006)), h = dt / sub;
       var busy = false;
 
+      if (car) {
+        // The ring turns as one sprung number. Under a finger it is not
+        // sprung at all — it is wherever the finger has put it.
+        var held = g && g.grab;
+        if (!held && (pos !== pt || pv !== 0)) {
+          for (var a = 0; a < sub; a++) {
+            pv += (-PK * (pos - pt) - PD * pv) * h;
+            pos += pv * h;
+          }
+          if (Math.abs(pos - pt) < 0.0015 && Math.abs(pv) < 0.02) { pos = pt; pv = 0; }
+          else busy = true;
+        }
+        tick();
+        if (!held && pos === pt) {
+          ticking = false;
+          // any number of times round is the same place: keep it small
+          if (ring() && pt === Math.round(pt)) {
+            var lap = Math.floor(pos / cards.length) * cards.length;
+            if (lap) { pos -= lap; pt -= lap; tickAt -= lap; }
+          }
+        }
+        if (pos !== drawn) retarget();
+      }
+
       for (var i = 0; i < cards.length; i++) {
         var c = cards[i];
-        if (c.pin) {
+        if (car) {
+          // The give under a finger and the dimming of a card that is
+          // behind another are eased, not sprung: neither has anywhere to
+          // overshoot to.
+          var give = c.id === press ? 0.972 : 1;
+          if (c.pf !== give) {
+            c.pf += (give - c.pf) * Math.min(1, dt * 24);
+            if (Math.abs(c.pf - give) < 0.0008) c.pf = give; else busy = true;
+          }
+          if (c.sh !== c.tsh) {
+            if (mode === "dock" && !c.loose) c.sh = c.tsh;
+            else {
+              c.sh += (c.tsh - c.sh) * Math.min(1, dt * 12);
+              if (Math.abs(c.sh - c.tsh) < 0.004) c.sh = c.tsh; else busy = true;
+            }
+          }
+        }
+        // A carousel card that has arrived is part of the ring: it is where
+        // the ring says, exactly, so the front card stays under the finger
+        // instead of chasing it. One still in flight — back from the grid,
+        // or between the two styles — is sprung until it lands.
+        if (c.pin || (car && mode === "dock" && !c.loose)) {
           // held by a finger: it is exactly where it was put, and the speed
           // it is remembered at is the speed the finger gave it
           c.vx = (c.tx - c.x) / dt; c.vy = (c.ty - c.y) / dt;
@@ -8654,6 +8882,7 @@
           if (still) {
             c.x = c.tx; c.y = c.ty; c.s = c.ts; c.r = c.tr;
             c.vx = c.vy = c.vs = c.vr = 0;
+            c.loose = false;
           } else busy = true;
         }
         paint(c);
@@ -8690,9 +8919,11 @@
     function jump() {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       last = 0;
+      if (car) { pos = pt; pv = 0; tickAt = Math.round(pos); ticking = false; retarget(); }
       cards.forEach(function (c) {
         c.x = c.tx; c.y = c.ty; c.s = c.ts; c.r = c.tr;
         c.vx = c.vy = c.vs = c.vr = 0;
+        c.loose = false; c.sh = c.tsh; c.pf = car && c.id === press ? 0.972 : 1;
         paint(c);
       });
       hgt.v = hgt.t; hgt.vel = 0;
@@ -8734,6 +8965,7 @@
       if (cond > 0) condenseTo(0);
       fix();
       mode = "open";
+      cards.forEach(function (c) { c.loose = true; });
       fanRoot.classList.add("open");
       document.body.classList.add("deck-open");
       document.body.classList.remove("deck-closing");
@@ -8757,6 +8989,18 @@
       TOP = head.getBoundingClientRect().bottom + 16;
       var floor = foot.getBoundingClientRect().top - 20;
       var n = cards.length;
+      if (car) {
+        COLS = VW >= 600 ? 3 : 2;
+        CELL = (VW - 2 * GM - (COLS - 1) * GGAP) / COLS;
+        GSCALE = Math.min(1, CELL / CW);
+        var ch = CH * GSCALE, rows = Math.ceil(n / COLS);
+        SPREAD = ch + GGAP;
+        scrollMax = Math.max(0, TOP + rows * ch + (rows - 1) * GGAP - floor);
+        // a long grid opens with the row you are on in view
+        scroll = fresh ? clamp(Math.floor(active / COLS) * SPREAD - (floor - TOP - ch) / 2, 0, scrollMax)
+                       : clamp(scroll, 0, scrollMax);
+        return;
+      }
       SPREAD = clamp((floor - TOP - CH) / (n - 1), 58, Math.round(CH * 0.74));
       scrollMax = Math.max(0, TOP + (n - 1) * SPREAD + CH - floor);
       // a long deck opens with the card you are on in view
@@ -8781,7 +9025,7 @@
       fanRoot.classList.remove("open");
       document.body.classList.remove("deck-open");
       document.body.classList.add("deck-closing");
-      cards.forEach(function (c) { c.pin = false; });
+      cards.forEach(function (c) { c.pin = false; c.loose = true; });
       var b = fanRoot.getBoundingClientRect();
       ox = b.left; oy = b.top;
       retarget();
@@ -8845,6 +9089,7 @@
         });
         stage.appendChild(card);
         return { el: card, id: id, pin: false, sheen: null, k: K, d: 2 * ZETA * Math.sqrt(K),
+                 z: i + 1, loose: false, sh: 0, tsh: 0, shq: null, pf: 1,
                  x: 0, y: 0, s: 1, r: 0, vx: 0, vy: 0, vs: 0, vr: 0,
                  tx: 0, ty: 0, ts: 1, tr: 0 };
       });
@@ -8884,6 +9129,9 @@
         c.pin = false;
       });
       swipe = null;
+      // chosen from the grid, the cards fly home to a ring that has already
+      // turned; otherwise the ring turns and takes them with it
+      if (car) aim(at, mode === "open" || !placed);
       if (!measure()) return;
       if (mode === "open") { close(); return; }
       retarget();
@@ -8895,6 +9143,7 @@
           cards.forEach(function (c, i) {
             c.x = c.tx; c.y = c.ty + 26 + i * 9; c.s = c.ts * 0.94; c.r = 0;
             c.vx = c.vy = c.vs = c.vr = 0;
+            c.loose = true; c.sh = c.tsh;
             paint(c);
           });
           hgt.v = hgt.t; hgt.vel = 0;
@@ -8942,6 +9191,15 @@
     // swipe and let it go.
     function nudge(offset) {
       if (mode !== "dock" || g) return;
+      if (car) {
+        var n = cards.length;
+        var base = ring() ? active + n * Math.round((pos - active) / n) : active;
+        var lean = -offset * 0.36;                // enough to show which way it turns
+        if (!ring() && active === n - 1) lean = -lean;   // nothing past the end to lean towards
+        pt = base + lean; ticking = false;
+        kick();
+        return;
+      }
       swipe = offset ? { dx: offset * W * 0.5 } : null;
       retarget();
       kick();
@@ -9009,6 +9267,22 @@
 
       if (g.axis === "x") {
         if (cards.length < 2) return;
+        if (car) {
+          // taken hold of wherever it had got to, moving or not
+          if (!g.grab) { g.grab = true; g.pos0 = pos; ticking = true; tickAt = Math.round(pos); }
+          var to = g.pos0 - (dx - g.sx) / STEP;
+          if (!ring()) {
+            var end = cards.length - 1;
+            to = to < 0 ? -rubber(-to * STEP) / STEP
+               : to > end ? end + rubber((to - end) * STEP) / STEP
+               : to;
+          }
+          pos = pt = to; pv = 0;
+          tick();
+          retarget();
+          kick();
+          return;
+        }
         var was = swipe ? Math.abs(swipe.dx) : 0;
         swipe = { dx: dx - g.sx };
         var line = W * 0.26;
@@ -9057,6 +9331,26 @@
         return;
       }
 
+      if (was.axis === "x" && car) {
+        if (!was.grab) return;
+        var n = cards.length;
+        var from = Math.round(was.pos0);
+        var v = cancelled ? 0 : clamp(-was.vx / STEP, -14, 14);    // cards a second
+        // let go, it carries on by what it was doing and stops on a card;
+        // thrown hard enough, that is more than one card along
+        var to = cancelled ? from : Math.round(pos + v * 0.17);
+        if (!cancelled && to === from && Math.abs(was.vx) > 380 &&
+            Math.abs(pos - was.pos0) * STEP > 12 && (v > 0) === (pos > was.pos0)) {
+          to = from + (v > 0 ? 1 : -1);       // a quick flick counts even when it is short
+        }
+        to = clamp(to, from - 3, from + 3);
+        if (!ring()) to = clamp(to, 0, n - 1);
+        pt = to; pv = v;
+        var landing = PANEL_IDS[mod(to, n)];
+        if (landing !== PANEL_IDS[active]) setMobileTab(landing);
+        else { retarget(); kick(); }
+        return;
+      }
       if (was.axis === "x") {
         var dx = swipe ? swipe.dx : 0;
         cards.forEach(function (c) { c.pin = false; });
@@ -9082,6 +9376,12 @@
       if (!tap) return;
       if (cond > 0.5) { haptic("LIGHT"); condenseTo(0); }
       else if (was.target.closest && was.target.closest(".fan-grip")) { haptic("LIGHT"); condenseTo(1); }
+      else if (car && was.target.closest && was.target.closest(".fan-card") &&
+               was.target.closest(".fan-card")._id !== PANEL_IDS[active]) {
+        // a card looking out from behind: touching it brings it forward
+        haptic("LIGHT");
+        setMobileTab(was.target.closest(".fan-card")._id);
+      }
       // People double-tap. The second tap of one lands on a deck that is
       // still closing, and opening it again would undo what the first did.
       else if (performance.now() - closedAt > 380) open();
@@ -9093,8 +9393,35 @@
       if (e.key === "Escape" && mode === "open") close();
     });
 
+    // Change the layout under the cards without rebuilding them. They are
+    // where they are; they are told somewhere new to go, and they go.
+    function setTheme(name) {
+      name = name === "ios27" ? "ios27" : "legacy";
+      if (name === theme) return;
+      theme = name;
+      car = name === "ios27";
+      try { localStorage.setItem(THEME_KEY, name); } catch (e) {}
+      fanRoot.classList.toggle("theme-ios27", car);
+      if (!cards.length) return;
+      g = null; swipe = null; press = null;
+      pos = pt = active; pv = 0; tickAt = active; ticking = false;
+      cards.forEach(function (c, i) {
+        c.pin = false; c.loose = true; c.pf = 1;
+        if (!car) {
+          // back to the order the stack is built in
+          c.z = i + 1; c.el.style.zIndex = String(i + 1);
+          c.sh = c.tsh = 0; c.shq = null; c.el.style.removeProperty("--shade");
+        }
+      });
+      if (!measure()) return;
+      if (mode === "open") measureSpread(true);
+      retarget();
+      kick();
+    }
+
     return { build: build, show: show, condense: condense, nudge: nudge, open: open, close: close,
-             isOpen: function () { return mode === "open"; } };
+             isOpen: function () { return mode === "open"; },
+             theme: function () { return theme; }, setTheme: setTheme };
   })();
 
   // Reading a long list on a phone should not happen through a letterbox.
@@ -9517,6 +9844,7 @@
     });
     grid.appendChild(add);
 
+    markCardStyle();
     document.getElementById("card-picker").classList.add("show");
   }
 
@@ -9603,6 +9931,37 @@
   }
 
   document.getElementById("picker-close").addEventListener("click", closeCardPicker);
+
+  // ── Card style ───────────────────────────────────────────
+  // Legacy is the stack; iOS 27 is the carousel and the grid. It is a
+  // choice about this device's screen, so it stays on this device and is
+  // not part of what is synced.
+  var markCardStyle = (function () {
+    var seg = document.getElementById("style-seg");
+    if (!seg) return function () {};
+    var opts = Array.prototype.slice.call(seg.querySelectorAll(".style-opt"));
+    function mark() {
+      var now = deck.theme();
+      opts.forEach(function (b) {
+        var on = b.getAttribute("data-style") === now;
+        b.setAttribute("aria-checked", on ? "true" : "false");
+        b.tabIndex = on ? 0 : -1;
+      });
+    }
+    opts.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var name = b.getAttribute("data-style");
+        if (name === deck.theme()) return;
+        deck.setTheme(name);
+        haptic("MEDIUM");
+        mark();
+        // out of the way, so the cards can be seen rearranging themselves
+        setTimeout(closeCardPicker, 240);
+      });
+    });
+    mark();
+    return mark;
+  })();
   document.getElementById("card-picker").addEventListener("click", function (e) {
     if (e.target === this) closeCardPicker();   // tap the dimmed area to dismiss
   });
