@@ -1125,6 +1125,11 @@
     position: absolute; left: 0; right: 0; height: 0;
     border-top: 1px solid var(--rule);
   }
+  /* A shrunken hour still has a line and a label, just a quieter one —
+     it has to stay findable and tappable, it simply stops charging rent
+     it has not earned. */
+  .cal-hour.quiet { border-top-color: color-mix(in srgb, var(--rule) 55%, transparent); }
+  .cal-hour.quiet .cal-hourlab { opacity: .5; font-size: 8.5px; }
   .cal-hourlab {
     position: absolute; left: 0; top: -7px;
     font-family: var(--sans); font-size: 9.5px; letter-spacing: .4px;
@@ -4755,7 +4760,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1608";
+  var BUILD = "2026-11-10-1625";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6843,18 +6848,71 @@
       return dedupeEvents(out);
     }
 
-    // The whole day, midnight to midnight.
+    // ── An elastic day ──────────────────────────────────────────────────
+    // Two requirements that look opposed. The whole day has to be there, or
+    // there is no 9pm to read and no 9pm to click — a calendar that shows
+    // only the hours it already knows about cannot be used to add anything
+    // outside them. And the day should not be mostly emptiness: twenty-four
+    // equal hours on a phone is four in the morning taking up as much of
+    // your screen as the meeting you are late for.
     //
-    // This used to draw a working day and stretch it to cover whatever it
-    // found, which kept the grid short but meant the day ended at 7pm:
-    // there was no 9pm to look at and no 9pm to click, so an evening
-    // could not be read or filled. A calendar that only shows the hours it
-    // already knows about cannot be used to add anything outside them.
+    // So the hours are not equal. An hour with something in it gets its
+    // full height; an empty one shrinks to a line. Every hour still exists,
+    // still has a label, and can still be tapped — it just stops charging
+    // rent it has not earned. A quiet day collapses to something you can
+    // see at once, and a packed day looks exactly as it did.
     //
-    // The cost is a tall scroller, which is what every calendar has, and
-    // it is paid for by opening at the right place rather than at the top.
-    function span() {
-      return { from: 0, to: 24 };
+    // Everything downstream goes through yFor and tsFor rather than
+    // multiplying by a constant, because once the hours differ there is no
+    // constant to multiply by. That is the whole of the complexity here.
+    var QUIET_H = 15;        // an hour with nothing in it
+    var BUSY_H = 46;         // an hour with something in it
+
+    function layoutFor(list) {
+      var busy = [];
+      var h;
+      for (h = 0; h < 24; h++) busy[h] = false;
+
+      list.forEach(function (it) {
+        var from = Math.floor((it.start - day) / 3600000);
+        // The slot is what the item actually occupies on screen, so a
+        // moment marks its own hour rather than nothing at all.
+        var to = Math.floor((Math.max(it.end, it.start + it.slot) - day - 1) / 3600000);
+        for (var x = Math.max(0, from); x <= Math.min(23, to); x++) busy[x] = true;
+      });
+      // The hour you are in is never shrunk: the now line needs somewhere
+      // to sit, and the current hour is the one most likely to be read.
+      if (isSameDay(Date.now(), day)) busy[new Date().getHours()] = true;
+
+      var tops = [0];
+      for (h = 0; h < 24; h++) tops[h + 1] = tops[h] + (busy[h] ? BUSY_H : QUIET_H);
+      return { busy: busy, tops: tops, height: tops[24] };
+    }
+
+    // A moment in the day to a position on the grid.
+    function yFor(ts, L) {
+      var mins = (ts - day) / 60000;
+      if (mins < 0) return 0;
+      if (mins >= 1440) return L.height;
+      var h = Math.floor(mins / 60);
+      var frac = (mins - h * 60) / 60;
+      return L.tops[h] + frac * (L.tops[h + 1] - L.tops[h]);
+    }
+
+    // And back again, for a tap. Walks the hours rather than dividing,
+    // because the bands are different sizes.
+    function tsFor(y, L) {
+      var h = 0;
+      while (h < 23 && y >= L.tops[h + 1]) h++;
+      var band = L.tops[h + 1] - L.tops[h];
+      var frac = band > 0 ? (y - L.tops[h]) / band : 0;
+      frac = Math.max(0, Math.min(0.999, frac));
+      // A shrunken hour is too small to aim within, so it snaps to itself.
+      // A full one snaps to the quarter, which is how people say times.
+      var mins = L.busy[h]
+        ? h * 60 + Math.round((frac * 60) / 15) * 15
+        : h * 60;
+      return day + Math.max(0, Math.min(1440 - 15, mins)) * 60000;
     }
 
     // Two things at the same hour sit side by side rather than on top of
@@ -6880,8 +6938,7 @@
         return;
       }
       nowLine.style.display = "block";
-      var mins = (Date.now() - day) / 60000 - s.from * 60;
-      nowLine.style.top = Math.round(mins / 60 * PX_H) + "px";
+      nowLine.style.top = Math.round(yFor(Date.now(), s)) + "px";
       nowLabel.textContent = clock(Date.now());
     }
 
@@ -6899,6 +6956,7 @@
       week.style.display = "none";
       ensureExternalEvents(day, 1, render);
       var list = itemsFor(day);
+      lanes(list);                     // sets .slot, which the layout needs
 
       allDay.textContent = "";
       var whole = msEventsFor(day).filter(function (e) { return e.allDay; });
@@ -6909,14 +6967,14 @@
         allDay.appendChild(chip);
       });
       allDay.style.display = whole.length ? "" : "none";
-      var s = span();
+      var s = layoutFor(list);
       lastSpan = s;
-      grid.style.height = ((s.to - s.from) * PX_H) + "px";
+      grid.style.height = s.height + "px";
 
       hoursLayer.textContent = "";
-      for (var h = s.from; h <= s.to; h++) {
-        var line = el("div", "cal-hour");
-        line.style.top = ((h - s.from) * PX_H) + "px";
+      for (var h = 0; h <= 24; h++) {
+        var line = el("div", "cal-hour" + (h < 24 && !s.busy[h] ? " quiet" : ""));
+        line.style.top = s.tops[h] + "px";
         line.appendChild(el("span", "cal-hourlab", hourLabel(h)));
         hoursLayer.appendChild(line);
       }
@@ -6924,8 +6982,8 @@
       itemsLayer.textContent = "";
       var n = lanes(list);
       list.forEach(function (it) {
-        var top = ((it.start - day) / 3600000 - s.from) * PX_H;
-        var h = Math.max((it.slot / 3600000) * PX_H - 3, 23);
+        var top = yFor(it.start, s);
+        var h = Math.max(yFor(Math.max(it.end, it.start + it.slot), s) - top - 3, 23);
         var box = el("button", "cal-item cal-" + it.kind);
         box.style.top = Math.round(top) + "px";
         box.style.height = Math.round(h) + "px";
@@ -7075,7 +7133,7 @@
       if (!chosen) return;
 
       composer = el("div", "cal-new");
-      composer.style.top = Math.round(((ts - day) / 3600000 - lastSpan.from) * PX_H) + "px";
+      composer.style.top = Math.round(yFor(ts, lastSpan)) + "px";
       composer.style.setProperty("--item", tint(chosen.tint || "amber").solid);
 
       var head = el("div", "cal-newhead");
@@ -7145,9 +7203,7 @@
       if (e.target !== itemsLayer) return;     // a tap on an item is not a tap on the day
       if (!lastSpan) return;
       var box = itemsLayer.getBoundingClientRect();
-      var mins = (e.clientY - box.top) / PX_H * 60 + lastSpan.from * 60;
-      mins = Math.max(0, Math.min(24 * 60 - 15, Math.round(mins / 15) * 15));
-      openComposer(day + mins * 60000);
+      openComposer(tsFor(e.clientY - box.top, lastSpan));
     });
 
     function paintSource() {
@@ -7219,7 +7275,8 @@
     function landSomewhereUseful() {
       if (!lastSpan) return;
       if (isSameDay(Date.now(), day)) { scrollToNow(); return; }
-      scroller.scrollTop = Math.max(0, 7 * PX_H - 20);   // 7am
+      // The first thing on the day, or the morning if the day is empty.
+      scroller.scrollTop = Math.max(0, (lastSpan.tops[7] || 0) - 20);
     }
     prev.addEventListener("click", function () { go(-1); });
     next.addEventListener("click", function () { go(1); });
@@ -7233,8 +7290,7 @@
     // you the part of the day you cannot change.
     function scrollToNow() {
       if (!lastSpan || !isSameDay(Date.now(), day)) return;
-      var mins = (Date.now() - day) / 60000 - lastSpan.from * 60;
-      scroller.scrollTop = Math.max(0, Math.round(mins / 60 * PX_H) - 90);
+      scroller.scrollTop = Math.max(0, Math.round(yFor(Date.now(), lastSpan)) - 90);
     }
 
     // A fold, an unfold or a keyboard changes the height of the scroller,
