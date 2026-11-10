@@ -4722,7 +4722,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1520";
+  var BUILD = "2026-11-10-1526";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6433,6 +6433,11 @@
     var importInput = el("input", "cal-feedfile");
     importInput.type = "file";
     importInput.accept = ".ics,text/calendar";
+    // Several at once. Apple Calendar disables File > Export for Exchange
+    // accounts, and the way round it is to select the events and drag them
+    // to the Finder — which writes one .ics per event. Accepting a single
+    // file would make that workaround useless.
+    importInput.multiple = true;
     importLabel.appendChild(importInput);
     importRow.appendChild(importLabel);
     var importNote = el("span", "cal-importnote", "");
@@ -6453,21 +6458,41 @@
       importNote.appendChild(clear);
     }
 
+    function readOne(file) {
+      return new Promise(function (done) {
+        var reader = new FileReader();
+        reader.onload = function () { done(String(reader.result || "")); };
+        reader.onerror = function () { done(""); };
+        reader.readAsText(file);
+      });
+    }
+
     importInput.addEventListener("change", function () {
-      var file = importInput.files && importInput.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function () {
-        var parsed = trimForImport(icsParse(String(reader.result || "")));
+      var files = [].slice.call(importInput.files || []);
+      if (!files.length) return;
+      Promise.all(files.map(readOne)).then(function (texts) {
+        var all = [];
+        texts.forEach(function (t) { all = all.concat(icsParse(t)); });
+        var parsed = trimForImport(all);
         if (!parsed.length) { flashStatus("No events found in that file."); return; }
-        if (!saveImported(file.name.replace(/\.ics$/i, ""), parsed)) return;
+        // Dragging from the Finder can produce the same event twice; the
+        // uid and the start together are what make an occurrence unique.
+        var seen = {};
+        parsed = parsed.filter(function (ev) {
+          var k = (ev.uid || ev.summary) + ":" + ev.start;
+          if (seen[k]) return false;
+          seen[k] = 1;
+          return true;
+        });
+        var label = files.length === 1
+          ? files[0].name.replace(/\.ics$/i, "")
+          : files.length + " files";
+        if (!saveImported(label, parsed)) return;
         importInput.value = "";
         paintImport();
         flashStatus(parsed.length + " events imported.");
         render();
-      };
-      reader.onerror = function () { flashStatus("Could not read that file."); };
-      reader.readAsText(file);
+      });
     });
 
     var feedHint = el("div", "cal-feedhint", "");
