@@ -224,7 +224,28 @@
     max-height: 84dvh;
     overflow: hidden;
   }
-  .search-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--rule); }
+  .search-head {
+    padding: 14px 16px 10px; border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  /* The way out. It is always here, not only on touch: a visible exit is
+     not something a desktop needs protecting from. */
+  .search-close {
+    position: absolute; top: 8px; right: 8px;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--sans); font-size: 26px; line-height: 1;
+    color: var(--ink-soft); background: none; border: none;
+    border-radius: 50%; cursor: pointer; z-index: 2;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .search-close:hover { background: rgba(43, 38, 32, .08); color: var(--ink); }
+  /* Keep the typing clear of it. */
+  .search-head .search-input { padding-right: 44px; }
+  /* A phone has no Escape key, so the hint is a desktop one. */
+  @media (hover: none) {
+    .search-esc { display: none; }
+  }
   .search-input {
     width: 100%;
     font-family: var(--serif);
@@ -947,6 +968,18 @@
     letter-spacing: 1px; text-transform: uppercase;
     color: #fff; background: var(--tint, var(--ink-soft));
     border: none; border-radius: 7px; padding: 0 14px; cursor: pointer;
+  }
+  .cal-feedadd.alt {
+    background: rgba(43, 38, 32, .08); color: var(--ink);
+    padding: 7px 12px; position: relative; overflow: hidden;
+    display: inline-flex; align-items: center;
+  }
+  .cal-feedfile {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+  }
+  .cal-importnote {
+    display: flex; align-items: center; gap: 2px;
+    font-family: var(--sans); font-size: 10px; color: var(--ink-soft);
   }
   .cal-feedhint {
     font-family: var(--sans); font-size: 9.5px; line-height: 1.45;
@@ -2723,11 +2756,12 @@
 <div class="modal-overlay search-overlay" id="search-modal">
   <div class="search-sheet">
     <div class="search-head">
+      <button class="search-close" id="search-close" title="Close search" aria-label="Close search">×</button>
       <input class="search-input" id="search-input" type="text" autocomplete="off"
              autocorrect="off" spellcheck="false" placeholder="Search tasks, notes, scheduled steps…">
       <div class="search-hint">
         <span id="search-count"></span>
-        <span>Esc to close</span>
+        <span class="search-esc">Esc to close</span>
       </div>
     </div>
     <div class="search-results" id="search-results"></div>
@@ -4688,7 +4722,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1515";
+  var BUILD = "2026-11-10-1520";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6035,6 +6069,54 @@
     });
   }
 
+  // ── An imported .ics file ────────────────────────────────
+  // The route for a calendar that lives on this machine rather than at a
+  // URL: Apple Calendar on a Mac already holds the work calendar, and
+  // File > Export writes it out. Nothing is uploaded, no permission is
+  // asked of anybody, and the parser is the one the links already use.
+  //
+  // Kept apart from the fetched cache on purpose. That cache is cleared
+  // and refilled every time a feed is re-read, which would throw an
+  // imported file away for no reason.
+  var ICS_IMPORT_KEY = "dia_todo_icsimport_v1";
+
+  function importedEvents() {
+    try {
+      var v = JSON.parse(localStorage.getItem(ICS_IMPORT_KEY) || "null");
+      return (v && v.events && v.events.slice) ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function saveImported(name, events) {
+    try {
+      localStorage.setItem(ICS_IMPORT_KEY, JSON.stringify({
+        name: name, at: Date.now(), events: events
+      }));
+      return true;
+    } catch (e) {
+      // A year of a busy calendar can be megabytes; localStorage is not.
+      flashStatus("That file is too big to keep. Export a shorter range.");
+      return false;
+    }
+  }
+
+  // Only what a calendar view needs, and only a window around now: a full
+  // export can carry a decade of history that will never be drawn.
+  function trimForImport(events) {
+    var from = startOfDay(Date.now(), -60);
+    var to = startOfDay(Date.now(), 400);
+    var out = [];
+    events.forEach(function (ev) {
+      if (!ev.start) return;
+      if (!ev.rrule && (ev.start > to || (ev.end || ev.start) < from)) return;
+      out.push({
+        uid: ev.uid, summary: ev.summary, where: ev.where,
+        start: ev.start, end: ev.end, allDay: ev.allDay, rrule: ev.rrule
+      });
+    });
+    return out;
+  }
+
   function ensureIcsEvents(fromTs, days, done) {
     var feeds = icsFeeds();
     if (!feeds.length) return;
@@ -6310,7 +6392,7 @@
       if (!anyCalendarSource() || icsFeeds().length) {
         var open = feedBox.style.display === "none";
         feedBox.style.display = open ? "" : "none";
-        if (open) { paintFeeds(); feedInput.focus(); }
+        if (open) { paintFeeds(); paintImport(); }
         return;
       }
       var btn = document.getElementById("sync-btn");
@@ -6343,10 +6425,56 @@
     feedRow.appendChild(feedInput);
     feedRow.appendChild(feedAdd);
     feedBox.appendChild(feedRow);
+    // The file route. On a Mac the work calendar is already in Apple
+    // Calendar, so File > Export writes it out and this reads it — no
+    // server, no permission, nothing leaving the machine.
+    var importRow = el("div", "cal-feedrow");
+    var importLabel = el("label", "cal-feedadd alt", "Import .ics file");
+    var importInput = el("input", "cal-feedfile");
+    importInput.type = "file";
+    importInput.accept = ".ics,text/calendar";
+    importLabel.appendChild(importInput);
+    importRow.appendChild(importLabel);
+    var importNote = el("span", "cal-importnote", "");
+    importRow.appendChild(importNote);
+    feedBox.appendChild(importRow);
+
+    function paintImport() {
+      var got = importedEvents();
+      if (!got) { importNote.textContent = ""; return; }
+      importNote.textContent = got.events.length + " events from " + got.name;
+      var clear = el("button", "cal-feedkill", "\u00d7");
+      clear.title = "Forget this file";
+      clear.addEventListener("click", function () {
+        try { localStorage.removeItem(ICS_IMPORT_KEY); } catch (e) {}
+        paintImport();
+        render();
+      });
+      importNote.appendChild(clear);
+    }
+
+    importInput.addEventListener("change", function () {
+      var file = importInput.files && importInput.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var parsed = trimForImport(icsParse(String(reader.result || "")));
+        if (!parsed.length) { flashStatus("No events found in that file."); return; }
+        if (!saveImported(file.name.replace(/\.ics$/i, ""), parsed)) return;
+        importInput.value = "";
+        paintImport();
+        flashStatus(parsed.length + " events imported.");
+        render();
+      };
+      reader.onerror = function () { flashStatus("Could not read that file."); };
+      reader.readAsText(file);
+    });
+
     var feedHint = el("div", "cal-feedhint", "");
-    feedHint.innerHTML = "Outlook: <b>Settings \u203a Calendar \u203a Shared calendars</b> " +
-      "\u2192 publish your calendar, <b>Can view all details</b>, then copy the <b>ICS</b> link. " +
-      "Google and iCloud have the same thing. The link is a secret \u2014 it stays on this device.";
+    feedHint.innerHTML = "<b>On this Mac:</b> your work calendar is already in Apple Calendar \u2014 " +
+      "select it, <b>File \u203a Export \u203a Export\u2026</b>, then import the file here. " +
+      "Nothing is uploaded.<br><b>Or a link:</b> Outlook, Google and iCloud can each publish a " +
+      "calendar as a URL. The link is a secret \u2014 it stays on this device.";
     feedBox.appendChild(feedHint);
     panel.appendChild(feedBox);
 
@@ -6476,6 +6604,23 @@
       // Real meetings, read from the calendar you already connected. They
       // are not Do.'s to change, so they carry no listId and tapping one
       // tells you about it rather than taking you somewhere.
+      var imported = importedEvents();
+      if (imported) {
+        imported.events.forEach(function (ev) {
+          if (ev.allDay) return;
+          icsExpand(ev, dayStart, dayEnd).forEach(function (ts) {
+            var span = (ev.end || ev.start) - ev.start;
+            out.push({ kind: "event", text: ev.summary || "(no title)",
+                       start: Math.max(ts, dayStart),
+                       end: Math.min(ts + (span || 1800000), dayEnd),
+                       listId: null, listTitle: ev.where || imported.name,
+                       tint: "violet",
+                       ev: { subject: ev.summary, start: ts, end: ts + (span || 1800000),
+                             where: ev.where, calendar: imported.name,
+                             account: "Imported file", editable: false } });
+          });
+        });
+      }
       msEventsFor(dayStart).forEach(function (ev) {
         if (ev.allDay) return;            // the strip above handles those
         if (ev.end <= dayStart || ev.start >= dayEnd) return;
@@ -7310,6 +7455,12 @@
       setTimeout(function () { input.focus(); }, 30);
     }
     function close() { modal.classList.remove("show"); }
+    // On a phone the sheet covers the whole screen, so the "tap the
+    // backdrop" exit has no backdrop to tap, and Escape needs a keyboard
+    // the device does not have. Without this the only way out was to pull
+    // the page down hard enough to trigger a refresh.
+    var closeBtn = document.getElementById("search-close");
+    if (closeBtn) closeBtn.addEventListener("click", close);
 
     input.addEventListener("input", function () {
       results = run(input.value);
