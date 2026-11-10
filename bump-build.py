@@ -29,7 +29,7 @@ def node_bin():
 # promise into an outage on every phone at once. Skip it only on purpose:
 #   SKIP_PREFLIGHT=1 python3 bump-build.py
 if not os.environ.get("SKIP_PREFLIGHT"):
-    check = subprocess.run([node_bin(), str(here / "preflight.js"), "--quiet"])
+    check = subprocess.run([node_bin(), str(here / "preflight.js"), "--quiet", "--pre-stamp"])
     if check.returncode != 0:
         sys.exit("preflight failed — nothing stamped, nothing deployed")
 

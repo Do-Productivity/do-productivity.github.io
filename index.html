@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wnBE+bOvBKLeFP7LwkLVZyKZc3F2yqbrgGrg/Gq4T9A=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+MhPPGINiu16Z63Qx7OzOavfh+v9bbvek17SqwAN0Is=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2124,124 +2124,142 @@
     /* keep the add row reachable and the footer pinned to the bottom edge */
     .panel-footer { margin-top: auto; }
 
-    /* ── Wallet fan ──────────────────────────────────────
-       The three lists ride as cards the way Apple Pay fans your payment
-       cards: the open one square on, the other two tucked behind at either
-       shoulder. Tap a shoulder card to bring it forward, tap the front card
-       — or the pill beneath — for the full grid. */
+    /* ── The deck ─────────────────────────────────────────
+       The lists ride as cards the way a wallet holds them. The open one
+       sits face up; the rest wait in a pile beneath it with only their top
+       edges showing, tucked behind the page. Push the front card aside and
+       the next comes up out of the pile. Tap the deck and it spreads out
+       down the screen so you can see every card and pick one, and the one
+       you pick rises to the front while the others fall back in.
+
+       The order never changes and nothing ever jumps over anything else:
+       a card later in the deck is always in front of an earlier one, and
+       cards only slide. That one rule is what makes it read as a physical
+       stack rather than as rectangles being rearranged.
+
+       Every position comes from the script, as a spring, so a card that is
+       thrown keeps the speed it was thrown at. Nothing here is a CSS
+       transition, because a transition cannot be interrupted halfway and
+       still know how fast it was going. */
     .card-fan {
       display: block; position: relative;
-      /* grows with the screen, so a 430px iPhone gets a genuinely bigger
-         card than a 320px one instead of the same card in more whitespace */
-      height: clamp(126px, 37vw, 162px);
-      /* margin, not padding: the cards are absolutely positioned from this
-         box's padding box, which padding does not move — only shrinking
-         the box itself slides them clear of the glyph strip. */
-      margin: 0 var(--glyph-gutter, 0px) 8px 0;
-      perspective: 820px;
-      perspective-origin: 50% 46%;
-      transform-style: preserve-3d;
-      /* the browser keeps vertical scrolling; sideways is ours, so a drag
-         across the cards isn't stolen by the page */
-      touch-action: pan-y;
+      /* the last 14px sits behind the page below, so the pile reads as
+         tucked under it instead of being cut off by a line in mid-air */
+      margin: 0 var(--glyph-gutter, 0px) -14px 0;
+      height: 196px;                      /* until the script has measured */
+      touch-action: none;                 /* both axes are gestures here */
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
     }
-    /* while a thumb is down the cards track it exactly — the easing is for
-       the snap afterwards, not for following a finger */
-    .card-fan.dragging .fan-card { transition: none; }
-    /* The cards are deliberately large, which costs a quarter of a short
-       screen. Rather than being made small to pay for it, they CONDENSE
-       while you read: the box shrinks and clips them from the bottom, so
-       what survives is the top of each card — its colour, its name, and
-       somewhere to tap. The height is set from JS, in proportion to the
-       thumb; this is only the easing that turns those steps into a glide,
-       and the clip that lets a short box show a tall card.
+    .fan-more { display: none; }
+    .deck-stage {
+      position: absolute; inset: 0; z-index: 1;
+      /* clipped at the bottom only: the pile is cut where the page begins,
+         and the front card's shadow is left free on the other three sides */
+      clip-path: inset(-40px -40px 0 -40px);
+    }
+    /* Spread out, the stage is the whole screen. It stays underneath the
+       page in the stacking order on purpose — the page fades away to reveal
+       the cards, and fades back over them, so there is never a frame where
+       a card pops in front of the list it lives behind. */
+    .card-fan.fixed .deck-stage {
+      position: fixed; inset: 0; clip-path: none;
+    }
+    .panels { position: relative; z-index: 5; }
+    .toolbar, .panels { transition: opacity .3s ease .1s; }
+    body.deck-open .toolbar,
+    body.deck-open .panels {
+      opacity: 0; pointer-events: none;
+      transition: opacity .16s ease;
+    }
+    /* Still untouchable while the cards are on their way home: the tap that
+       chose a card must not land on whatever the page puts back under it. */
+    body.deck-closing .toolbar,
+    body.deck-closing .panels { pointer-events: none; }
 
-       Not opacity and not height:0. Cards that fade out read as the app
-       having lost them, which is exactly how it felt the one time the fan
-       was hidden outright. */
-    .card-fan {
-      transition: height .22s ease, margin-bottom .22s ease;
-    }
-    .card-fan.squeezed {
-      overflow: hidden;
-      /* a flat box while clipping: a perspective and a clip fight, and the
-         shoulder cards tear at the edge where they meet */
-      perspective: none;
-      transform-style: flat;
-    }
-    /* The subtitle goes as soon as the card starts condensing, so the clip
-       lands on nothing rather than through the middle of WORK & PROJECTS.
-       What is left is the colour and the name, which is all a condensed
-       card has to say. */
-    .fc-sub, .fc-count { transition: opacity .18s ease; }
-    .card-fan.squeezed .fc-sub,
-    .card-fan.squeezed .fc-count { opacity: 0; }
-    /* Shown once, while the cards demonstrate themselves. It is pushed
-       toward the viewer rather than given a z-index: inside a preserve-3d
-       parent it is depth that decides what covers what. The scale cancels
-       the enlargement that being nearer would otherwise cause. */
-    .fan-hint {
-      position: absolute; left: 50%; bottom: 1px;
-      transform: translateX(-50%) translateZ(60px) scale(.93);
-      background: rgba(247, 243, 233, .94);
-      border-radius: 999px; padding: 4px 11px;
-      font-family: var(--sans); font-size: 9.5px; font-weight: 700;
-      letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-soft);
-      box-shadow: 0 2px 10px rgba(43, 38, 32, .16);
-      white-space: nowrap; pointer-events: none;
-      opacity: 0; transition: opacity .35s ease;
-    }
-    .fan-hint.on { opacity: 1; }
-    /* Width and offset are chosen together, and the sum is fixed: a shoulder
-       card's far edge sits at width × (offset + scale/2), which has to stay
-       under half the column or it runs off the screen. At 78/26/.74 that
-       lands at 0.49 — as large as the front card can be while the shoulders
-       still show. Change one number and the other two have to move. */
     .fan-card {
-      position: absolute; left: 50%; top: 0;
-      width: 78%; max-width: 330px; height: clamp(120px, 35vw, 154px);
-      border: none; border-radius: 17px; padding: clamp(14px, 4.2vw, 19px) clamp(15px, 4.6vw, 21px);
+      position: absolute; left: 0; top: 0;
+      width: var(--deck-w, 100%);
+      height: clamp(120px, 37vw, 156px);
+      border: none; border-radius: 18px;
+      padding: clamp(14px, 4.2vw, 19px) clamp(16px, 4.8vw, 22px);
       display: flex; flex-direction: column; justify-content: space-between;
       text-align: left; color: #fff; cursor: pointer;
-      box-shadow: 0 6px 18px rgba(43, 38, 32, 0.22);
-      /* a touch of overshoot, so a card settles into place like a real one
-         being thumbed forward rather than sliding to a dead stop */
-      transition: transform .42s cubic-bezier(.22, 1.12, .36, 1),
-                  opacity .28s ease, filter .28s ease, box-shadow .3s ease;
+      overflow: hidden;
+      transform-origin: 50% 0;
       will-change: transform;
       -webkit-tap-highlight-color: transparent;
+      --ca: #d59a3f; --cb: #935f10; --sheen: 16%;
+      /* Three layers over the colour: light catching the top edge, the
+         corner furthest from it falling away, and the colour itself. The
+         light moves with the card when it is pushed, which is most of what
+         makes it look like an object and not a filled rectangle. */
+      background:
+        radial-gradient(95% 130% at var(--sheen) -22%, rgba(255, 255, 255, .36), rgba(255, 255, 255, 0) 60%),
+        radial-gradient(75% 95% at 108% 120%, rgba(0, 0, 0, .28), rgba(0, 0, 0, 0) 64%),
+        linear-gradient(138deg, var(--ca), var(--cb));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .38),
+        inset 0 0 0 .5px rgba(255, 255, 255, .16),
+        inset 0 -1px 0 rgba(0, 0, 0, .16),
+        0 -3px 10px -4px rgba(43, 38, 32, .30),
+        0 2px 4px rgba(43, 38, 32, .12),
+        0 12px 26px -8px rgba(43, 38, 32, .36);
     }
-    .fan-card.pos-active { box-shadow: 0 12px 28px rgba(43, 38, 32, 0.3); }
-    .fan-card:active { filter: brightness(.93) !important; }
-    .fan-card.personal { background: linear-gradient(140deg, #d4694f, #ab3a26); }
-    .fan-card.business { background: linear-gradient(140deg, #4d82a8, #2b5472); }
-    .fan-card.notes    { background: linear-gradient(140deg, #5fa675, #376d46); }
-    .fc-head { display: block; }
-    .fc-title { font-family: var(--serif); font-size: clamp(23px, 6.8vw, 30px); font-weight: 700; }
+    /* A fine grain, so the gradient is a surface. Drawn by the browser from
+       a few bytes rather than shipped as a picture. */
+    .fan-card::after {
+      content: ""; position: absolute; inset: 0; border-radius: inherit;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: .13; mix-blend-mode: overlay; pointer-events: none;
+    }
+    .fan-card.personal { --ca: #d4694f; --cb: #ab3a26; }
+    .fan-card.business { --ca: #4d82a8; --cb: #2b5472; }
+    .fan-card.notes    { --ca: #5fa675; --cb: #376d46; }
+    .fc-head { display: block; position: relative; z-index: 1; }
+    .fc-title {
+      font-family: var(--serif); font-size: clamp(24px, 7vw, 31px); font-weight: 700;
+      letter-spacing: -.2px; text-shadow: 0 1px 1px rgba(0, 0, 0, .16);
+    }
     .fc-dot { opacity: .6; }
     .fc-sub {
       display: block; font-family: var(--sans); font-size: clamp(8.5px, 2.6vw, 11px);
-      letter-spacing: 1.7px; opacity: .72; margin-top: 5px;
+      letter-spacing: 1.7px; opacity: .74; margin-top: 5px;
     }
     .fc-count {
+      position: relative; z-index: 1;
       font-family: var(--sans); font-size: clamp(13px, 3.8vw, 16px);
-      font-weight: 700; opacity: .93;
+      font-weight: 700; opacity: .95;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    /* The one visible sign that tapping the open card does anything. It
-       lives in the top corner rather than the bottom so it survives the
-       clip when the fan condenses — a handle that disappears the moment you
-       use it would be worse than none — and it turns over to say which way
-       the next tap goes. Only the open card offers it; the shoulders mean
-       "come forward", which needs no explaining. */
+    .fc-sub, .fc-count { transition: opacity .18s ease; }
+    .card-fan.squeezed .fc-sub,
+    .card-fan.squeezed .fc-count { opacity: 0; }
+    /* Spread out, a card shows only its top strip — the next one covers the
+       rest, count included. So the count is repeated up here, where it can
+       be seen, and only while the deck is open. */
+    .fc-peek {
+      position: absolute; z-index: 1;
+      top: clamp(13px, 4vw, 18px); right: clamp(15px, 4.6vw, 20px);
+      min-width: 26px; text-align: center;
+      font-family: var(--sans); font-size: 12px; font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      background: rgba(255, 255, 255, .22); border-radius: 999px; padding: 4px 9px;
+      opacity: 0; transition: opacity .2s ease;
+    }
+    .card-fan.open .fc-peek { opacity: 1; transition-delay: .08s; }
+    /* The handle that puts the cards away to give the list the room. It is
+       in the top corner so it survives being condensed, and it turns over
+       to say which way the next tap goes. Only the open card offers it. */
     .fan-grip {
-      position: absolute; top: 0; right: 0;
-      width: 42px; height: 42px;
+      position: absolute; top: 0; right: 0; z-index: 2;
+      width: 46px; height: 46px;
       display: flex; align-items: center; justify-content: center;
-      opacity: 0;
+      opacity: 0; pointer-events: none;
       transition: opacity .2s ease;
-      pointer-events: none;      /* the card underneath takes the tap */
     }
-    .fan-card.pos-active .fan-grip { opacity: .75; }
+    .fan-card.pos-active .fan-grip { opacity: .8; pointer-events: auto; }
+    .card-fan.open .fan-grip { opacity: 0; pointer-events: none; }
     .fan-grip::before {
       content: "";
       width: 8px; height: 8px;
@@ -2256,25 +2274,80 @@
       transform: rotate(45deg);          /* down: tap to bring them back */
       margin-top: -3px;
     }
-    /* The fan deals itself out the first time it draws. Later moves are the
-       transition above, so this plays once rather than on every re-render. */
-    .card-fan.dealing .fan-card { animation: fan-deal .5s cubic-bezier(.2, .9, .3, 1) backwards; }
-    .fan-card { transform-origin: 50% 60%; }
-    @keyframes fan-deal {
-      from { opacity: 0; transform: translateX(-50%) translateY(26px) scale(.8); }
+    /* Shown once, while the cards demonstrate themselves. */
+    .fan-hint {
+      position: absolute; left: 50%; bottom: 20px; z-index: 2;
+      transform: translateX(-50%);
+      background: rgba(247, 243, 233, .96);
+      border-radius: 999px; padding: 5px 12px;
+      font-family: var(--sans); font-size: 9.5px; font-weight: 700;
+      letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft);
+      box-shadow: 0 2px 10px rgba(43, 38, 32, .2);
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity .35s ease;
     }
+    .fan-hint.on { opacity: 1; }
 
-    /* Apple's "Other Cards & Pay Later Options" sits in the same place */
-    .fan-more {
-      display: block; margin: 0 auto 10px;
-      font-family: var(--sans); font-size: 10px; font-weight: 700;
-      letter-spacing: .9px; color: var(--ink-soft);
-      background: rgba(43, 38, 32, 0.07);
-      border: none; border-radius: 20px; padding: 8px 16px; cursor: pointer;
+    /* What the screen says once the deck is spread: where you are, a way
+       out, and the two things you can do to the deck itself. */
+    .deck-head, .deck-foot {
+      position: absolute; left: 0; right: 0; z-index: 80;
+      display: flex; align-items: center;
+      opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity .16s ease, visibility 0s linear .16s;
+    }
+    .card-fan.open .deck-head,
+    .card-fan.open .deck-foot {
+      opacity: 1; visibility: visible;
+      transition: opacity .3s ease .08s, visibility 0s;
+    }
+    /* only the buttons take a finger; the space beside them is the deck's */
+    .card-fan.open .deck-done,
+    .card-fan.open .deck-act { pointer-events: auto; }
+    .deck-head {
+      top: calc(env(safe-area-inset-top, 0px) + 6px); height: 42px;
+      padding: 0 18px; justify-content: space-between;
+    }
+    /* A long deck scrolls, and what scrolls goes under the heading and the
+       buttons rather than through them: paper that thins out to nothing. */
+    .deck-head::before, .deck-foot::before {
+      content: ""; position: absolute; left: 0; right: 0; z-index: -1;
+      pointer-events: none;
+    }
+    .deck-head::before {
+      top: calc(-1 * env(safe-area-inset-top, 0px) - 6px); bottom: -20px;
+      background: linear-gradient(to bottom, var(--paper) 58%, rgba(247, 243, 233, 0));
+    }
+    .deck-foot::before {
+      top: -26px; bottom: calc(-1 * env(safe-area-inset-bottom, 0px) - 18px);
+      background: linear-gradient(to top, var(--paper) 52%, rgba(247, 243, 233, 0));
+    }
+    .deck-title {
+      font-family: var(--serif); font-size: 27px; font-weight: 700; color: var(--ink);
+      letter-spacing: -.2px;
+    }
+    .deck-title-dot { color: var(--red); }
+    .deck-done {
+      font-family: var(--sans); font-size: 13px; font-weight: 700; letter-spacing: .3px;
+      color: var(--ink); background: rgba(43, 38, 32, .08);
+      border: none; border-radius: 999px; padding: 9px 17px; cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
+    .deck-foot {
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+      justify-content: center; gap: 10px; padding: 0 18px;
+    }
+    .deck-act {
+      font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .5px;
+      color: var(--card); background: var(--ink);
+      border: none; border-radius: 999px; padding: 13px 20px; cursor: pointer;
+      box-shadow: 0 8px 18px -8px rgba(43, 38, 32, .55);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .deck-act.quiet { color: var(--ink-soft); background: rgba(43, 38, 32, .07); box-shadow: none; }
+    .deck-done:active, .deck-act:active { transform: scale(.96); }
 
-    /* the fan carries the identity now, so the card below drops its own
+    /* the deck carries the identity now, so the card below drops its own
        heading and the spines it used to stack underneath */
     .panel.collapsed { display: none; }
     .panel.expanded .panel-header,
@@ -2282,8 +2355,7 @@
     .panel.expanded { padding-top: 12px; }
 
     @media (prefers-reduced-motion: reduce) {
-      .fan-card, .card-fan { transition: none; }
-      .card-fan.dealing .fan-card { animation: none; }
+      .toolbar, .panels, .deck-head, .deck-foot { transition: none; }
     }
   }
 
@@ -2607,7 +2679,6 @@
      text on a phone is already the floor, and shrinking it to fit one more
      row trades a thing you read all day for a thing you notice once. */
   @media (max-width: 720px) and (max-height: 720px) {
-    .card-fan { height: clamp(104px, 30vw, 132px); }
     .fan-card {
       height: clamp(98px, 28vw, 124px);
       padding: clamp(11px, 3.4vw, 15px) clamp(13px, 4vw, 18px);
@@ -2615,7 +2686,6 @@
     }
     .fc-title { font-size: clamp(21px, 6vw, 26px); }
     .fc-sub { margin-top: 3px; }
-    .fan-more { margin-bottom: 7px; padding: 7px 15px; }
     .task-row { padding: 11px 0; }
     .task-meta { margin-top: 2px; }
   }
@@ -4821,7 +4891,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-2123";
+  var BUILD = "2026-11-10-2215";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -8222,8 +8292,12 @@
     setInterval(function () { if (todayOpen) renderToday(); }, 60000);
   })();
 
-  // ── Wallet fan ───────────────────────────────────────────
-  // Three cards, the chosen one face on and the other two at its shoulders.
+  // ── The deck ─────────────────────────────────────────────
+  // The lists as a wallet of cards. The open one is face up; the rest wait
+  // in a pile under it with their top edges showing. Push the front card
+  // aside and the next rises out of the pile. Tap the deck and it spreads
+  // down the screen so every card can be seen and one picked.
+  //
   // The counts live on the panels themselves, so read them from there rather
   // than keeping a second tally that could drift.
   var fanRoot = document.getElementById("card-fan");
@@ -8234,86 +8308,626 @@
     return badge ? badge.textContent.trim() : "0";
   }
 
-  // How a card sits at each remove from the front one. Beyond the third it is
-  // parked off to the side at zero opacity, so a long list of lists still
-  // animates in and out instead of popping.
-  var FAN_DEPTH = [
-    { x: 0,  scale: 1,    opacity: 1,    z: 0,    rotate: 0,  blur: 0 },
-    { x: 26, scale: 0.74, opacity: 0.9,  z: -70,  rotate: 15, blur: 0 },
-    { x: 44, scale: 0.62, opacity: 0.46, z: -140, rotate: 22, blur: 0.6 },
-    { x: 56, scale: 0.56, opacity: 0,    z: -200, rotate: 26, blur: 1.2 }
-  ];
-
-  // d is a distance from the front of the fan and may be fractional, because
-  // during a drag the cards sit wherever the thumb has pushed them rather
-  // than at whole positions.
-  function placeFanCard(card, d) {
-    var ad = Math.min(Math.abs(d), 3);
-    var i = Math.floor(ad), f = ad - i;
-    var a = FAN_DEPTH[i], b = FAN_DEPTH[Math.min(i + 1, 3)];
-    function mix(k) { return a[k] + (b[k] - a[k]) * f; }
-    var sign = d < 0 ? -1 : 1;
-    // the shoulders turn their far edge away, so the fan has real depth
-    // rather than being flat rectangles at different sizes
-    card.style.transform =
-      "translateX(-50%) translateX(" + (sign * mix("x")) + "%)" +
-      " translateZ(" + mix("z") + "px)" +
-      " rotateY(" + (sign * mix("rotate")) + "deg)" +
-      " scale(" + mix("scale") + ")";
-    card.style.opacity = mix("opacity");
-    card.style.filter = mix("blur") > 0.02 ? "blur(" + mix("blur") + "px)" : "none";
-    card.style.zIndex = String(Math.round(20 - ad));
-    card.style.pointerEvents = mix("opacity") < 0.06 ? "none" : "auto";
-    card._d = d;
-  }
-
-  // Rebuilding the cards on every change meant each move was a jump cut.
-  // They are built once and then only moved, so every change — a tap, the
-  // grid, a swipe — is the same animated glide.
   var fanBuilt = "";
-  var fanSuppressClick = false;
-  var untuckFan = function () {};         // set once the condense is wired
-  var toggleFanCondense = function () {}; // same — tapping the front card
+  // Set once the condense is wired, further down. The deck calls them; it
+  // does not own how much of itself is put away, because the list's own
+  // scrolling drives that too.
+  var untuckFan = function () {};
+  var toggleFanCondense = function () {};
+  var condenseTo = function () {};
+  var condenseAt = function () { return 0; };
 
-  function buildFanCards() {
-    fanRoot.textContent = "";
-    PANEL_IDS.forEach(function (id) {
-      var meta = PANEL_META[id];
-      var card = el("button", "fan-card " + id);
-      var t = tint(meta.tint);
-      card.style.backgroundImage = "linear-gradient(140deg," + t.a + "," + t.b + ")";
-
-      var head = el("span", "fc-head");
-      var title = el("span", "fc-title", meta.title);
-      title.appendChild(el("span", "fc-dot", "."));
-      head.appendChild(title);
-      head.appendChild(el("span", "fc-sub", meta.sub));
-      card.appendChild(head);
-      card.appendChild(el("span", "fc-count", ""));
-      card.appendChild(el("span", "fan-grip"));   // tap-to-condense affordance
-
-      card._id = id;
-      card.addEventListener("click", function () {
-        if (fanSuppressClick) return;        // that was a swipe, not a tap
-        // A shoulder card comes forward. The front card — the one already
-        // open — condenses the fan and brings it back, because that is the
-        // only thing tapping your current list could usefully mean.
-        //
-        // It used to open the grid, which the "All Lists" pill directly
-        // underneath already does, so nothing is lost and the condense
-        // stops being a gesture you have to be told about.
-        if (Math.round(card._d) === 0) toggleFanCondense();
-        else setMobileTab(id);
-      });
-      fanRoot.appendChild(card);
-    });
-    fanRoot.classList.add("dealing");
-    // the deal plays once; leaving the class on would let a later change of
-    // animation-delay restart it mid-swipe
-    setTimeout(function () { fanRoot.classList.remove("dealing"); }, 900);
-    // and only once the cards have settled is there anything to demonstrate
-    setTimeout(function () { playFanHint(localStorage.getItem(MTAB_KEY) || PANEL_IDS[0]); }, 1050);
+  // A tap you can feel. Only the phone has a motor to do it with, and the
+  // web build is simply not told: there is no fallback worth having.
+  function haptic(style) {
+    var H = plug("Haptics");
+    if (!H || !H.impact) return;
+    try {
+      var p = H.impact({ style: style || "LIGHT" });
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) { /* a missing buzz is not an error */ }
   }
+
+  var deck = (function () {
+    // Every card keeps where it is, how fast it is going and where it has
+    // been told to go, on each of four axes. A frame moves it towards the
+    // target as a damped spring. That is the whole engine: a card that is
+    // let go mid-flight carries on from the speed it had, a card that is
+    // re-aimed mid-flight just turns, and nothing ever has to be told that
+    // an animation was interrupted, because there are no animations — only
+    // positions and targets.
+    var cards = [];
+    var stage = null, head = null, foot = null;
+    var active = 0;
+    var mode = "dock";            // "dock" | "open" | "closing"
+    var fixed = false;            // the stage is the screen, not the box
+    var placed = false;           // has it ever been on screen to be measured
+    var fresh = false;            // just built: the first placing is a deal
+
+    var W = 0, CW = 0, CH = 0, X0 = 0, tuck = 0, strip = 56;
+    var ox = 0, oy = 0;           // where the box sits on the screen
+    var TOP = 0, SPREAD = 0, scroll = 0, scrollMax = 0, VW = 0;
+    var closedAt = 0;
+
+    var cond = 0;                 // 0 = all of it showing, 1 = put away
+    var hgt = { v: 0, vel: 0, t: 0 };
+    var swipe = null;             // { dx } while the front card is pushed aside
+    var press = null;             // the id of the card a finger is resting on
+    var raf = 0, last = 0;
+
+    var GAP = 10;                 // between the front card and the pile
+    var K = 250, ZETA = 0.8;      // stiffness, and how quickly it stops ringing
+    var calm = window.matchMedia ? matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    // Resistance past the end of travel: the further you pull, the less of
+    // it you get, so the edge is felt rather than hit.
+    function rubber(d) { return 190 * (1 - 1 / (d * 0.55 / 190 + 1)); }
+
+    // ── Geometry ──────────────────────────────────────────
+    function peek() {
+      var n = cards.length;
+      return n > 1 ? clamp(40 / (n - 1), 3, 9) : 0;
+    }
+    function fullHeight() { return CH + GAP + (cards.length - 1) * peek() + tuck; }
+    function awayHeight() { return strip + tuck; }
+
+    // Read off the page rather than assumed: the card's size is a clamp()
+    // of the viewport, so it differs on every phone and changes when one is
+    // unfolded. False means the deck is not on screen and there is nothing
+    // to place — above 720px it is display:none and the tab row takes over.
+    function measure() {
+      if (!cards.length) return false;
+      var w = fanRoot.clientWidth;
+      if (!w) { W = 0; return false; }
+      W = w;
+      CW = Math.min(W, 430);
+      X0 = (W - CW) / 2;
+      fanRoot.style.setProperty("--deck-w", CW + "px");
+      CH = cards[0].el.offsetHeight;
+      strip = clamp(Math.round(CH * 0.38), 48, 62);
+      // how much of the box the page below lies over
+      if (!fixed) {
+        var b = fanRoot.getBoundingClientRect();
+        var p = panelsRoot.getBoundingClientRect();
+        tuck = p.height ? clamp(Math.round(b.bottom - p.top), 0, 28) : 0;
+      }
+      return true;
+    }
+
+    // Where card i rests when the deck is put away. The pile keeps the
+    // deck's own order, lowest and nearest last, each a touch wider than the
+    // one behind it so the edges step outwards like a real stack seen from
+    // slightly above.
+    function dockTarget(i) {
+      if (i === active) return { x: X0, y: 0, s: 1 };
+      var n = cards.length, j = i < active ? i : i - 1;
+      return {
+        x: X0,
+        y: CH + GAP + j * peek(),
+        s: 0.9 + 0.06 * (j + 1) / Math.max(1, n - 1)
+      };
+    }
+
+    // Where it sits when the deck is spread down the screen. Pulling down
+    // past the top stretches the gaps as well as moving the cards, which is
+    // what makes it feel like a stack being drawn out and not a page being
+    // dragged.
+    function openTarget(i) {
+      var over = scroll < 0 ? -scroll : 0;
+      return {
+        x: (VW - CW) / 2,
+        y: TOP + i * (SPREAD + over * 0.16) + over * 0.5 - (scroll > 0 ? scroll : 0),
+        s: 1
+      };
+    }
+
+    function neighbour(step) {
+      var n = cards.length;
+      return ((active + step) % n + n) % n;
+    }
+
+    function retarget() {
+      if (!W) return;
+      var bx = fixed ? ox : 0, by = fixed ? oy : 0;
+      var n = cards.length;
+      for (var i = 0; i < n; i++) {
+        var c = cards[i], t;
+        if (mode === "open") t = openTarget(i);
+        else { t = dockTarget(i); t.x += bx; t.y += by; }
+        c.tx = t.x; c.ty = t.y; c.ts = t.s; c.tr = 0;
+        // the further a card is from the chosen one, the softer its spring,
+        // so a deck in motion ripples instead of moving as one sheet
+        c.k = K * (1 - 0.055 * Math.min(4, Math.abs(i - active)));
+        c.d = 2 * ZETA * Math.sqrt(c.k);
+        if (c.id === press) c.ts *= 0.972;
+      }
+      if (swipe && mode !== "open" && n > 1) {
+        // The front card goes with the thumb. The card it is making way for
+        // comes up out of the pile by the same share of the distance, so by
+        // the time one has left the other has arrived.
+        var a = cards[active];
+        var p = clamp(Math.abs(swipe.dx) / (W * 0.5), 0, 1);
+        var e = p * p * (3 - 2 * p);
+        a.tx = bx + X0 + swipe.dx;
+        a.tr = swipe.dx / W * 5;
+        var inc = cards[neighbour(swipe.dx < 0 ? 1 : -1)];
+        if (inc !== a) {
+          inc.ty = lerp(inc.ty, by, e);
+          inc.ts = lerp(inc.ts, 1, e);
+        }
+      }
+      hgt.t = lerp(fullHeight(), awayHeight(), cond);
+    }
+
+    // ── Motion ────────────────────────────────────────────
+    function paint(c) {
+      c.el.style.transform =
+        "translate3d(" + c.x.toFixed(2) + "px," + c.y.toFixed(2) + "px,0)" +
+        (Math.abs(c.r) > 0.01 ? " rotate(" + c.r.toFixed(3) + "deg)" : "") +
+        " scale(" + c.s.toFixed(4) + ")";
+      // the light stays where it is while the card moves under it
+      var sh = Math.round(16 + clamp((c.x - (fixed ? ox : 0) - X0) / (W || 1), -1, 1) * 46);
+      if (sh !== c.sheen) { c.sheen = sh; c.el.style.setProperty("--sheen", sh + "%"); }
+    }
+
+    function axis(c, p, v, t, h, k, d) {
+      c[v] += (-k * (c[p] - c[t]) - d * c[v]) * h;
+      c[p] += c[v] * h;
+    }
+
+    function frame(now) {
+      raf = 0;
+      var dt = last ? Math.min(0.034, (now - last) / 1000) : 1 / 60;
+      if (dt <= 0) dt = 1 / 120;
+      last = now;
+      // small fixed-ish steps: a stiff spring integrated at a dropped
+      // frame's 34ms overshoots into a visible twitch
+      var sub = Math.max(1, Math.ceil(dt / 0.006)), h = dt / sub;
+      var busy = false;
+
+      for (var i = 0; i < cards.length; i++) {
+        var c = cards[i];
+        if (c.pin) {
+          // held by a finger: it is exactly where it was put, and the speed
+          // it is remembered at is the speed the finger gave it
+          c.vx = (c.tx - c.x) / dt; c.vy = (c.ty - c.y) / dt;
+          c.vs = 0; c.vr = (c.tr - c.r) / dt;
+          c.x = c.tx; c.y = c.ty; c.s = c.ts; c.r = c.tr;
+        } else {
+          for (var j = 0; j < sub; j++) {
+            axis(c, "x", "vx", "tx", h, c.k, c.d);
+            axis(c, "y", "vy", "ty", h, c.k, c.d);
+            axis(c, "s", "vs", "ts", h, c.k, c.d);
+            axis(c, "r", "vr", "tr", h, c.k, c.d);
+          }
+          var still =
+            Math.abs(c.x - c.tx) < 0.25 && Math.abs(c.vx) < 6 &&
+            Math.abs(c.y - c.ty) < 0.25 && Math.abs(c.vy) < 6 &&
+            Math.abs(c.s - c.ts) < 0.0015 && Math.abs(c.vs) < 0.02 &&
+            Math.abs(c.r - c.tr) < 0.05 && Math.abs(c.vr) < 0.6;
+          if (still) {
+            c.x = c.tx; c.y = c.ty; c.s = c.ts; c.r = c.tr;
+            c.vx = c.vy = c.vs = c.vr = 0;
+          } else busy = true;
+        }
+        paint(c);
+      }
+
+      // the box the deck sits in is sprung too, so putting the cards away
+      // moves the page with the same hand that moves the cards
+      var hk = 300, hd = 2 * 0.95 * Math.sqrt(hk);
+      for (var q = 0; q < sub; q++) {
+        hgt.vel += (-hk * (hgt.v - hgt.t) - hd * hgt.vel) * h;
+        hgt.v += hgt.vel * h;
+      }
+      if (Math.abs(hgt.v - hgt.t) < 0.4 && Math.abs(hgt.vel) < 8) { hgt.v = hgt.t; hgt.vel = 0; }
+      else busy = true;
+      fanRoot.style.height = hgt.v.toFixed(1) + "px";
+
+      // The stage stays the whole screen until the page has finished fading
+      // back over the cards; handing it back any sooner would cut the pile
+      // off in full view.
+      if (mode === "closing" && now - closedAt < 430) busy = true;
+
+      if (busy) raf = requestAnimationFrame(frame);
+      else { last = 0; settled(); }
+    }
+
+    function settled() {
+      if (mode !== "closing") return;
+      unfix();
+      mode = "dock";
+      document.body.classList.remove("deck-closing");
+    }
+
+    // Straight to where everything was heading, with nothing in between.
+    function jump() {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      last = 0;
+      cards.forEach(function (c) {
+        c.x = c.tx; c.y = c.ty; c.s = c.ts; c.r = c.tr;
+        c.vx = c.vy = c.vs = c.vr = 0;
+        paint(c);
+      });
+      hgt.v = hgt.t; hgt.vel = 0;
+      fanRoot.style.height = hgt.v.toFixed(1) + "px";
+      settled();
+    }
+
+    function kick() {
+      if (!W) return;
+      // Somebody who has asked for less motion gets the result without the
+      // journey. A card under a finger still follows it — that is not an
+      // animation, it is the finger.
+      if (calm.matches) { jump(); return; }
+      if (!raf) raf = requestAnimationFrame(frame);
+    }
+
+    // ── The stage: a box on the page, or the whole screen ──
+    // The cards are positioned inside the stage. Spread out, the stage is
+    // the screen, so every card's position is shifted by where the box was —
+    // the same pixel before and after, and no jump at the handover.
+    function fix() {
+      if (fixed) return;
+      var b = fanRoot.getBoundingClientRect();
+      ox = b.left; oy = b.top;
+      fixed = true;
+      fanRoot.classList.add("fixed");
+      cards.forEach(function (c) { c.x += ox; c.y += oy; c.tx += ox; c.ty += oy; paint(c); });
+    }
+    function unfix() {
+      if (!fixed) return;
+      fixed = false;
+      fanRoot.classList.remove("fixed");
+      cards.forEach(function (c) { c.x -= ox; c.y -= oy; c.tx -= ox; c.ty -= oy; paint(c); });
+    }
+
+    function open() {
+      if (mode === "open" || !W || cards.length < 2) return;
+      cancelFanHint();
+      if (cond > 0) condenseTo(0);
+      fix();
+      mode = "open";
+      fanRoot.classList.add("open");
+      document.body.classList.add("deck-open");
+      document.body.classList.remove("deck-closing");
+      VW = window.innerWidth;
+      // the heading and the buttons are laid out by the stylesheet, around
+      // the notch and the home bar; the cards take what is left between
+      TOP = head.getBoundingClientRect().bottom + 16;
+      var floor = foot.getBoundingClientRect().top - 20;
+      var n = cards.length;
+      SPREAD = clamp((floor - TOP - CH) / (n - 1), 58, Math.round(CH * 0.74));
+      scrollMax = Math.max(0, TOP + (n - 1) * SPREAD + CH - floor);
+      // a long deck opens with the card you are on in view
+      scroll = clamp(active * SPREAD - (floor - TOP - CH) / 2, 0, scrollMax);
+      retarget();
+      kick();
+      haptic("LIGHT");
+    }
+
+    function close() {
+      if (mode !== "open") return;
+      mode = "closing";
+      closedAt = performance.now();
+      fanRoot.classList.remove("open");
+      document.body.classList.remove("deck-open");
+      document.body.classList.add("deck-closing");
+      cards.forEach(function (c) { c.pin = false; });
+      var b = fanRoot.getBoundingClientRect();
+      ox = b.left; oy = b.top;
+      retarget();
+      kick();
+    }
+
+    // Back to a deck on the page with nothing in flight — for when the
+    // ground has moved under it: rebuilt, resized, or hidden mid-gesture.
+    function reset() {
+      g = null; swipe = null; press = null;
+      cards.forEach(function (c) { c.pin = false; });
+      fanRoot.classList.remove("open");
+      document.body.classList.remove("deck-open");
+      document.body.classList.remove("deck-closing");
+      if (fixed) { fixed = false; fanRoot.classList.remove("fixed"); }
+      mode = "dock";
+    }
+
+    function choose(id) {
+      haptic("MEDIUM");
+      if (id === PANEL_IDS[active]) close();
+      else setMobileTab(id);            // comes back here through show()
+    }
+
+    // ── Building ──────────────────────────────────────────
+    function build() {
+      reset();
+      if (raf) { cancelAnimationFrame(raf); raf = 0; last = 0; }
+      fanRoot.textContent = "";
+      stage = el("div", "deck-stage");
+      cards = PANEL_IDS.map(function (id, i) {
+        var meta = PANEL_META[id];
+        var card = el("button", "fan-card " + id);
+        var t = tint(meta.tint);
+        card.style.setProperty("--ca", t.a);
+        card.style.setProperty("--cb", t.b);
+        // The order is the stacking, and it never changes: a later card is
+        // always in front of an earlier one. Cards slide; they never jump
+        // over each other.
+        card.style.zIndex = String(i + 1);
+
+        var hd = el("span", "fc-head");
+        var title = el("span", "fc-title", meta.title);
+        title.appendChild(el("span", "fc-dot", "."));
+        hd.appendChild(title);
+        hd.appendChild(el("span", "fc-sub", meta.sub));
+        card.appendChild(hd);
+        card.appendChild(el("span", "fc-count", ""));
+        card.appendChild(el("span", "fc-peek", ""));
+        card.appendChild(el("span", "fan-grip"));
+
+        card._id = id;
+        // Fingers are read as gestures, further down, because a tap, a push
+        // and a pull all start the same way. This is for everything that is
+        // not a finger: a keyboard, a switch, a screen reader.
+        card.addEventListener("click", function (e) {
+          if (e.detail !== 0) return;
+          if (mode === "open") choose(id);
+          else if (i === active) open();
+          else setMobileTab(id);
+        });
+        stage.appendChild(card);
+        return { el: card, id: id, pin: false, sheen: null, k: K, d: 2 * ZETA * Math.sqrt(K),
+                 x: 0, y: 0, s: 1, r: 0, vx: 0, vy: 0, vs: 0, vr: 0,
+                 tx: 0, ty: 0, ts: 1, tr: 0 };
+      });
+
+      head = el("div", "deck-head");
+      var ttl = el("span", "deck-title", "Lists");
+      ttl.appendChild(el("span", "deck-title-dot", "."));
+      var done = el("button", "deck-done", "Done");
+      done.addEventListener("click", close);
+      head.appendChild(ttl);
+      head.appendChild(done);
+
+      foot = el("div", "deck-foot");
+      var add = el("button", "deck-act", "＋ New list");
+      add.addEventListener("click", function () { openNewListSheet(); });
+      var edit = el("button", "deck-act quiet", "Colours & more");
+      edit.addEventListener("click", function () { openCardPicker(); });
+      foot.appendChild(add);
+      foot.appendChild(edit);
+
+      stage.appendChild(head);
+      stage.appendChild(foot);
+      fanRoot.appendChild(stage);
+      placed = false;
+      fresh = true;
+    }
+
+    // Put the deck the way it should be for this list. Called on every
+    // change of list, from wherever it came — a tap, a swipe, the grid, a
+    // reminder opening its task.
+    function show(activeId) {
+      var at = PANEL_IDS.indexOf(activeId);
+      if (at < 0) at = 0;
+      active = at;
+      cards.forEach(function (c, i) {
+        c.el.classList.toggle("pos-active", i === active);
+        c.pin = false;
+      });
+      swipe = null;
+      if (!measure()) return;
+      if (mode === "open") { close(); return; }
+      retarget();
+      if (!placed) {
+        placed = true;
+        if (fresh && !calm.matches) {
+          // dealt, once: each card starts a little low and small, and the
+          // springs bring them up one after the other
+          cards.forEach(function (c, i) {
+            c.x = c.tx; c.y = c.ty + 26 + i * 9; c.s = c.ts * 0.94; c.r = 0;
+            c.vx = c.vy = c.vs = c.vr = 0;
+            paint(c);
+          });
+          hgt.v = hgt.t; hgt.vel = 0;
+          fanRoot.style.height = hgt.v.toFixed(1) + "px";
+          fresh = false;
+          kick();
+        } else { fresh = false; jump(); }
+        return;
+      }
+      kick();
+    }
+
+    // The deck came on screen, left it, or changed width: a fold, a
+    // rotation, the Today view opening over it. Nothing is animated — the
+    // ground moved, the cards did not.
+    function relayout() {
+      var was = W;
+      if (!cards.length) return;
+      if (!fanRoot.clientWidth) { if (was) { reset(); W = 0; } return; }
+      if (mode !== "dock") reset();
+      if (!measure()) return;
+      retarget();
+      placed = true; fresh = false;
+      jump();
+    }
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        if (fanRoot.clientWidth !== W) relayout();
+      }).observe(fanRoot);
+    }
+    window.addEventListener("resize", function () {
+      if (g) return;                       // not out from under a finger
+      relayout();
+    });
+
+    function condense(k) {
+      cond = clamp(k, 0, 1);
+      fanRoot.classList.toggle("squeezed", cond > 0.01);
+      if (!W) return;                      // never condense what could not be measured
+      hgt.t = lerp(fullHeight(), awayHeight(), cond);
+      kick();
+    }
+
+    // The hint, and nothing else: lean the front card over by a share of a
+    // swipe and let it go.
+    function nudge(offset) {
+      if (mode !== "dock" || g) return;
+      swipe = offset ? { dx: offset * W * 0.5 } : null;
+      retarget();
+      kick();
+    }
+
+    // ── Fingers ───────────────────────────────────────────
+    // One gesture surface, and what a touch means is settled by what it
+    // does next: stays put (a tap), goes sideways (change list), goes down
+    // (spread the deck) or up (put it away). Pointer events rather than
+    // click, because a click only arrives after the finger has left and by
+    // then the card should already have moved.
+    var g = null;
+    var SLOP = 7;
+
+    fanRoot.addEventListener("pointerdown", function (e) {
+      if (!e.isPrimary || !W || g) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.target.closest && e.target.closest(".deck-done, .deck-act")) return;
+      var hit = e.target.closest && e.target.closest(".fan-card");
+      g = {
+        id: e.pointerId, target: e.target, open: mode === "open",
+        x0: e.clientX, y0: e.clientY, t0: e.timeStamp,
+        x: e.clientX, y: e.clientY, t: e.timeStamp, vx: 0, vy: 0,
+        axis: "", sx: 0, sy: 0, scroll0: scroll, cond0: cond, spent: false
+      };
+      try { fanRoot.setPointerCapture(e.pointerId); } catch (err) {}
+      // The card gives a little under the finger, before anything is known
+      // about what the finger intends. It is the difference between touching
+      // a thing and touching a picture of one.
+      press = hit ? hit._id : null;
+      if (press !== null) { retarget(); kick(); }
+      cancelFanHint();                      // they are already doing it
+    });
+
+    fanRoot.addEventListener("pointermove", function (e) {
+      if (!g || e.pointerId !== g.id) return;
+      var dt = e.timeStamp - g.t;
+      if (dt > 0) {
+        g.vx = lerp(g.vx, (e.clientX - g.x) / dt * 1000, 0.5);
+        g.vy = lerp(g.vy, (e.clientY - g.y) / dt * 1000, 0.5);
+        g.x = e.clientX; g.y = e.clientY; g.t = e.timeStamp;
+      }
+      var dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+      if (!g.axis) {
+        if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
+        g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        press = null;                       // it is a drag now, not a press
+        // the few pixels spent deciding are not part of the drag, or the
+        // card would lurch by that much the moment the decision is made
+        g.sx = dx; g.sy = dy;
+      }
+      if (g.spent) return;
+
+      if (g.open) {
+        if (g.axis !== "y") return;
+        var raw = g.scroll0 - (dy - g.sy);
+        scroll = raw < 0 ? -rubber(-raw)
+               : raw > scrollMax ? scrollMax + rubber(raw - scrollMax)
+               : raw;
+        cards.forEach(function (c) { c.pin = true; });
+        retarget();
+        kick();
+        return;
+      }
+
+      if (g.axis === "x") {
+        if (cards.length < 2) return;
+        var was = swipe ? Math.abs(swipe.dx) : 0;
+        swipe = { dx: dx - g.sx };
+        var line = W * 0.26;
+        // a tick as the card crosses the point of no return, either way
+        if ((was < line) !== (Math.abs(swipe.dx) < line)) haptic("LIGHT");
+        cards.forEach(function (c) { c.pin = false; });
+        cards[active].pin = true;
+        cards[neighbour(swipe.dx < 0 ? 1 : -1)].pin = true;
+        retarget();
+        kick();
+        return;
+      }
+
+      // Up puts the cards away, and down brings them back. Down from a deck
+      // that is already all there is the other thing down can mean: spread it.
+      var travel = dy - g.sy;
+      if (g.cond0 > 0.01 || travel < 0) {
+        condenseTo(clamp(g.cond0 - travel / 130, 0, 1));
+      } else if (travel > 22) {
+        g.spent = true;
+        open();
+      }
+    });
+
+    function release(e, cancelled) {
+      if (!g || e.pointerId !== g.id) return;
+      var was = g;
+      g = null;
+      try { fanRoot.releasePointerCapture(e.pointerId); } catch (err) {}
+      if (press !== null) { press = null; retarget(); kick(); }
+      var tap = !cancelled && !was.axis && e.timeStamp - was.t0 < 650;
+      // a finger that stopped before it lifted is not throwing anything
+      if (e.timeStamp - was.t > 90) { was.vx = 0; was.vy = 0; }
+
+      if (was.open) {
+        if (mode !== "open") return;        // closed under the finger
+        cards.forEach(function (c) { c.pin = false; });
+        if (was.axis === "y") {
+          if (scroll < -62) { haptic("LIGHT"); close(); return; }
+          scroll = clamp(scroll - was.vy * 0.2, 0, scrollMax);
+          retarget(); kick();
+        } else if (tap) {
+          var card = was.target.closest && was.target.closest(".fan-card");
+          if (card) choose(card._id); else close();
+        }
+        return;
+      }
+
+      if (was.axis === "x") {
+        var dx = swipe ? swipe.dx : 0;
+        cards.forEach(function (c) { c.pin = false; });
+        swipe = null;
+        // far enough, or thrown: a quick flick counts even when it is short
+        var go = Math.abs(dx) > W * 0.26 ||
+                 (Math.abs(was.vx) > 380 && Math.abs(dx) > 12 && (was.vx < 0) === (dx < 0));
+        if (go && cards.length > 1 && !cancelled) {
+          haptic("LIGHT");
+          setMobileTab(PANEL_IDS[neighbour(dx < 0 ? 1 : -1)]);
+        } else { retarget(); kick(); }
+        return;
+      }
+      if (was.axis === "y") {
+        if (was.spent) return;
+        // Settles to one state or the other, never halfway. Having started
+        // to move them at all, you meant to — so the bar is low, from
+        // whichever end you started.
+        var k = condenseAt();
+        condenseTo(was.cond0 > 0.5 ? (k < 0.72 ? 0 : 1) : (k > 0.28 ? 1 : 0));
+        return;
+      }
+      if (!tap) return;
+      if (cond > 0.5) { haptic("LIGHT"); condenseTo(0); }
+      else if (was.target.closest && was.target.closest(".fan-grip")) { haptic("LIGHT"); condenseTo(1); }
+      else open();
+    }
+    fanRoot.addEventListener("pointerup", function (e) { release(e, false); });
+    fanRoot.addEventListener("pointercancel", function (e) { release(e, true); });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && mode === "open") close();
+    });
+
+    return { build: build, show: show, condense: condense, nudge: nudge, open: open, close: close,
+             isOpen: function () { return mode === "open"; } };
+  })();
 
   // Reading a long list on a phone should not happen through a letterbox.
   //
@@ -8331,13 +8945,11 @@
   // the cards in a loop, flapping in and out (at 375x667 the fan measured
   // 1px mid-swing). A finger only ever moves because somebody moved it.
   (function () {
-    var k = 0;            // 0 = cards at full height, 1 = fully condensed
-    var KEEP = 0.34;      // how much of the fan survives at k = 1
-    var RANGE = 130;      // finger travel, in px, from full to condensed
-    var full = 0;         // the fan's natural height, whatever the CSS says
+    var k = 0;            // 0 = the whole deck showing, 1 = put away
+    var RANGE = 130;      // finger travel, in px, from one to the other
 
     // pointer:coarse as well as width: a narrow laptop window shows the
-    // tab row instead of the fan, and has nothing to condense.
+    // tab row instead of the deck, and has nothing to condense.
     function isPhone() {
       return window.matchMedia("(max-width: 720px) and (pointer: coarse)").matches;
     }
@@ -8351,49 +8963,20 @@
       return null;
     }
 
-    // Measured rather than hard-coded: the fan's height is a clamp() of the
-    // viewport, so it differs on every phone and changes when one is
-    // unfolded. Reading it means letting the CSS have it back first.
-    function measure() {
-      var had = fanRoot.style.height;
-      fanRoot.style.height = "";
-      full = fanRoot.getBoundingClientRect().height;
-      if (had) fanRoot.style.height = had;
-    }
-
-    function apply() {
-      if (!full) measure();
-      if (k <= 0.01) {
-        fanRoot.style.height = "";          // back under the CSS's control
-        fanRoot.classList.remove("squeezed");
-        return;
-      }
-      // A measurement of zero means the fan was not on screen to be
-      // measured — above 720px it is display:none and the tab row takes
-      // over. Condensing something to a share of zero pins it at 0px, and
-      // the inline height then survives into a narrow window, where it
-      // reads as the app having lost its cards. Never condense what you
-      // could not measure; hand it back to the CSS instead.
-      if (!full) {
-        fanRoot.style.height = "";
-        fanRoot.classList.remove("squeezed");
-        return;
-      }
-      fanRoot.classList.add("squeezed");
-      // KEEP is a floor as well as a target: whatever k does, a card keeps
-      // enough of itself to be seen and to be tapped.
-      var h = Math.max(Math.round(full * KEEP), Math.round(full - k * full * (1 - KEEP)));
-      fanRoot.style.height = h + "px";
-    }
-
+    // The number is kept here and the deck is told it. What the deck does
+    // with it — how tall the strip is, how the height gets there — is the
+    // deck's business, and it never condenses what it could not measure.
     function setK(next, el) {
       next = Math.max(0, Math.min(1, next));
       // Nothing to buy if the list already fits: condensing the cards to
       // reveal empty space would be movement for its own sake.
       if (next > k && el && el.scrollHeight <= el.clientHeight + 4) return;
-      if (Math.abs(next - k) < 0.015) return;
+      if (next === k) return;
+      // small steps are not worth a layout — but the two ends always are,
+      // or a slow drag could stop a hair short of either
+      if (Math.abs(next - k) < 0.015 && next !== 0 && next !== 1) return;
       k = next;
-      apply();
+      deck.condense(k);
     }
 
     // Lifting a thumb halfway used to leave the cards halfway, which reads
@@ -8404,8 +8987,8 @@
       setK(k >= 0.3 ? 1 : 0);
     }
 
-    // Tapping the open card — see buildFanCards. All or nothing, never a
-    // half state, because a tap carries no distance to be proportional to.
+    // The handle on the open card. All or nothing, never a half state,
+    // because a tap carries no distance to be proportional to.
     //
     // No list is passed, so the "does this list even overflow" guard does
     // not apply: that guard is there to stop a drag moving the cards as a
@@ -8415,10 +8998,9 @@
     toggleFanCondense = function () {
       setK(k > 0.5 ? 0 : 1);
     };
-
-    // A fold, a rotation or a keyboard changes what the CSS clamp resolves
-    // to, so the measurement is thrown away rather than scaled.
-    window.addEventListener("resize", function () { full = 0; apply(); });
+    // The deck's own gestures: a drag up or down on the cards themselves.
+    condenseTo = function (v) { setK(v); };
+    condenseAt = function () { return k; };
 
     panelsRoot.addEventListener("wheel", function (e) {
       if (!isPhone()) return;
@@ -8438,8 +9020,8 @@
       if (!isPhone() || fromY === null) return;
       var el = listFrom(e.target);
       if (!el) return;
-      // Proportional to the travel, so the fan follows the thumb instead of
-      // snapping at a threshold. The CSS transition damps it into a glide.
+      // Proportional to the travel, so the deck follows the thumb instead
+      // of snapping at a threshold. Its spring damps it into a glide.
       setK(fromK + (fromY - e.touches[0].clientY) / RANGE, el);
     }, { passive: true });
 
@@ -8457,8 +9039,8 @@
     }
 
     // Changing list starts you at the top of a different one, so the cards
-    // come back to full height.
-    untuckFan = function () { k = 0; full = 0; apply(); };
+    // come back out.
+    untuckFan = function () { if (k !== 0) { k = 0; deck.condense(0); } };
 
   })();
 
@@ -8468,7 +9050,9 @@
   // visit, the next card is drawn part of the way forward and let go,
   // twice. Motion is the only honest way to teach a gesture; a label would
   // sit there forever describing one.
-  var FAN_HINT_KEY = "dia_todo_fan_hint_v1";
+  // A new key: the deck does more than the fan did, so somebody who was
+  // shown the old hint has not been shown this.
+  var FAN_HINT_KEY = "dia_todo_deck_hint_v1";
   var fanHintTimers = [];
 
   function fanHintSeen() {
@@ -8479,6 +9063,7 @@
     if (!fanHintTimers.length) return;
     fanHintTimers.forEach(clearTimeout);
     fanHintTimers = [];
+    deck.nudge(0);
     var c = fanRoot.querySelector(".fan-hint");
     if (c) c.parentNode.removeChild(c);
   }
@@ -8493,20 +9078,21 @@
     // is not given a still caption as a consolation prize either.
     if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    var caption = el("div", "fan-hint", "swipe to change list");
+    var caption = el("div", "fan-hint", "swipe · or tap for every list");
     fanRoot.appendChild(caption);
 
     // A negative offset is the direction a thumb travels to bring the next
-    // card forward — the same sign the drag handler uses.
+    // card forward — the same sign the drag uses. The front card leans out
+    // of the way, the next one starts up out of the pile, and both are let
+    // go: the springs do the rest.
     var frames = [
-      [0,    function () { caption.classList.add("on"); nudge(-0.36); }],
-      [620,  function () { nudge(0); }],
-      [1180, function () { nudge(-0.36); }],
-      [1800, function () { nudge(0); }],
-      [2250, function () { caption.classList.remove("on"); }],
-      [2700, function () { cancelFanHint(); }]
+      [0,    function () { caption.classList.add("on"); deck.nudge(-0.44); }],
+      [640,  function () { deck.nudge(0); }],
+      [1250, function () { deck.nudge(-0.44); }],
+      [1890, function () { deck.nudge(0); }],
+      [2500, function () { caption.classList.remove("on"); }],
+      [2950, function () { cancelFanHint(); }]
     ];
-    function nudge(offset) { positionFan(activeId, offset); }
     frames.forEach(function (f) {
       fanHintTimers.push(setTimeout(f[1], f[0]));
     });
@@ -8559,34 +9145,34 @@
     return when + " \u00b7 " + soonest.text;
   }
 
-  // signed distance from the front card, wrapped — the fan is a loop
-  function fanDistance(i, at, n) {
-    var d = i - at;
-    if (d > n / 2) d -= n;
-    if (d < -n / 2) d += n;
-    return d;
-  }
-
-  function positionFan(activeId, offset) {
-    var n = PANEL_IDS.length;
-    var at = PANEL_IDS.indexOf(activeId);
-    if (at < 0) at = 0;
-    [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card, i) {
-      var d = fanDistance(i, at, n) + (offset || 0);
-      card.classList.toggle("pos-active", Math.round(d) === 0);
-      card.style.animationDelay = (Math.abs(d) * 70) + "ms";
-      placeFanCard(card, d);
+  // What each card says. The count line is for the card that is face up;
+  // the small number in the corner is for when the deck is spread and only
+  // the top of each card can be seen.
+  function refreshFanText() {
+    [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card) {
+      var line = fanCountText(card._id);
+      var n = panelCount(card._id);
+      var peek = card.querySelector(".fc-peek");
+      card.querySelector(".fc-count").textContent = line;
+      peek.textContent = n;
+      peek.style.display = n ? "" : "none";
+      card.setAttribute("aria-label", PANEL_META[card._id].title + ", " + line);
     });
   }
 
   function renderFan(activeId) {
     var sig = PANEL_IDS.join(",");
-    if (sig !== fanBuilt) { buildFanCards(); fanBuilt = sig; }
-    [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card) {
-      card.setAttribute("aria-label", PANEL_META[card._id].title + ", " + fanCountText(card._id));
-      card.querySelector(".fc-count").textContent = fanCountText(card._id);
-    });
-    positionFan(activeId);
+    var first = fanBuilt === "";
+    if (sig !== fanBuilt) { deck.build(); fanBuilt = sig; }
+    refreshFanText();
+    deck.show(activeId);
+    // Only once the cards have been dealt and have settled is there
+    // anything to demonstrate.
+    if (first) {
+      setTimeout(function () {
+        playFanHint(localStorage.getItem(MTAB_KEY) || PANEL_IDS[0]);
+      }, 1050);
+    }
   }
 
   // Adding or checking something changes a count; mirror it onto the fan
@@ -8597,9 +9183,7 @@
       if (pending) return;
       pending = requestAnimationFrame(function () {
         pending = null;
-        [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card) {
-          card.querySelector(".fc-count").textContent = fanCountText(card._id);
-        });
+        refreshFanText();
       });
     }).observe(panelsRoot, { childList: true, subtree: true, characterData: true });
   })();
@@ -8652,11 +9236,14 @@
     var nt = tintFor("notes", null);
     applyPanelTint(document.querySelector(".panel.notes"), nt || "green", !!nt);
     if (!fanRoot) return;
-    [].forEach.call(fanRoot.children, function (card) {
+    // only the two colours: the light and the grain over them are the
+    // stylesheet's, and stay
+    [].forEach.call(fanRoot.querySelectorAll(".fan-card"), function (card) {
       var meta = PANEL_META[card._id];
       if (!meta) return;
       var c = tint(meta.tint);
-      card.style.backgroundImage = "linear-gradient(140deg," + c.a + "," + c.b + ")";
+      card.style.setProperty("--ca", c.a);
+      card.style.setProperty("--cb", c.b);
     });
   }
 
@@ -8849,78 +9436,14 @@
     if (e.target === this) closeCardPicker();   // tap the dimmed area to dismiss
   });
 
-  // ── Swiping the fan ──────────────────────────────────────
-  // The cards follow your thumb the whole way and snap to whichever one you
-  // let go nearest, so changing list is a drag rather than a gesture you have
-  // to get right. The previous version only fired on touchend, demanded 55px,
-  // and — because every card is a <button> — ignored any swipe that started
-  // on a card at all, which left only the gaps between them.
+  // ── Swiping the list ─────────────────────────────────────
+  // The deck reads its own fingers (see the deck, above). This is the other
+  // place a sideways flick can start: on the list itself.
   (function () {
     var isPhone = function () { return window.matchMedia("(max-width: 720px)").matches; };
-    var active = null, startX = 0, startY = 0, startT = 0;
-    var dx = 0, axis = "", step = 140;
 
-    function stepWidth() {
-      var w = fanRoot.getBoundingClientRect().width;
-      return Math.max(70, w * 0.38);   // how far a thumb moves one card along
-    }
-
-    fanRoot.addEventListener("touchstart", function (e) {
-      if (!isPhone() || e.touches.length !== 1) return;
-      active = localStorage.getItem(MTAB_KEY) || PANEL_IDS[0];
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startT = Date.now();
-      dx = 0; axis = "";
-      step = stepWidth();
-      cancelFanHint();            // they are already doing it
-      fanRoot.classList.add("dragging");
-    }, { passive: true });
-
-    fanRoot.addEventListener("touchmove", function (e) {
-      if (active === null) return;
-      var mx = e.touches[0].clientX - startX;
-      var my = e.touches[0].clientY - startY;
-      // settle which way this drag is going, once, after a few pixels
-      if (!axis && (Math.abs(mx) > 6 || Math.abs(my) > 6)) {
-        axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-        if (axis === "y") { fanRoot.classList.remove("dragging"); active = null; return; }
-      }
-      if (axis !== "x") return;
-      dx = mx;
-      positionFan(active, dx / step);
-    }, { passive: true });
-
-    function release() {
-      if (active === null) return;
-      var moved = dx, elapsed = Date.now() - startT;
-      var from = active;
-      active = null;
-      fanRoot.classList.remove("dragging");
-
-      var shift = Math.round(moved / step);
-      // a quick flick counts even when it is short — waiting for a full
-      // card's travel is what made this feel heavy
-      if (shift === 0 && Math.abs(moved) > 14 && elapsed < 320) {
-        shift = moved < 0 ? -1 : 1;
-      }
-      if (!shift) { positionFan(from); return; }     // spring back
-
-      var n = PANEL_IDS.length;
-      var at = PANEL_IDS.indexOf(from);
-      if (at < 0) at = 0;
-      setMobileTab(PANEL_IDS[((at - shift) % n + n) % n]);
-
-      // a drag that ends on a card must not also register as a tap
-      fanSuppressClick = true;
-      setTimeout(function () { fanSuppressClick = false; }, 0);
-    }
-
-    fanRoot.addEventListener("touchend", release, { passive: true });
-    fanRoot.addEventListener("touchcancel", release, { passive: true });
-
-    // the list below answers a decisive flick too, without the fan's
-    // finger-tracking — you are usually scrolling it, not swiping it
+    // a decisive flick changes list, without the deck's finger-tracking —
+    // you are usually scrolling here, not swiping
     var lx = null, ly = null;
     panelsRoot.addEventListener("touchstart", function (e) {
       if (!isPhone() || e.touches.length !== 1) return;
@@ -10615,6 +11138,9 @@
 
     document.addEventListener("touchstart", function (e) {
       if (refreshing || !atTop()) return;
+      // Down on the cards spreads the deck. Without this, the same pull
+      // would also reload the app out from under it.
+      if (e.target && e.target.closest && e.target.closest("#card-fan")) return;
       startY = e.touches[0].clientY;
       pulling = true;
       indicator.classList.remove("snap");

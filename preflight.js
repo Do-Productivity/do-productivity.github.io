@@ -28,6 +28,10 @@ var vm = require("vm");
 
 var here = __dirname;
 var quiet = process.argv.indexOf("--quiet") !== -1;
+/* bump-build.py runs this BEFORE it stamps, and stamping is what rewrites the
+   policy's hash. So before a stamp the hash is expected to be stale, and
+   failing on it would make the one command that fixes it refuse to run. */
+var preStamp = process.argv.indexOf("--pre-stamp") !== -1;
 var fails = [];
 var warns = [];
 var notes = [];
@@ -233,7 +237,9 @@ else {
   }
   var actual = require("crypto").createHash("sha256")
     .update(code[1], "utf8").digest("base64");
-  if (actual !== named[1]) {
+  if (actual !== named[1] && preStamp) {
+    note("content security policy", "stale, about to be restamped");
+  } else if (actual !== named[1]) {
     fail("the Content-Security-Policy does not match the script",
          "the app would load to a blank page. run: python3 bump-build.py");
   } else {
