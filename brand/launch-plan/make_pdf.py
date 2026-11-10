@@ -19,7 +19,8 @@ from reportlab.platypus import (BaseDocTemplate, Frame, Image, KeepTogether,
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 IMG = os.path.join(HERE, "img")
-OUT = os.path.join(HERE, "Do-launch-plan.pdf")
+# One copy, at the repo root, where LAUNCH-PLAN.md links to it.
+OUT = os.path.abspath(os.path.join(HERE, "..", "..", "Do-launch-plan.pdf"))
 
 PAPER = colors.HexColor("#f7f3e9")
 RUST = colors.HexColor("#c8553d")
@@ -184,15 +185,15 @@ A(Image(os.path.join(IMG, "icon.png"), width=34 * mm, height=34 * mm))
 A(Spacer(1, 12 * mm))
 A(P("Do.", "cover_t"))
 A(Spacer(1, 4 * mm))
-A(P("The to-do app that was designed on a folding phone<br/>"
-    "from the first line of code.", "cover_s"))
+A(P("Your tasks and your meetings on one timeline,<br/>"
+    "on a phone that opens.", "cover_s"))
 A(Spacer(1, 16 * mm))
 A(tbl([
     ["Product", "Do. - iOS, paid once"],
     ["Price", "USD 9.99 worldwide  /  EGP 99 in Egypt"],
     ["Owner", "Ahmed Hassaan"],
-    ["Status", "Running on device, build 2026-11-09-1612"],
-    ["Date", "9 November 2026"],
+    ["Status", "Running on device, build 2026-11-10-1715"],
+    ["Date", "10 November 2026 - revised after the calendar shipped"],
 ], [32 * mm, 95 * mm], head=False))
 A(Spacer(1, 18 * mm))
 A(P("This plan is ordered by the risks that actually bite, not by the work "
@@ -209,19 +210,42 @@ A(P("Do. is not a prototype. It is a working app, installed and running on a "
     "folding iPhone today, built from a single HTML file wrapped in a native "
     "iOS shell. What follows is what exists, not what is planned."))
 
+A(P("What changed since the first draft of this plan", "h2"))
+A(P("The first draft described a to-do app. In the day since, Do. became "
+    "something harder to dismiss - and the change is large enough that it "
+    "moves both the App Review risk in section two and the price argument in "
+    "section five."))
+A(tbl([
+    ["Added", "What it is"],
+    ["A calendar",
+     "A sixth panel, and a real one: day and week views, a strip of the next seven days, the current-time line, tap an empty slot to create"],
+    ["Your actual meetings",
+     "Not only dated tasks - the real events from the real calendar accounts on the phone"],
+    ["Five widgets, up from three",
+     "And now on the LOCK SCREEN as well as the home screen: your next meeting, or your lists, under the clock"],
+], [38 * mm, 104 * mm]))
+A(P("That turns the product from <i>a nicer Reminders</i> into the only place "
+    "your tasks and your meetings sit on the same timeline - which is "
+    "something neither Reminders nor Calendar does, because Apple ships them "
+    "as two separate apps."))
+
 A(P("Working today", "h2"))
 A(tbl([
     ["Capability", "State", "Evidence"],
     ["Task lists, dates, notes, scheduled tasks",
      "Done", "Four lists, natural-language dates, 74 parser tests passing"],
+    ["Calendar: day and week, with the current-time line",
+     "Done", "A sixth panel; tap an empty slot to create"],
+    ["Real meetings from the phone's own accounts",
+     "Done", "EventKit, read-only; plus subscribed links, which work everywhere"],
     ["Natural date entry",
      "Done", "'call mum tomorrow 6pm' sets the date itself"],
     ["Works offline, no account needed",
      "Done", "All storage local; sync is opt-in"],
     ["Local notifications",
      "Done", "Scheduled by iOS, fire with the app closed, verified on the lock screen"],
-    ["Home screen widgets",
-     "Done", "Three WidgetKit widgets reading the app's own storage"],
+    ["Widgets, home screen and lock screen",
+     "Done", "Five WidgetKit widgets reading the app's own App Group storage"],
     ["Folding layout",
      "Done", "Verified at eight widths by an automated harness"],
     ["Installed on device",
@@ -229,6 +253,65 @@ A(tbl([
     ["App Store listing",
      "Not started", "Needs the work in sections 2 and 6"],
 ], [52 * mm, 18 * mm, 72 * mm]))
+A(PageBreak())
+
+A(P("SECTION ONE, CONTINUED", "kicker"))
+A(P("How the calendar gets real events", "h1"))
+A(Spacer(1, 3 * mm))
+A(P("Three routes. The app uses whichever is available, in this order:"))
+A(tbl([
+    ["Route", "Where it works", "What it takes"],
+    ["A subscribed link (ICS)", "Everywhere - Mac, web, phone",
+     "Paste a calendar's address once"],
+    ["EventKit", "iPhone only",
+     "One permission prompt; then every account already set up on the phone - Outlook, iCloud, Gmail - arrives in a single list"],
+    ["Microsoft Graph", "Built, not usable",
+     "Needs an Entra app registration and a company administrator's consent"],
+], [34 * mm, 34 * mm, 74 * mm], small=True))
+A(P("EventKit is the one that matters, and it is worth understanding why it "
+    "is such a good deal. On the web, every calendar provider is its own "
+    "integration: a Microsoft app registration, a Google Cloud project, and "
+    "nothing at all for iCloud, which has no public API. On the phone, iOS "
+    "has already done that work - whatever accounts exist in Settings, "
+    "EventKit hands over behind a single prompt. <b>This is a capability the "
+    "web version structurally cannot have</b>, which makes it both a selling "
+    "point and a Guideline 4.2 argument."))
+
+A(P("Read-only, deliberately", "h3"))
+A(P("EventKit will delete an event as readily as it will read one, and "
+    "deleting a meeting you organise sends cancellation emails to everyone "
+    "on it. A to-do app that can do that by accident is a bad idea however "
+    "carefully it is written. Writing is a decision to be made on purpose, "
+    "not a capability to leave lying around."))
+A(Spacer(1, 2 * mm))
+for x in pic("iphone-calendar.png", 58,
+             "The calendar on an iPhone. Meetings and tasks on one timeline; "
+             "quiet hours compress so the day fits. Invented data."):
+    A(x)
+A(PageBreak())
+
+A(P("SECTION ONE, CONTINUED", "kicker"))
+A(P("Two bugs worth remembering", "h1"))
+A(Spacer(1, 3 * mm))
+A(P("Both were silent, and both are the same shape - iOS accepting something "
+    "and quietly substituting a placeholder rather than failing:"))
+for b in bullets([
+    "<b>No Capacitor plugin was ever registered.</b> Capacitor 7 removed the "
+    "Objective-C runtime scan that used to find plugins automatically. An "
+    "unregistered plugin does not complain; it is simply absent. The widget "
+    "bridge had never once worked. One line printing the list of registered "
+    "plugins found it.",
+    "<b>The lock-screen widgets showed 'Please adopt containerBackground'.</b> "
+    "iOS 17 requires every widget family to declare a background; it had been "
+    "applied only to the home-screen branch. Not a build error - WidgetKit "
+    "swaps in the notice at render time, so it looked fine until it was on a "
+    "real lock screen.",
+]):
+    A(b)
+A(P("The lesson for a paid product: <b>the dangerous failures here are the "
+    "quiet ones.</b> That is what the preflight and the error dot are for, "
+    "and it is why anything new is looked at on real hardware before it is "
+    "called done."))
 
 A(P("The engineering discipline already in place", "h2"))
 A(P("This matters for a paid product, because it is what keeps a one-person "
@@ -239,8 +322,9 @@ for b in bullets([
     "stylesheet is unbalanced, or if the build id disagrees across files.",
     "<b>A browser harness</b> checking layout containment, core flows and "
     "search at every width that matters.",
-    "<b>74 parser tests</b> extracted from the shipping file by marker comment, "
-    "so the tested code is always the shipped code.",
+    "<b>74 date-parser tests and 11 ICS parser checks</b>, extracted from the "
+    "shipping file by marker comment, so the tested code is always the "
+    "shipped code.",
     "<b>An error dot</b> on the device: uncaught errors are recorded and shown, "
     "because the failure mode of this app is silence.",
 ]):
@@ -269,14 +353,20 @@ A(P("which is why the app shows <b>dd/mm/yyyy, --:--</b> instead of an iOS "
     "worse than the native control, so fixing it is not a compliance chore."))
 
 A(P("What counts in our favour", "h3"))
+A(P("<b>This risk has dropped materially since the first draft.</b> The "
+    "calendar and the lock-screen widgets are not decoration here: they are "
+    "two capabilities a website cannot reach at all, which is the exact test "
+    "a 4.2 reviewer applies."))
 A(tbl([
     ["In our favour", "Why it matters"],
     ["The web code is bundled, not fetched from a server",
      "A locally bundled hybrid app is a different thing to a webview pointed at a URL"],
     ["Real local notifications",
      "Scheduled by iOS, fire offline with the app closed - a website cannot do this"],
-    ["Real WidgetKit widgets",
-     "Three of them, reading the app's own App Group storage"],
+    ["EventKit calendar access",
+     "Reads the phone's real calendar accounts - a website cannot do this at all"],
+    ["Five WidgetKit widgets, including the lock screen",
+     "Accessory families under the clock; emphatically not web content"],
     ["Genuine offline behaviour",
      "No browser error page, no spinner, no login that forgets you"],
 ], [58 * mm, 84 * mm]))
@@ -313,12 +403,20 @@ A(P("What you are actually selling", "h1"))
 A(Spacer(1, 3 * mm))
 A(P("Not 'a to-do app'. There are thousands, and Apple gives Reminders away "
     "for nothing."))
-A(P("You are selling the only to-do app designed on a folding iPhone from "
-    "the first line of CSS.", "quote"))
+A(P("Two things now, and they reinforce each other.", "body"))
+A(P("One - the only to-do app designed on a folding iPhone from the first "
+    "line of CSS.", "quote"))
 A(P("That claim is true, it is unusual, and - crucially - it is <b>visual</b>. "
     "It can be demonstrated in fifteen seconds without a word of explanation, "
     "which is what makes it marketable in a way that 'better task management' "
     "never is."))
+A(P("Two - the whole day in one place.", "quote"))
+A(P("Apple ships tasks and meetings as two separate apps and leaves you to "
+    "hold both in your head. Do. puts them on one timeline: the 10:30 design "
+    "review and 'send the budget by four' in the same column, in the order "
+    "they will actually happen. The honest framing for the listing is not 'a "
+    "to-do app with a calendar'. It is <b>the day you actually have, on a "
+    "phone that opens.</b>"))
 
 A(P("Measured on the actual device", "h2"))
 A(tbl([
@@ -332,7 +430,7 @@ A(P("No reload. No separate iPad build. No 'optimised for' asterisk. The "
     "why it survives the hinge. It is verified at 320, 373, 430, 718, 900, "
     "1114, 1280 and 1440 by a harness that runs on every change.", "small"))
 A(Spacer(1, 3 * mm))
-for x in pic("folded.jpg", 52,
+for x in pic("folded-lists.png", 52,
              "Folded, 373 x 603. One list, the card fan above it."):
     A(x)
 A(PageBreak())
@@ -342,12 +440,36 @@ A(P("The unfold", "h1"))
 A(Spacer(1, 3 * mm))
 A(P("This is the campaign. Everything in section seven is about finding the "
     "most beautiful way to film the transition between these two pages."))
-for x in pic("unfolded-867.jpg", 150,
+for x in pic("unfolded-867.png", 150,
              "Unfolded, 867 x 594. The same app, the same instant, three columns."):
     A(x)
 A(Spacer(1, 4 * mm))
-for x in pic("unfolded-1114.jpg", 150,
+for x in pic("unfolded-1114.png", 150,
              "Unfolded wide, 1114 x 594. Scheduled tasks joins as a fourth column."):
+    A(x)
+A(PageBreak())
+
+A(P("SECTION THREE, CONTINUED", "kicker"))
+A(P("The day in one place", "h1"))
+A(Spacer(1, 3 * mm))
+A(P("The same app on a Mac. Quiet hours compress to thin rules and the hours "
+    "with something in them open up, so a whole day fits on one screen "
+    "without the dead space an hour-by-hour grid forces on you. The purple "
+    "blocks are meetings from a linked calendar; the thin coloured marks are "
+    "tasks, in the same column, at the time they are due."))
+A(Spacer(1, 2 * mm))
+for x in pic("mac-calendar.png", 150,
+             "Mac, 1440 x 900. Every name, meeting and task in these "
+             "pictures is invented."):
+    A(x)
+A(Spacer(1, 4 * mm))
+for x in pic("mac-lists.png", 150,
+             "The same window, lists view: four columns with room to breathe."):
+    A(x)
+A(Spacer(1, 4 * mm))
+for x in pic("folded-calendar.png", 50,
+             "And folded, 373 x 603 - the same day, same elastic hours, "
+             "on a screen a third the width."):
     A(x)
 A(PageBreak())
 
@@ -533,23 +655,52 @@ A(PageBreak())
 A(P("SECTION EIGHT", "kicker"))
 A(P("The plan, in order", "h1"))
 A(Spacer(1, 3 * mm))
+
+A(P("First: the App Store is not the only way to share it", "h2"))
+A(P("This matters because it decides what the beta looks like, and because "
+    "one of the two routes costs nothing and works today."))
+A(tbl([
+    ["Route", "Who can get it", "What it costs", "What they do not get"],
+    ["The web link", "Anyone, anywhere, today",
+     "Nothing",
+     "Widgets, lock screen, EventKit, reliable reminders"],
+    ["TestFlight", "10,000 external testers via a public link",
+     "The USD 99 membership",
+     "Nothing - it is the real app"],
+    ["Free Apple ID (today)", "Nobody, in practice",
+     "Nothing",
+     "7-day profiles; the device must be plugged into this Mac"],
+], [30 * mm, 40 * mm, 28 * mm, 44 * mm], small=True))
+A(P("TestFlight is more generous than people assume: a public link you can "
+    "post anywhere, up to ten thousand testers, no device identifiers and no "
+    "cables. The first build of each version gets a light Beta App Review, "
+    "usually about a day; builds last 90 days. You can run a beta of ten "
+    "thousand people without ever shipping a listing."))
+A(P("<b>The two features the price rests on - the widgets and the lock "
+    "screen - cannot be shown any way but TestFlight.</b> That is the "
+    "trigger to enrol.", "body"))
+A(Spacer(1, 3 * mm))
+
+A(P("The phases", "h2"))
 A(tbl([
     ["Phase", "Who", "Time", "What"],
     ["0. Enrol", "You", "1-7 days",
      "Apple Developer Program, ONE Apple ID. Enrol in the Small Business Program the same day. Reserve the app name."],
-    ["1. Native hardening", "Me", "~1 week",
+    ["1. Rename to Do.", "Me", "~1 hour",
+     "DO THIS FIRST. The app is still called 'My To Do List' on the home screen and in the widget gallery while everything inside says Do. Every screenshot and every frame of video will show that name."],
+    ["2. Native hardening", "Me", "~1 week",
      "Items 1-4 from section two, each behind the existing NATIVE guard so the web version is untouched."],
-    ["2. The fold, deliberately", "Me", "~2 days",
+    ["3. The fold, deliberately", "Me", "~2 days",
      "The layout already adapts; make it perform. Tune the transition, make state survive the hinge, test half-open. This is the footage."],
-    ["3. Sync on CloudKit", "Me", "3-4 days",
+    ["4. Sync on CloudKit", "Me", "3-4 days",
      "Removes the only recurring infrastructure cost and improves the privacy story. Optional for v1."],
-    ["4. Beta", "Both", "~1 week",
+    ["5. Beta", "Both", "~1 week",
      "TestFlight, 10-20 people, at least three on folding hardware. Watch where they stop."],
-    ["5. Store assets", "Both", "~3 days",
+    ["6. Store assets", "Both", "~3 days",
      "Screenshots, preview videos, description, keywords, privacy label."],
-    ["6. Submit", "Me", "1-3 days review",
+    ["7. Submit", "Me", "1-3 days review",
      "With review notes explaining the native surface explicitly."],
-    ["7. Launch and film", "Both", "ongoing", "Section nine."],
+    ["8. Launch and film", "Both", "ongoing", "Section nine."],
 ], [30 * mm, 14 * mm, 20 * mm, 78 * mm], small=True))
 A(Spacer(1, 3 * mm))
 A(P("<b>Realistic first submission: four to six weeks from the day you "
@@ -577,21 +728,23 @@ A(tbl([
     ["#", "Shot", "Note"],
     ["1", "Black. A folded phone, screen off, on a paper-coloured surface.",
      "Match #f7f3e9. The brand is a colour before it is a logo"],
-    ["2", "A thumb wakes it. One list. A task gets ticked.",
+    ["2", "A thumb wakes it. The LOCK SCREEN already says what is next.",
+     "The widget earns its place in the first five seconds"],
+    ["3", "Open. One list. A task gets ticked.",
      "Real hands, real speed. Never speed up the footage"],
-    ["3", "Push the list up - the card fan tucks away, the list fills the phone.",
+    ["4", "Swipe to the calendar. The morning's meetings are already there.",
+     "The 'wait, it does that?' beat - and what justifies the price"],
+    ["5", "Push the list up - the card fan tucks away, the list fills the phone.",
      "The detail that says somebody thought about this"],
-    ["4", "THE UNFOLD. One column becomes three.",
+    ["6", "THE UNFOLD. One column becomes three.",
      "ONE CONTINUOUS TAKE. A cut is what makes viewers assume you hid a reload"],
-    ["5", "Hold on three columns. Drag a task between lists.", ""],
-    ["6", "Fold it shut mid-task. Open again - exactly where you were.",
+    ["7", "Fold it shut mid-task. Open again - exactly where you were.",
      "Proof it is one app, not two"],
-    ["7", "Lock screen. A reminder arrives.",
-     "'It tells you. It doesn't wait to be checked'"],
     ["8", "Home screen, the widget, the icon. Title card.", ""],
 ], [8 * mm, 66 * mm, 68 * mm], small=True))
 A(Spacer(1, 2 * mm))
-A(P("<b>Shot 4 is the whole film. Budget half your shooting time for it.</b>"))
+A(P("<b>Shot 6 is the whole film. Budget half your shooting time for it.</b> "
+    "Shot 4 is the one that changed since the last draft."))
 for b in bullets([
     "<b>Voice:</b> none, or one line at the end. The typography is the brand. "
     "Let the screen talk.",
@@ -610,8 +763,8 @@ A(P("A different discipline: no hands, no voiceover, autoplay muted, and the "
 A(tbl([
     ["#", "Subject", "Length"],
     ["1", "The fold. Folded, unfolded, three columns. This is the one.", "15s"],
-    ["2", "Capture speed. Type 'call mum tomorrow 6pm'; the date sets itself.", "20s"],
-    ["3", "It tells you. Lock screen reminder, then the home screen widget.", "20s"],
+    ["2", "The day. Meetings and tasks on one timeline, the week strip, tap an empty slot to add.", "20s"],
+    ["3", "It tells you. The lock screen widget, then a reminder arriving.", "20s"],
 ], [8 * mm, 108 * mm, 18 * mm], small=True))
 
 A(P("C. Short form - 7 to 15 seconds", "h2"))
@@ -620,6 +773,8 @@ A(P("TikTok, Reels, Shorts. One idea each, hook in the first half second, "
 for b in bullets([
     "<i>'Your to-do app wasn't made for this phone. Mine was.'</i> then the unfold.",
     "<i>'One list. Unfold. Three.'</i> Nothing else.",
+    "<i>'My tasks and my meetings, same screen.'</i> The calendar, scrolling "
+    "one day.",
     "<i>'I wrote this for myself in a single HTML file.'</i> then the unfold. "
     "The builder story - this is the one developers share.",
     "<i>'Watch what happens when I close it mid-task.'</i> Fold, open, still there.",
@@ -635,13 +790,14 @@ A(P("The store listing", "h1"))
 A(Spacer(1, 3 * mm))
 A(tbl([
     ["Element", "Guidance"],
-    ["Name", "'Do.' as the mark, with a qualifier for search: 'Do. - Lists that fold'. Check availability before printing anything."],
+    ["Name", "'Do.' as the mark, with a qualifier for search: 'Do. - Lists that fold'. NOTE: the app is still literally named 'My To Do List' today. Rename before any asset is made. Check availability before printing anything."],
     ["Subtitle (30 chars)", "The fold, or the speed. Not both."],
-    ["Keywords", "fold, folding, todo, tasks, reminders, widget, offline, privacy, notes"],
+    ["Keywords", "fold, folding, todo, tasks, calendar, agenda, reminders, widget, lock screen, offline, privacy"],
     ["Screenshot 1", "Three columns on the unfolded screen. It is the only screenshot in the category that looks like that, so it must be first."],
-    ["Screenshots 2-5", "Folded list, the reminder on the lock screen, the widget, natural date entry."],
+    ["Screenshot 2", "The calendar: meetings and tasks on one timeline. This is the feature people pay for."],
+    ["Screenshots 3-5", "The lock screen widget under the clock, the folded list, natural date entry."],
     ["Description", "First two lines are all most people read. Lead with the fold."],
-    ["Privacy label", "A genuine advantage: nothing leaves the device unless you turn sync on, no account required, no analytics. Say so prominently."],
+    ["Privacy label", "Still an advantage, but no longer trivial: the app now asks for calendar access. Declare calendar data as read on device, never transmitted, NOT linked to the user and NOT used for tracking - all true. Nothing else leaves the device unless sync is on; no account; no analytics."],
     ["Review notes", "Explicitly list the native surface: notifications, widgets, App Intents, Spotlight, share extension. Make the reviewer's job easy."],
 ], [30 * mm, 112 * mm], small=True))
 
@@ -668,9 +824,11 @@ A(P("Risks, and what I could not verify", "h1"))
 A(Spacer(1, 3 * mm))
 A(tbl([
     ["Risk", "Severity", "What reduces it"],
-    ["Rejected under Guideline 4.2 as a repackaged website", "High",
-     "Section two, items 1-4, and explicit review notes"],
-    ["USD 9.99 does not convert against free Reminders", "High",
+    ["Rejected under Guideline 4.2 as a repackaged website", "Medium",
+     "Was High. EventKit and the lock-screen widgets are both things a website cannot do. Still needs section two, items 1-4, and explicit review notes"],
+    ["Calendar permission invites a reviewer's question", "Medium",
+     "The answer is good - it shows your meetings beside your tasks - but it must be visibly true in the first screen after the prompt, or it reads as data collection"],
+    ["USD 9.99 does not convert against free Reminders", "Medium",
      "Craft in the first three seconds; the fold as a reason to look"],
     ["One-time price funds no future development", "Medium",
      "Accepted deliberately. Revisit with a paid major version, not a subscription"],
@@ -699,6 +857,8 @@ for b in bullets([
     "<b>Commission rates may move.</b> There is live litigation that could "
     "change App Store rates. 15% under the Small Business Program is what is "
     "documented today.",
+    "<b>TestFlight builds expire after 90 days</b>, so a long beta needs "
+    "re-uploads. Plan the beta as weeks, not months.",
     "<b>Review outcomes are never certain.</b> Section two reduces the risk. "
     "It cannot eliminate it.",
 ]):
@@ -714,18 +874,21 @@ A(tbl([
     ["1", "You",
      "Enrol in the Apple Developer Program on ONE Apple ID, and enrol in the Small Business Program in App Store Connect the same day. Reserve the app name while you are there. This also kills the 7-day expiry immediately."],
     ["2", "Me",
-     "Replace the web date input with a native picker, and add App Intents. That is the one visible flaw and the strongest native signal, in that order."],
+     "Rename the app to Do., then replace the web date input with a native picker. The name has to be right before any asset exists; the picker is the one visible flaw."],
     ["3", "Both",
      "Shoot the unfold once, roughly, on a phone, before any polish. If fifteen seconds of that does not make someone say 'wait, do that again', the positioning is wrong - and we would rather learn it in week one than week six."],
 ], [8 * mm, 16 * mm, 118 * mm]))
 A(Spacer(1, 12 * mm))
-A(P("The product is real, it runs, and the thing that makes it unusual is "
-    "already built and already verified. What stands between here and a "
-    "listing is about three weeks of native surface, one very good fifteen "
-    "second clip, and USD 99.", "quote"))
+A(P("The product is real, it runs, and the two things that make it unusual "
+    "- the fold, and your whole day on one timeline - are already built and "
+    "already verified on hardware. What stands between here and a listing is "
+    "about three weeks of native surface, one very good fifteen second clip, "
+    "and USD 99.", "quote"))
 A(Spacer(1, 10 * mm))
-A(P("Prepared 9 November 2026. Figures marked unverified should be checked "
-    "in App Store Connect before anything depends on them.", "small"))
+A(P("Prepared 9 November 2026, revised 10 November 2026 after the calendar "
+    "and the lock-screen widgets shipped. Every task, meeting and name in the "
+    "screenshots is invented. Figures marked unverified should be checked in "
+    "App Store Connect before anything depends on them.", "small"))
 
 doc = BaseDocTemplate(OUT, pagesize=A4,
                       leftMargin=M, rightMargin=M,
