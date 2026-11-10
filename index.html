@@ -4724,7 +4724,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1528";
+  var BUILD = "2026-11-10-1531";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5777,7 +5777,9 @@
   function msEventsFor(dayStart) {
     var all = msEvents[dayKey(dayStart)] || [];
     return all.filter(function (ev) {
-      return !isOwnEcho(ev.subject, ev.calendar || ev.where);
+      if (isOwnEcho(ev.subject, ev.calendar || ev.where)) return false;
+      if (isCancelled(ev.subject)) return false;
+      return true;
     });
   }
 
@@ -5795,6 +5797,36 @@
     if (/^to do:\s/i.test(String(subject || ""))) return true;
     if (/my\s*:?\s*to\s*do\s*list/i.test(String(calendarName || ""))) return true;
     return false;
+  }
+
+  // Exchange leaves a cancelled meeting on the calendar and renames it
+  // rather than removing it, so the slot still reads as busy in Outlook.
+  // EventKit reports it as confirmed, because as far as the store is
+  // concerned it is just an event with an unusual title. A day that shows
+  // both "mylo Executive sync" and "Canceled: mylo Executive sync" at the
+  // same hour is telling you the opposite of the truth.
+  function isCancelled(subject) {
+    return /^cancell?ed:\s/i.test(String(subject || ""));
+  }
+
+  // The same meeting can sit in more than one calendar on one device — a
+  // work account added twice, a shared calendar also subscribed to
+  // personally — and EventKit answers once per calendar, honestly. Three
+  // copies of "RE: Mylo Card Envelope" at 11am is three calendars
+  // agreeing, not three meetings.
+  //
+  // Identity is the title and the exact span. Two genuinely different
+  // meetings with the same name at the same minute for the same length
+  // would collapse into one, which is a thing that does not happen.
+  function dedupeEvents(list) {
+    var seen = {};
+    return list.filter(function (it) {
+      if (it.kind !== "event") return true;
+      var key = String(it.text || "").trim().toLowerCase() + "|" + it.start + "|" + it.end;
+      if (seen[key]) return false;
+      seen[key] = 1;
+      return true;
+    });
   }
 
   // Why the meetings are or are not there. Swallowing this was a mistake:
@@ -6664,6 +6696,7 @@
         imported.events.forEach(function (ev) {
           if (ev.allDay) return;
           if (isOwnEcho(ev.summary, imported.name)) return;
+          if (isCancelled(ev.summary)) return;
           icsExpand(ev, dayStart, dayEnd).forEach(function (ts) {
             var span = (ev.end || ev.start) - ev.start;
             out.push({ kind: "event", text: ev.summary || "(no title)",
@@ -6687,7 +6720,9 @@
                    tint: "violet", ev: ev });
       });
       out.sort(function (a, b) { return (a.start - b.start) || (a.end - b.end); });
-      return out;
+      // Last, and over everything: the sources are independent and can each
+      // hold the same meeting.
+      return dedupeEvents(out);
     }
 
     // Which hours to draw. A working day by default, stretched to cover
