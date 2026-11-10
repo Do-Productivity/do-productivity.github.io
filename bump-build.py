@@ -10,7 +10,7 @@ letting it linger.
 """
 import os
 import shutil
-import datetime, json, pathlib, re, subprocess, sys
+import base64, datetime, hashlib, json, pathlib, re, subprocess, sys
 
 here = pathlib.Path(__file__).parent
 
@@ -43,5 +43,25 @@ for name in ("index.html", "sw.js"):
         raise SystemExit(f"BUILD constant not found in {name}")
     f.write_text(text)
 
+
+# The Content-Security-Policy names the inline script by hash, so nothing else
+# can execute in this page - and the script just changed, because the build id
+# lives inside it. Recompute the hash now, last, or the app ships with a policy
+# that forbids its own code and every device loads a blank page at once.
+#
+# The bytes hashed must be exactly what sits between the script tags: no
+# trailing newline of our own, no re-encoding. The browser hashes the raw text.
+index = here / "index.html"
+html = index.read_text()
+m = re.search(r"<script>(.*?)</script>", html, re.S)
+if not m:
+    raise SystemExit("no inline <script> found in index.html")
+digest = base64.b64encode(hashlib.sha256(m.group(1).encode("utf-8")).digest()).decode()
+html, n = re.subn(r"'sha256-[^']*'", f"'sha256-{digest}'", html, count=1)
+if n == 0:
+    raise SystemExit("no Content-Security-Policy script hash to update in index.html")
+index.write_text(html)
+
 (here / "version.json").write_text(json.dumps({"build": build}) + "\n")
 print("stamped build", build)
+print("csp script hash sha256-" + digest[:16] + "...")

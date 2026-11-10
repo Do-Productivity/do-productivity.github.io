@@ -213,6 +213,34 @@ else {
   }
 })();
 
+/* ── 8. the policy still matches the code it is protecting ─────────────── */
+/* The Content-Security-Policy names the inline script by hash. If the two
+   drift apart the browser refuses to run the app at all - not a subtle bug,
+   a blank page on every device the moment it updates. bump-build.py rewrites
+   the hash after it stamps the build id; this is the check that it did. */
+(function () {
+  var policy = html.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/);
+  if (!policy) {
+    warn("no Content-Security-Policy", "the page will run any script injected into it");
+    return;
+  }
+  var named = policy[0].match(/'sha256-([A-Za-z0-9+/=]+)'/);
+  var code = html.match(/<script>([\s\S]*?)<\/script>/);
+  if (!named || !code) {
+    fail("the Content-Security-Policy has no script hash",
+         "run: python3 bump-build.py");
+    return;
+  }
+  var actual = require("crypto").createHash("sha256")
+    .update(code[1], "utf8").digest("base64");
+  if (actual !== named[1]) {
+    fail("the Content-Security-Policy does not match the script",
+         "the app would load to a blank page. run: python3 bump-build.py");
+  } else {
+    note("content security policy", "hash matches the inline script");
+  }
+})();
+
 var kb = Math.round(html.length / 1024);
 note("index.html", kb + " KB");
 if (kb > 900) warn("index.html is getting large", kb + " KB");
