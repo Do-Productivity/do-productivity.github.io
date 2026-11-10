@@ -892,6 +892,21 @@
     -webkit-tap-highlight-color: transparent;
   }
   .cal-source.bad { color: #fff; background: var(--red); }
+  /* An offer, not a warning: this is the first thing a new person sees in
+     the Calendar and it should read as something worth tapping. */
+  .cal-source.invite {
+    color: #fff; background: var(--tint, #358a87); font-weight: 700;
+  }
+  .cal-callist { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
+  .cal-calrow {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--sans); font-size: 11.5px; color: var(--ink);
+    padding: 3px 0; cursor: pointer;
+  }
+  .cal-calbox { flex: none; width: 15px; height: 15px; accent-color: var(--tint, #358a87); }
+  .cal-caldot { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+  .cal-calname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-calacct { flex: none; font-size: 9px; color: var(--ink-faint); }
 
   /* The opened event. Wide enough to read on a phone, capped so it does
      not become a column of two words on an unfolded screen. */
@@ -4724,7 +4739,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1531";
+  var BUILD = "2026-11-10-1538";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5779,6 +5794,7 @@
     return all.filter(function (ev) {
       if (isOwnEcho(ev.subject, ev.calendar || ev.where)) return false;
       if (isCancelled(ev.subject)) return false;
+      if (!calendarAllowed(ev.calendar)) return false;
       return true;
     });
   }
@@ -6249,6 +6265,29 @@
             window.Capacitor.Plugins.CalendarBridge) || null;
   }
 
+  // Which calendars are allowed on screen. Everyone has more calendars
+  // than they want to look at — a work account added twice, birthdays,
+  // a shared family one, holidays in three countries — and an app that
+  // shows all of them shows noise. Every calendar app offers this list;
+  // not having it was how three copies of one meeting reached the screen.
+  //
+  // Stored as the ones switched OFF, so a calendar added later is visible
+  // by default rather than silently missing.
+  var CAL_OFF_KEY = "dia_todo_caloff_v1";
+  function calendarsOff() {
+    try {
+      var v = JSON.parse(localStorage.getItem(CAL_OFF_KEY) || "[]");
+      return v.slice ? v : [];
+    } catch (e) { return []; }
+  }
+  function setCalendarsOff(list) {
+    try { localStorage.setItem(CAL_OFF_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function calendarAllowed(name) {
+    if (!name) return true;
+    return calendarsOff().indexOf(name) === -1;
+  }
+
   var nativeAsked = false;
   function ensureNativeEvents(fromTs, days, done) {
     var cb = calBridge();
@@ -6449,12 +6488,33 @@
     // Where the meetings come from, and why they are missing when they are.
     var source = el("button", "cal-source", "");
     source.addEventListener("click", function () {
-      // No source at all: the thing to offer is the one that works
-      // everywhere and needs nobody's permission.
-      if (!anyCalendarSource() || icsFeeds().length) {
+      // On the phone, before permission, the tap IS the request.
+      var cb = calBridge();
+      if (cb && !nativeAsked && localStorage.getItem(CAL_PERM_KEY) !== "1") {
+        cb.access().then(function (res) {
+          nativeAsked = true;
+          if (res && res.granted) {
+            try { localStorage.setItem(CAL_PERM_KEY, "1"); } catch (e) {}
+            for (var k in msEventsAt) {
+              if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k];
+            }
+            flashStatus("Reading your calendars\u2026");
+          } else {
+            msEvNote("no calendar permission");
+          }
+          render();
+        }).catch(function () { msEvNote("no calendar permission"); render(); });
+        return;
+      }
+      // In the app this box is the whole calendar settings panel — which
+      // calendars show, plus links and files. On the web it is the way to
+      // add a source at all. Either way it is what this line opens; the
+      // only thing that sends you to Sync is a half-finished Outlook
+      // connection, which exists on the web alone.
+      if (cb || !anyCalendarSource() || icsFeeds().length) {
         var open = feedBox.style.display === "none";
         feedBox.style.display = open ? "" : "none";
-        if (open) { paintFeeds(); paintImport(); }
+        if (open) { paintFeeds(); paintImport(); paintCalendars(); }
         return;
       }
       var btn = document.getElementById("sync-btn");
@@ -6477,6 +6537,9 @@
     // been told the calendar is showing half their day.
     var feedBox = el("div", "cal-feedbox");
     feedBox.style.display = "none";
+    var calList = el("div", "cal-callist");
+    calList.style.display = "none";
+    feedBox.appendChild(calList);
     var feedList = el("div", "cal-feedlist");
     feedBox.appendChild(feedList);
     var feedRow = el("div", "cal-feedrow");
@@ -6564,6 +6627,42 @@
       "calendar as a URL. The link is a secret \u2014 it stays on this device.";
     feedBox.appendChild(feedHint);
     panel.appendChild(feedBox);
+
+    // The tick list of calendars on this phone. Grouped by the account
+    // they came from, because "Calendar" means nothing on its own when
+    // three accounts each have one.
+    function paintCalendars() {
+      var cb = calBridge();
+      if (!cb || !cb.calendars) return;
+      cb.calendars().then(function (res) {
+        if (!res || !res.granted || !res.calendars || !res.calendars.length) return;
+        calList.textContent = "";
+        calList.appendChild(el("div", "cal-feedhint", "Calendars on this phone"));
+        var off = calendarsOff();
+        res.calendars.forEach(function (c) {
+          var row = el("label", "cal-calrow");
+          var box = el("input", "cal-calbox");
+          box.type = "checkbox";
+          box.checked = off.indexOf(c.title) === -1;
+          box.addEventListener("change", function () {
+            var now = calendarsOff();
+            var at = now.indexOf(c.title);
+            if (box.checked) { if (at !== -1) now.splice(at, 1); }
+            else if (at === -1) now.push(c.title);
+            setCalendarsOff(now);
+            render();
+          });
+          var dot = el("span", "cal-caldot");
+          dot.style.background = c.colour || "#735a99";
+          row.appendChild(box);
+          row.appendChild(dot);
+          row.appendChild(el("span", "cal-calname", c.title));
+          if (c.account) row.appendChild(el("span", "cal-calacct", c.account));
+          calList.appendChild(row);
+        });
+        calList.style.display = "";
+      }).catch(function () { /* no list is better than a broken one */ });
+    }
 
     function paintFeeds() {
       feedList.textContent = "";
@@ -7037,6 +7136,16 @@
       // iOS Settings rather than an app registration. Giving someone the
       // wrong instruction is worse than giving them none.
       if (calBridge()) {
+        // Before the first Allow there is nothing to show and no reason
+        // given. A permission sheet that appears out of nowhere gets
+        // declined, and a declined calendar is a blank app with no
+        // explanation — so the offer is made in words first.
+        if (!nativeAsked && localStorage.getItem(CAL_PERM_KEY) !== "1") {
+          source.textContent = "Show your real day \u2014 tap to let Do. read this phone's calendars";
+          source.className = "cal-source invite";
+          source.style.display = "";
+          return;
+        }
         if (msEvState === "no calendar permission") {
           source.textContent = "Calendar access is off \u2014 Settings \u203a Do. \u203a Calendars";
           source.className = "cal-source bad";
@@ -7049,7 +7158,16 @@
           source.style.display = "";
           return;
         }
-        source.style.display = "none";
+        // Working — but not silent. Hiding this was tidy right up to the
+        // moment somebody wanted to switch a calendar off, because it is
+        // the only door to that list. Quiet and present beats tidy and
+        // unreachable.
+        var off = calendarsOff().length;
+        source.textContent = off
+          ? "Calendars \u2014 " + off + " hidden, tap to choose"
+          : "Calendars \u2014 tap to choose which ones show";
+        source.className = "cal-source";
+        source.style.display = "";
         return;
       }
       if (!msConnected()) {
