@@ -113,6 +113,32 @@ public class CalendarBridgePlugin: CAPPlugin, CAPBridgedPlugin {
                 "calendar": ev.calendar?.title ?? "",
                 "account": ev.calendar?.source?.title ?? "",
                 "colour": Self.hex(ev.calendar?.cgColor),
+                // Everything a person opens an event to find out. Notes can
+                // be long and carry the dial-in details, so they are not
+                // trimmed here — the view decides how much to show.
+                "notes": ev.notes ?? "",
+                "url": ev.url?.absoluteString ?? "",
+                "organiser": ev.organizer?.name ?? "",
+                "attendees": (ev.attendees ?? []).compactMap { who -> [String: Any]? in
+                    let name = who.name ?? who.url.absoluteString
+                        .replacingOccurrences(of: "mailto:", with: "")
+                    if name.isEmpty { return nil }
+                    return [
+                        "name": name,
+                        "status": Self.status(who.participantStatus),
+                        "me": who.isCurrentUser
+                    ]
+                },
+                // Whether iOS will let this be changed at all: a meeting
+                // somebody else organises in a read-only subscribed
+                // calendar cannot be, and offering to edit it would be a
+                // promise the app cannot keep.
+                "editable": ev.calendar?.allowsContentModifications ?? false,
+                "mine": ev.organizer?.isCurrentUser ?? false,
+                // Seconds since Apple's 2001 reference date: what the
+                // calshow: URL scheme wants in order to open the Calendar
+                // app on this event's day.
+                "appleTime": (ev.startDate ?? Date()).timeIntervalSinceReferenceDate,
                 // A declined invitation is not your day. It is still
                 // reported, so the web layer can decide, rather than being
                 // dropped here where that decision would be invisible.
@@ -123,6 +149,17 @@ public class CalendarBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // MARK: - Helpers
+
+    /// The words a person recognises, not the enum.
+    private static func status(_ s: EKParticipantStatus) -> String {
+        switch s {
+        case .accepted:  return "accepted"
+        case .declined:  return "declined"
+        case .tentative: return "maybe"
+        case .pending:   return "no reply"
+        default:         return ""
+        }
+    }
 
     /// EventKit hands out a CGColor; the web layer wants "#rrggbb".
     private static func hex(_ cg: CGColor?) -> String {

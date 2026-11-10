@@ -872,6 +872,49 @@
   }
   .cal-source.bad { color: #fff; background: var(--red); }
 
+  /* The opened event. Wide enough to read on a phone, capped so it does
+     not become a column of two words on an unfolded screen. */
+  .ev-modal {
+    max-width: 440px; width: calc(100% - 32px);
+    max-height: 86vh; overflow-y: auto;
+  }
+  .ev-title {
+    font-family: var(--serif); font-size: 21px; line-height: 1.25;
+    font-weight: 700; color: var(--ink); margin: 0 0 4px;
+  }
+  .ev-when {
+    font-family: var(--sans); font-size: 12px; color: var(--violet, #735a99);
+    font-weight: 700; margin-bottom: 12px;
+  }
+  .ev-row { display: flex; gap: 10px; margin-bottom: 9px; align-items: flex-start; }
+  .ev-label {
+    flex: none; width: 66px;
+    font-family: var(--sans); font-size: 9px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--ink-faint);
+    padding-top: 2px;
+  }
+  .ev-value {
+    flex: 1; min-width: 0;
+    font-family: var(--sans); font-size: 13px; line-height: 1.45; color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .ev-who {
+    display: inline-block;
+    font-size: 11.5px; color: var(--ink-soft);
+    background: rgba(43, 38, 32, .06);
+    border-radius: 20px; padding: 2px 9px; margin: 0 4px 4px 0;
+  }
+  .ev-who.out { text-decoration: line-through; opacity: .6; }
+  .ev-notes {
+    font-family: var(--sans); font-size: 12.5px; line-height: 1.5;
+    color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 8px; padding: 9px 11px;
+    max-height: 230px; overflow-y: auto; margin-top: 4px;
+  }
+  .ev-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+  .ev-actions .modal-btn { flex: 1; min-width: 110px; }
+
   .cal-feedbox {
     background: var(--surface, #fff);
     border: 1px solid var(--rule);
@@ -4645,7 +4688,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1510";
+  var BUILD = "2026-11-10-1515";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5704,6 +5747,116 @@
     msEvListeners.forEach(function (fn) { fn(); });
   }
 
+  // ── An event, opened ─────────────────────────────────────
+  // A meeting squeezed into a column is "RE..." and a colour. Everything
+  // that makes it a meeting — who called it, where it is, the dial-in in
+  // the notes, who else said yes — only exists if there is somewhere to
+  // read it. This is that somewhere.
+  //
+  // Editing stays with iOS. Do. reads calendars; the Calendar app owns
+  // them, knows about invitations and replies and recurrence exceptions,
+  // and is one tap away. Rebuilding that badly inside a to-do app would be
+  // the wrong kind of ambition.
+  function showEvent(ev) {
+    if (!ev) return;
+    var back = el("div", "modal-overlay ev-overlay");
+    var card = el("div", "modal ev-modal");
+
+    card.appendChild(el("h2", "ev-title", ev.subject || "(no title)"));
+
+    var when = ev.allDay
+      ? "All day"
+      : evClock(ev.start) + " \u2013 " + evClock(ev.end);
+    var day = new Date(ev.start).toLocaleDateString(undefined,
+      { weekday: "long", day: "numeric", month: "long" });
+    card.appendChild(el("div", "ev-when", day + "  \u00b7  " + when));
+
+    function row(label, value) {
+      if (!value) return;
+      var r = el("div", "ev-row");
+      r.appendChild(el("span", "ev-label", label));
+      r.appendChild(el("span", "ev-value", value));
+      card.appendChild(r);
+    }
+    row("Where", ev.where);
+    row("Calendar", [ev.calendar, ev.account].filter(Boolean).join("  \u00b7  "));
+    row("Called by", ev.organiser);
+
+    if (ev.attendees && ev.attendees.length) {
+      var who = el("div", "ev-row");
+      who.appendChild(el("span", "ev-label", "Who"));
+      var list = el("span", "ev-value");
+      ev.attendees.slice(0, 12).forEach(function (a) {
+        var tag = el("span", "ev-who" + (a.status === "declined" ? " out" : ""),
+          a.name + (a.status && a.status !== "accepted" ? " (" + a.status + ")" : ""));
+        list.appendChild(tag);
+      });
+      if (ev.attendees.length > 12) {
+        list.appendChild(el("span", "ev-who", "+" + (ev.attendees.length - 12) + " more"));
+      }
+      who.appendChild(list);
+      card.appendChild(who);
+    }
+
+    if (ev.notes) {
+      var n = el("div", "ev-notes");
+      // Meeting notes are where the dial-in link lives, so the text is kept
+      // whole rather than trimmed, and it scrolls if it is long.
+      n.textContent = ev.notes;
+      card.appendChild(el("div", "ev-label", "Notes"));
+      card.appendChild(n);
+    }
+
+    var actions = el("div", "ev-actions");
+    // calshow: takes seconds since Apple's 2001 reference date and opens
+    // the Calendar app on that day. It is the only public way in; there is
+    // no URL that opens one specific event.
+    if (ev.appleTime) {
+      var open = el("button", "modal-btn primary", "Open in Calendar");
+      open.addEventListener("click", function () {
+        window.location.href = "calshow:" + Math.round(ev.appleTime);
+      });
+      actions.appendChild(open);
+    }
+    if (ev.url) {
+      var join = el("button", "modal-btn", "Open the link");
+      join.addEventListener("click", function () { window.open(ev.url, "_blank"); });
+      actions.appendChild(join);
+    }
+    var close = el("button", "modal-btn", "Close");
+    close.addEventListener("click", function () { back.remove(); });
+    actions.appendChild(close);
+    card.appendChild(actions);
+
+    if (!ev.editable) {
+      card.appendChild(el("p", "modal-hint",
+        "This calendar is read-only on this device, so it can be read here but changed only where it lives."));
+    }
+
+    back.appendChild(card);
+    back.addEventListener("click", function (e) { if (e.target === back) back.remove(); });
+    document.body.appendChild(back);
+    // .modal-overlay is display:none until it is told to show, which is how
+    // every other modal here works. Appending one and expecting it to
+    // appear produces a sheet that exists and cannot be seen.
+    back.classList.add("show");
+    // Escape closes it, as it does everywhere else.
+    var onKey = function (e) {
+      if (e.key !== "Escape") return;
+      back.remove();
+      document.removeEventListener("keydown", onKey);
+    };
+    document.addEventListener("keydown", onKey);
+  }
+
+  function evClock(ts) {
+    var d = new Date(ts);
+    var h = d.getHours(), m = d.getMinutes();
+    var ampm = h < 12 ? "am" : "pm";
+    var h12 = h % 12 === 0 ? 12 : h % 12;
+    return h12 + (m ? ":" + (m < 10 ? "0" + m : m) : "") + ampm;
+  }
+
   // ── Calendars by link (.ics) ─────────────────────────────
   // The way in that asks nobody's permission. Outlook, Google and iCloud
   // can all publish a calendar as a secret URL, which needs no app
@@ -6000,8 +6153,16 @@
           subject: ev.title || "(no title)",
           start: ev.start, end: ev.end,
           allDay: !!ev.allDay,
-          where: ev.where || ev.calendar || "",
-          colour: ev.colour || ""
+          where: ev.where || "",
+          colour: ev.colour || "",
+          calendar: ev.calendar || "",
+          account: ev.account || "",
+          notes: ev.notes || "",
+          url: ev.url || "",
+          organiser: ev.organiser || "",
+          attendees: ev.attendees || [],
+          editable: !!ev.editable,
+          appleTime: ev.appleTime || 0
         });
       });
       try {
@@ -6321,8 +6482,8 @@
         out.push({ kind: "event", text: ev.subject,
                    start: Math.max(ev.start, dayStart),
                    end: Math.min(ev.end, dayEnd),
-                   listId: null, listTitle: ev.where || "Calendar",
-                   tint: "violet" });
+                   listId: null, listTitle: ev.where || ev.calendar || "Calendar",
+                   tint: "violet", ev: ev });
       });
       out.sort(function (a, b) { return (a.start - b.start) || (a.end - b.end); });
       return out;
@@ -6395,9 +6556,7 @@
       whole.forEach(function (ev) {
         var chip = el("button", "cal-allchip", ev.subject);
         chip.title = "All day \u00b7 " + ev.subject;
-        chip.addEventListener("click", function () {
-          flashStatus("All day \u2014 " + ev.subject);
-        });
+        chip.addEventListener("click", function () { showEvent(ev); });
         allDay.appendChild(chip);
       });
       allDay.style.display = whole.length ? "" : "none";
@@ -6432,6 +6591,7 @@
         box.appendChild(el("span", "cal-text", it.text));
         box.title = it.text + "  \u00b7  " + it.listTitle;
         box.addEventListener("click", function () {
+          if (it.ev) { showEvent(it.ev); return; }
           if (!it.listId) { flashStatus(clock(it.start) + " \u2014 " + it.text); return; }
           setMobileTab(it.listId);
           flashStatus(it.text + " \u2014 " + it.listTitle);
@@ -6502,6 +6662,7 @@
             line.appendChild(el("span", "cal-wtext", it.text));
             line.title = it.text + "  \u00b7  " + it.listTitle;
             line.addEventListener("click", function () {
+              if (it.ev) { showEvent(it.ev); return; }
               if (!it.listId) { flashStatus(clock(it.start) + " \u2014 " + it.text); return; }
               setMobileTab(it.listId);
               flashStatus(it.text + " \u2014 " + it.listTitle);
