@@ -113,19 +113,23 @@ def phase_of(target, isa):
 # Done by hand rather than with project.add_file(): that helper walks every
 # existing PBXBuildFile expecting a fileRef, and Capacitor's SPM entry has a
 # productRef instead, so it raises before doing anything.
-if not project.get_files_by_name("WidgetBridge.swift"):
-    bridge = new(PBXFileReference, path="WidgetBridge.swift", sourceTree="<group>",
+# MainViewController is not optional: it is where our plugins are
+# registered, and without it they are silently absent from JavaScript.
+for swift in ("WidgetBridge.swift", "CalendarBridge.swift", "MainViewController.swift"):
+    if project.get_files_by_name(swift):
+        continue
+    bridge = new(PBXFileReference, path=swift, sourceTree="<group>",
                  lastKnownFileType="sourcecode.swift")
     app_group = group_by(path="App")
     if app_group is None:
-        sys.exit("cannot find the App group to put WidgetBridge.swift in")
+        sys.exit("cannot find the App group to put " + swift + " in")
     app_group.children.append(bridge.get_id())
     build = new(PBXBuildFile, fileRef=bridge.get_id())
     app_sources = phase_of(app, "PBXSourcesBuildPhase")
     if app_sources is None:
         sys.exit("the App target has no Sources phase")
     app_sources.files.append(build.get_id())
-    changed.append("WidgetBridge.swift added to the App target")
+    changed.append(swift + " added to the App target")
 
 # ── 2. the app signs with the App Group entitlement ────────────────────────
 for cfg in project.objects.get_configurations_on_targets("App"):
@@ -142,7 +146,11 @@ for cfg in project.objects.get_configurations_on_targets("App"):
 # team — using it here cost an afternoon of "No profiles were found". The team
 # is the certificate's OU:
 #     security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
-TEAM = os.environ.get("TEAM", "6MCMG3FEW8")
+# Z285TWPM86 is the team of the ahmedmohsen18@gmail.com Apple ID. The older
+# team (6MCMG3FEW8) cannot install on the phone: its free iPhone slots are
+# full and a free team cannot clear them. Changing this back will produce
+# "maximum number of registered iPhone devices" and nothing else.
+TEAM = os.environ.get("TEAM", "Z285TWPM86")
 
 def set_team(target_name):
     for cfg in project.objects.get_configurations_on_targets(target_name):

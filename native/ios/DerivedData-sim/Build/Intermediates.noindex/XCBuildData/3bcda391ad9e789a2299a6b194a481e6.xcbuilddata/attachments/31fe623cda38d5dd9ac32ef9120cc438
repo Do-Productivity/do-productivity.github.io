@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget-primary.dia",
+    "emit-module-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget-primary-emit-module.dia",
+    "pch" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget-primary.swiftdeps"
+  },
+  "/Users/ahmed/Projects/my-todo-list/native/ios/App/TodoWidget/TodoWidget.swift" : {
+    "const-values" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget.swiftconstvalues",
+    "dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget.d",
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget.o",
+    "llvm-bc" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget.bc",
+    "object" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget.o",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget.swiftdeps",
+    "swiftmodule" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/TodoWidget.build/Objects-normal/arm64/TodoWidget~partial.swiftmodule"
+  }
+}

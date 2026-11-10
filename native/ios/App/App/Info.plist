@@ -66,5 +66,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Do. shows your meetings beside your tasks, so the Calendar is your whole day rather than half of it. Your calendar is only read, never changed, and nothing leaves your phone.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Do. shows your meetings beside your tasks, so the Calendar is your whole day rather than half of it. Your calendar is only read, never changed, and nothing leaves your phone.</string>
 </dict>
 </plist>

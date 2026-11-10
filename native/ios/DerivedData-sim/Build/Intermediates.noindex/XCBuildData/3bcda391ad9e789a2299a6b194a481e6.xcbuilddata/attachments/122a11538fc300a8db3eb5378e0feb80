@@ -1,0 +1,59 @@
+{
+  "" : {
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/App-primary.dia",
+    "emit-module-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/App-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/App-primary-emit-module.dia",
+    "pch" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/App-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/App-primary.swiftdeps"
+  },
+  "/Users/ahmed/Projects/my-todo-list/native/ios/App/App/AppDelegate.swift" : {
+    "const-values" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate.d",
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate.o",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/ahmed/Projects/my-todo-list/native/ios/App/App/CalendarBridge.swift" : {
+    "const-values" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge.swiftconstvalues",
+    "dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge.d",
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge.o",
+    "llvm-bc" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge.bc",
+    "object" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge.o",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge.swiftdeps",
+    "swiftmodule" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/CalendarBridge~partial.swiftmodule"
+  },
+  "/Users/ahmed/Projects/my-todo-list/native/ios/App/App/SceneDelegate.swift" : {
+    "const-values" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate.swiftconstvalues",
+    "dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate.d",
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate.o",
+    "llvm-bc" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate.bc",
+    "object" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate.o",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate.swiftdeps",
+    "swiftmodule" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/SceneDelegate~partial.swiftmodule"
+  },
+  "/Users/ahmed/Projects/my-todo-list/native/ios/App/App/WidgetBridge.swift" : {
+    "const-values" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge.swiftconstvalues",
+    "dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge.d",
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge.o",
+    "llvm-bc" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge.bc",
+    "object" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge.o",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge.swiftdeps",
+    "swiftmodule" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/WidgetBridge~partial.swiftmodule"
+  },
+  "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/ahmed/Projects/my-todo-list/native/ios/DerivedData-sim/Build/Intermediates.noindex/App.build/Debug-iphonesimulator/App.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

@@ -4604,7 +4604,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1347";
+  var BUILD = "2026-11-10-1401";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5663,6 +5663,89 @@
     msEvListeners.forEach(function (fn) { fn(); });
   }
 
+  // ── The same calendar, read from the phone instead ───────
+  // Inside the app there is a far better source than any one provider's
+  // API: whatever accounts iOS already has. Outlook, Google and iCloud all
+  // arrive together, behind one permission, with nothing to register and no
+  // token to refresh. See CalendarBridge.swift.
+  //
+  // It fills the same cache the Graph reader fills, so everything
+  // downstream — the day grid, the week agenda, the all-day strip — is
+  // unaware of where the day came from.
+  var CAL_PERM_KEY = "dia_todo_calperm_v1";
+  function calBridge() {
+    return (window.Capacitor && window.Capacitor.Plugins &&
+            window.Capacitor.Plugins.CalendarBridge) || null;
+  }
+
+  var nativeAsked = false;
+  function ensureNativeEvents(fromTs, days, done) {
+    var cb = calBridge();
+    if (!cb) return;
+    var toTs = startOfDay(fromTs, days);
+    var range = "n" + fromTs + ":" + toTs;
+    if (msFetching[range]) return;
+
+    var i, stale = false;
+    for (i = 0; i < days; i++) {
+      var k = dayKey(startOfDay(fromTs, i));
+      if (!msEventsAt[k] || Date.now() - msEventsAt[k] > MS_EV_FRESH) stale = true;
+    }
+    if (!stale) return;
+    msFetching[range] = true;
+
+    // Asked once, and only once: iOS shows the sheet the first time and
+    // silently refuses ever after, so re-asking is noise that teaches the
+    // person nothing.
+    var ask = (nativeAsked || localStorage.getItem(CAL_PERM_KEY) === "1")
+      ? Promise.resolve({ granted: true })
+      : cb.access();
+
+    ask.then(function (res) {
+      nativeAsked = true;
+      if (res && res.granted) { try { localStorage.setItem(CAL_PERM_KEY, "1"); } catch (e) {} }
+      else { msEvNote("no calendar permission"); msFetching[range] = false; return null; }
+      return cb.events({ from: fromTs, to: toTs });
+    }).then(function (res) {
+      msFetching[range] = false;
+      if (!res) return;
+      if (!res.granted) { msEvNote("no calendar permission"); return; }
+      msEvNote("");
+      for (var j = 0; j < days; j++) {
+        var kk = dayKey(startOfDay(fromTs, j));
+        msEvents[kk] = [];
+        msEventsAt[kk] = Date.now();
+      }
+      (res.events || []).forEach(function (ev) {
+        if (ev.declined) return;
+        var key = dayKey(ev.allDay ? ev.start + 60000 : ev.start);
+        if (!msEvents[key]) return;
+        msEvents[key].push({
+          id: ev.id + ":" + ev.start,       // one id covers every repeat
+          subject: ev.title || "(no title)",
+          start: ev.start, end: ev.end,
+          allDay: !!ev.allDay,
+          where: ev.where || ev.calendar || "",
+          colour: ev.colour || ""
+        });
+      });
+      try {
+        localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
+      } catch (e) {}
+      if (done) done();
+    }).catch(function (e) {
+      msFetching[range] = false;
+      msEvNote("calendar read failed");
+    });
+  }
+
+  // One door for both. The phone has its own calendars; a browser has
+  // whatever account was connected to it.
+  function ensureExternalEvents(fromTs, days, done) {
+    if (calBridge()) return ensureNativeEvents(fromTs, days, done);
+    return ensureMsEvents(fromTs, days, done);
+  }
+
   var msFetching = {};
   function ensureMsEvents(fromTs, days, done) {
     if (!msConnected()) { msEvNote("off"); return; }
@@ -5781,6 +5864,16 @@
     source.addEventListener("click", function () {
       var btn = document.getElementById("sync-btn");
       if (btn) btn.click();          // the Outlook connection lives in Sync
+      // ...inside a collapsed <details> most of the way down it, which is
+      // why tapping this used to appear to do nothing at all. Open it and
+      // put it in front of the person who asked.
+      setTimeout(function () {
+        var sec = document.getElementById("ms-section");
+        if (!sec) return;
+        var box = sec.closest("details");
+        if (box) box.open = true;
+        sec.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 120);
     });
     panel.appendChild(source);
 
@@ -5933,12 +6026,12 @@
         scroller.style.display = "none";
         empty.style.display = "none";
         allDay.style.display = "none";
-        ensureMsEvents(startOfWeek(day), 7, render);
+        ensureExternalEvents(startOfWeek(day), 7, render);
         renderWeek();
         return;
       }
       week.style.display = "none";
-      ensureMsEvents(day, 1, render);
+      ensureExternalEvents(day, 1, render);
       var list = itemsFor(day);
 
       allDay.textContent = "";
@@ -6187,6 +6280,25 @@
     });
 
     function paintSource() {
+      // Inside the app the calendars come from the phone, so the advice is
+      // iOS Settings rather than an app registration. Giving someone the
+      // wrong instruction is worse than giving them none.
+      if (calBridge()) {
+        if (msEvState === "no calendar permission") {
+          source.textContent = "Calendar access is off \u2014 Settings \u203a Do. \u203a Calendars";
+          source.className = "cal-source bad";
+          source.style.display = "";
+          return;
+        }
+        if (msEvState && msEvState !== "off") {
+          source.textContent = "Meetings could not load (" + msEvState + ")";
+          source.className = "cal-source bad";
+          source.style.display = "";
+          return;
+        }
+        source.style.display = "none";
+        return;
+      }
       if (!msConnected()) {
         source.textContent = "Only your tasks \u2014 tap to connect Outlook";
         source.className = "cal-source off";

@@ -18,7 +18,9 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		8CBB478C8B1CD112CCAD9A91 /* TodoWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9F454433BCD18ADCB2E47FE5 /* TodoWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		AF134E0FAB2ACDC35966F17A /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606544C19AFA6C2082FC8ED4 /* MainViewController.swift */; };
 		BEB3437DA7BADD696D6F7CBA /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE74B1B9EFDD5E0C051C6FB /* WidgetBridge.swift */; };
+		E0E14591ACD647C90EEA438C /* CalendarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05304E939BFF4EEF78ED524F /* CalendarBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +48,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		05304E939BFF4EEF78ED524F /* CalendarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarBridge.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		3D554B27B1B7760C46E77233 /* TodoWidget/TodoWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TodoWidget/TodoWidget.entitlements; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
@@ -56,6 +59,7 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		606544C19AFA6C2082FC8ED4 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		9F454433BCD18ADCB2E47FE5 /* TodoWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TodoWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -118,6 +122,8 @@
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				CEE74B1B9EFDD5E0C051C6FB /* WidgetBridge.swift */,
+				05304E939BFF4EEF78ED524F /* CalendarBridge.swift */,
+				606544C19AFA6C2082FC8ED4 /* MainViewController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -224,6 +230,8 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				BEB3437DA7BADD696D6F7CBA /* WidgetBridge.swift in Sources */,
+				E0E14591ACD647C90EEA438C /* CalendarBridge.swift in Sources */,
+				AF134E0FAB2ACDC35966F17A /* MainViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
