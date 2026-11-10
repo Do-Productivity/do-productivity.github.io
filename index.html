@@ -1129,7 +1129,11 @@
      it has to stay findable and tappable, it simply stops charging rent
      it has not earned. */
   .cal-hour.quiet { border-top-color: color-mix(in srgb, var(--rule) 55%, transparent); }
-  .cal-hour.quiet .cal-hourlab { opacity: .5; font-size: 8.5px; }
+  /* Slivers sit 15px apart, which a 9.5px label cannot share without
+     colliding with its neighbours. Every other one carries the text; the
+     rest keep their line, so the grid still reads as hours. */
+  .cal-hour.quiet .cal-hourlab { opacity: .45; font-size: 8px; }
+  .cal-hour.quiet.mute .cal-hourlab { display: none; }
   .cal-hourlab {
     position: absolute; left: 0; top: -7px;
     font-family: var(--sans); font-size: 9.5px; letter-spacing: .4px;
@@ -4760,7 +4764,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1625";
+  var BUILD = "2026-11-10-1634";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6884,8 +6888,31 @@
       // to sit, and the current hour is the one most likely to be read.
       if (isSameDay(Date.now(), day)) busy[new Date().getHours()] = true;
 
+      var busyCount = 0;
+      for (h = 0; h < 24; h++) if (busy[h]) busyCount++;
+
+      // Spare room goes to the hours that have something in them.
+      //
+      // Compressing the empty hours left the grid shorter than the panel,
+      // which traded one kind of empty space for another: a wall of
+      // nothing below midnight instead of between four and nine in the
+      // morning. A calendar should fill the space it is given, so whatever
+      // is left over is shared out among the busy hours — which makes the
+      // meetings bigger and easier to read, rather than making the night
+      // longer.
+      var room = scroller.clientHeight - 2;
+      var plain = busyCount * BUSY_H + (24 - busyCount) * QUIET_H;
+      var grow = 0;
+      if (room > plain && busyCount > 0) {
+        grow = (room - plain) / busyCount;
+        // Past a point an hour that tall stops reading as an hour.
+        grow = Math.min(grow, 120 - BUSY_H);
+      }
+
       var tops = [0];
-      for (h = 0; h < 24; h++) tops[h + 1] = tops[h] + (busy[h] ? BUSY_H : QUIET_H);
+      for (h = 0; h < 24; h++) {
+        tops[h + 1] = tops[h] + (busy[h] ? BUSY_H + grow : QUIET_H);
+      }
       return { busy: busy, tops: tops, height: tops[24] };
     }
 
@@ -6954,6 +6981,12 @@
         return;
       }
       week.style.display = "none";
+      // Before anything is measured. The layout asks how tall the scroller
+      // is, and a display:none box is zero tall — which is how an entire
+      // day came to be sized for a container with no height, every single
+      // render, and the surplus it should have shared out never existed.
+      // The empty case re-hides it further down.
+      scroller.style.display = "";
       ensureExternalEvents(day, 1, render);
       var list = itemsFor(day);
       lanes(list);                     // sets .slot, which the layout needs
@@ -6973,7 +7006,11 @@
 
       hoursLayer.textContent = "";
       for (var h = 0; h <= 24; h++) {
-        var line = el("div", "cal-hour" + (h < 24 && !s.busy[h] ? " quiet" : ""));
+        var quiet = h < 24 && !s.busy[h];
+        // Label every other sliver when they come in a run, so the
+        // remaining ones have room to be read.
+        var mute = quiet && h > 0 && !s.busy[h - 1] && (h % 2 === 1);
+        var line = el("div", "cal-hour" + (quiet ? " quiet" : "") + (mute ? " mute" : ""));
         line.style.top = s.tops[h] + "px";
         line.appendChild(el("span", "cal-hourlab", hourLabel(h)));
         hoursLayer.appendChild(line);
@@ -7296,12 +7333,35 @@
     // A fold, an unfold or a keyboard changes the height of the scroller,
     // and the browser does not keep your place through it — which on a
     // folding phone means unfolding lands you at midnight, every time.
+    // How tall an hour should be depends on how much room there is, and
+    // that is only known once the box exists. A resize listener is not
+    // enough: the very first render happens before the panel has been laid
+    // out, so the day was sized for a scroller that had no height yet and
+    // the difference stayed blank below the grid — the exact empty space
+    // all of this was meant to remove.
+    //
+    // So watch the box itself. It fires when the layout settles, when the
+    // window changes, and when a phone is unfolded. No loop: the grid's
+    // height changes, the scroller's does not — it is flex-sized by the
+    // panel.
     var relandTimer = null;
-    window.addEventListener("resize", function () {
+    var lastRoom = 0;
+    function onRoomChanged() {
       if (mode !== "day") return;
+      var room = scroller.clientHeight;
+      if (!room || Math.abs(room - lastRoom) < 4) return;
+      lastRoom = room;
       clearTimeout(relandTimer);
-      relandTimer = setTimeout(landSomewhereUseful, 160);
-    });
+      relandTimer = setTimeout(function () {
+        render();
+        landSomewhereUseful();
+      }, 60);
+    }
+    if (window.ResizeObserver) {
+      new ResizeObserver(onRoomChanged).observe(scroller);
+    } else {
+      window.addEventListener("resize", onRoomChanged);
+    }
 
     // Keys, for the laptop. The calendar you already live in is driven
     // from the keyboard, and once a calendar fills the window reaching for
@@ -7328,7 +7388,14 @@
     dayTab.classList.toggle("on", mode === "day");
     weekTab.classList.toggle("on", mode === "week");
     render();
-    setTimeout(landSomewhereUseful, 0);
+    // The first render happens while this panel is still detached — it is
+    // built, then appended — so the scroller it measures has no height and
+    // the day comes out sized for nothing. The observer above catches that
+    // on a real device, but relying on a frame callback for correctness is
+    // how a layout ends up right only when something happens to repaint.
+    // So it is measured again once it is actually in the document.
+    setTimeout(function () { render(); landSomewhereUseful(); }, 0);
+    setTimeout(function () { render(); landSomewhereUseful(); }, 250);
     // The line is the only thing on this panel that moves on its own.
     setInterval(function () { if (lastSpan) placeNow(lastSpan); }, 30000);
     return panel;
