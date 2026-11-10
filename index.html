@@ -4739,7 +4739,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1538";
+  var BUILD = "2026-11-10-1544";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6824,23 +6824,18 @@
       return dedupeEvents(out);
     }
 
-    // Which hours to draw. A working day by default, stretched to cover
-    // anything outside it — an alarm at 5am should not be off the top.
-    function span(list, dayStart) {
-      var from = 8, to = 19;
-      list.forEach(function (it) {
-        var s = new Date(it.start), e = new Date(it.end);
-        from = Math.min(from, s.getHours());
-        to = Math.max(to, e.getHours() + (e.getMinutes() ? 1 : 0), s.getHours() + 1);
-      });
-      if (isSameDay(Date.now(), dayStart)) {
-        var h = new Date().getHours();
-        from = Math.min(from, h);
-        to = Math.max(to, h + 1);
-      }
-      from = Math.max(0, from);
-      to = Math.min(24, Math.max(to, from + 5));
-      return { from: from, to: to };
+    // The whole day, midnight to midnight.
+    //
+    // This used to draw a working day and stretch it to cover whatever it
+    // found, which kept the grid short but meant the day ended at 7pm:
+    // there was no 9pm to look at and no 9pm to click, so an evening
+    // could not be read or filled. A calendar that only shows the hours it
+    // already knows about cannot be used to add anything outside them.
+    //
+    // The cost is a tall scroller, which is what every calendar has, and
+    // it is paid for by opening at the right place rather than at the top.
+    function span() {
+      return { from: 0, to: 24 };
     }
 
     // Two things at the same hour sit side by side rather than on top of
@@ -6895,7 +6890,7 @@
         allDay.appendChild(chip);
       });
       allDay.style.display = whole.length ? "" : "none";
-      var s = span(list, day);
+      var s = span();
       lastSpan = s;
       grid.style.height = ((s.to - s.from) * PX_H) + "px";
 
@@ -7025,7 +7020,7 @@
       dayTab.classList.toggle("on", mode === "day");
       weekTab.classList.toggle("on", mode === "week");
       render();
-      if (mode === "day") setTimeout(scrollToNow, 0);
+      if (mode === "day") setTimeout(landSomewhereUseful, 0);
     }
     dayTab.addEventListener("click", function () { setMode("day"); });
     weekTab.addEventListener("click", function () { setMode("week"); });
@@ -7192,7 +7187,15 @@
       closeComposer();
       day = startOfDay(day, mode === "week" ? days * 7 : days);
       render();
-      scroller.scrollTop = 0;
+      // Midnight is never the part of a day anybody wants to see first.
+      // Today opens where you are; any other day opens at the morning.
+      if (mode === "day") setTimeout(landSomewhereUseful, 0);
+    }
+
+    function landSomewhereUseful() {
+      if (!lastSpan) return;
+      if (isSameDay(Date.now(), day)) { scrollToNow(); return; }
+      scroller.scrollTop = Math.max(0, 7 * PX_H - 20);   // 7am
     }
     prev.addEventListener("click", function () { go(-1); });
     next.addEventListener("click", function () { go(1); });
@@ -7215,7 +7218,7 @@
     dayTab.classList.toggle("on", mode === "day");
     weekTab.classList.toggle("on", mode === "week");
     render();
-    setTimeout(scrollToNow, 0);
+    setTimeout(landSomewhereUseful, 0);
     // The line is the only thing on this panel that moves on its own.
     setInterval(function () { if (lastSpan) placeNow(lastSpan); }, 30000);
     return panel;
