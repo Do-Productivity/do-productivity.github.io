@@ -4645,7 +4645,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1419";
+  var BUILD = "2026-11-10-1510";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -9212,7 +9212,15 @@
 
   var MS_CFG_KEY = "dia_todo_ms_v1";
   var MS_TENANT = "58191332-4582-42f1-a685-f77f77def707"; // myloapp.com
-  var MS_SCOPES = "openid profile offline_access Calendars.ReadWrite";
+  // Read, not ReadWrite. Do. only ever reads this calendar: the writing —
+  // the dated tasks that show up in Outlook — is done by the published
+  // reminders.ics feed, which Outlook subscribes to and which needs no
+  // permission from anyone. The Graph write path has never been connected.
+  //
+  // Asking for write anyway made the consent screen say "Have full access
+  // to user calendars", which is both a bigger thing to hand a personal
+  // to-do app than it needs and a harder thing to get approved.
+  var MS_SCOPES = "openid profile offline_access Calendars.Read";
   var MS_REDIRECT = location.origin + location.pathname;
   var MS_TZ = (window.Intl && Intl.DateTimeFormat().resolvedOptions().timeZone) || "Africa/Cairo";
 
@@ -9363,6 +9371,11 @@
 
   // Single entry point: makes the Outlook calendar match this task's state.
   function syncTaskToOutlook(task, listTitle, onChange) {
+    // Connected read-only, so there is nothing to write. The calendar still
+    // gets the task — through the subscribed feed — and attempting a POST
+    // here would only produce a 403 and a confusing status line.
+    return;
+    /* eslint-disable no-unreachable */
     if (!msConnected()) return;
     var shouldExist = !!task.due && !task.done && !task.deleted;
     if (shouldExist) {
