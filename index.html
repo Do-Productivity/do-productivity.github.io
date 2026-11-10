@@ -825,6 +825,14 @@
     -webkit-tap-highlight-color: transparent;
     transition: background .15s ease, color .15s ease;
   }
+  /* A legend, not an instruction. It is there for the person who wonders
+     whether there are keys, and invisible to the phone, which has none. */
+  .cal-keys {
+    font-family: var(--sans); font-size: 9px; letter-spacing: 1.5px;
+    color: var(--ink-faint); align-self: center; padding: 0 4px 0 10px;
+    white-space: nowrap;
+  }
+  @media (hover: none) { .cal-keys { display: none; } }
   .cal-mode.on {
     background: var(--surface, #fff);
     color: var(--ink);
@@ -1153,6 +1161,14 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .cal-past { opacity: .5; }
+  /* Happening now. The now line says where you are in the day; this says
+     what you are supposed to be doing, which is the question actually
+     being asked when somebody opens a calendar mid-afternoon. */
+  .cal-item.cal-live {
+    box-shadow: 0 0 0 1.5px var(--red), 0 2px 10px rgba(200, 85, 61, .25);
+    opacity: 1;
+  }
+  .cal-item.cal-live .cal-when { color: var(--red); font-weight: 700; }
   .cal-when {
     font-family: var(--sans); font-size: 9px; letter-spacing: .3px;
     color: var(--ink-soft); white-space: nowrap;
@@ -4739,7 +4755,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-1544";
+  var BUILD = "2026-11-10-1608";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6480,6 +6496,9 @@
     var weekTab = el("button", "cal-mode", "Week");
     modes.appendChild(dayTab);
     modes.appendChild(weekTab);
+    var keyHint = el("span", "cal-keys", "D  W  T  \u2190 \u2192");
+    keyHint.title = "D day \u00b7 W week \u00b7 T today \u00b7 arrows to step";
+    modes.appendChild(keyHint);
     panel.appendChild(modes);
 
     // Things with a date but no hour. They have no place on an hour grid
@@ -6914,7 +6933,12 @@
         box.style.width = "calc(" + (100 / n) + "% - 4px)";
         box.style.setProperty("--item", tint(it.tint).solid);
         if (it.end > it.start && it.end - it.start >= MIN_SLOT) box.classList.add("cal-block");
-        if (it.start < Date.now() && isSameDay(day, Date.now())) box.classList.add("cal-past");
+        var rightNow = Date.now();
+        var today = isSameDay(day, rightNow);
+        // Running right now: not past, not future, and the only thing on
+        // the grid that should be asking for your eye.
+        if (today && it.start <= rightNow && it.end > rightNow) box.classList.add("cal-live");
+        else if (it.start < rightNow && today) box.classList.add("cal-past");
         var when = el("span", "cal-when", clock(it.start) +
           (it.end - it.start >= MIN_SLOT ? "\u2013" + clock(it.end) : ""));
         box.appendChild(when);
@@ -7212,6 +7236,36 @@
       var mins = (Date.now() - day) / 60000 - lastSpan.from * 60;
       scroller.scrollTop = Math.max(0, Math.round(mins / 60 * PX_H) - 90);
     }
+
+    // A fold, an unfold or a keyboard changes the height of the scroller,
+    // and the browser does not keep your place through it — which on a
+    // folding phone means unfolding lands you at midnight, every time.
+    var relandTimer = null;
+    window.addEventListener("resize", function () {
+      if (mode !== "day") return;
+      clearTimeout(relandTimer);
+      relandTimer = setTimeout(landSomewhereUseful, 160);
+    });
+
+    // Keys, for the laptop. The calendar you already live in is driven
+    // from the keyboard, and once a calendar fills the window reaching for
+    // the mouse to step a day is a small insult. Only when the calendar is
+    // actually on screen, and never while something is being typed into.
+    document.addEventListener("keydown", function (e) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      var t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (document.querySelector(".modal-overlay.show")) return;
+      if (!panel.classList.contains("expanded") ||
+          getComputedStyle(panel).display === "none") return;
+
+      var k = e.key.toLowerCase();
+      if (k === "d" && mode !== "day") { e.preventDefault(); setMode("day"); }
+      else if (k === "w" && mode !== "week") { e.preventDefault(); setMode("week"); }
+      else if (k === "t") { e.preventDefault(); day = startOfDay(Date.now()); render(); landSomewhereUseful(); }
+      else if (e.key === "ArrowLeft" || k === "[") { e.preventDefault(); go(-1); }
+      else if (e.key === "ArrowRight" || k === "]") { e.preventDefault(); go(1); }
+    });
 
     calReloaders.push(render);
     panelReloaders.push(render);
@@ -8194,7 +8248,50 @@
   }
 
   function fanCountText(id) {
+    // The calendar card is the one place a count is the wrong answer.
+    // "7 today" tells you the day is busy; "in 25 min · mylo 10X" tells you
+    // what to do about it, which is the only reason to glance at a card.
+    if (id === "cal") {
+      var next = nextUpToday();
+      if (next) return next;
+    }
     return panelCount(id) + " " + PANEL_META[id].unit;
+  }
+
+  // The next thing with a time on it today, phrased the way a person would
+  // say it. Returns null when there is nothing left, so the card falls back
+  // to its count rather than inventing reassurance.
+  function nextUpToday() {
+    var now = Date.now();
+    var dayStart = startOfDay(now);
+    var dayEnd = startOfDay(now, 1);
+    var soonest = null;
+
+    taskLists().forEach(function (l) {
+      loadTasks(l.storageKey).forEach(function (t) {
+        if (t.done || t.deleted || !t.due) return;
+        if (t.due < now || t.due >= dayEnd) return;
+        if (!soonest || t.due < soonest.at) soonest = { at: t.due, text: t.text };
+      });
+    });
+    msEventsFor(dayStart).forEach(function (ev) {
+      if (ev.allDay) return;
+      // A meeting already running is more useful than the one after it.
+      var at = (ev.start <= now && ev.end > now) ? now : ev.start;
+      if (ev.end <= now || ev.start >= dayEnd) return;
+      if (!soonest || at < soonest.at) {
+        soonest = { at: at, text: ev.subject, running: ev.start <= now };
+      }
+    });
+    if (!soonest) return null;
+
+    if (soonest.running) return "now \u00b7 " + soonest.text;
+    var mins = Math.round((soonest.at - now) / 60000);
+    var when = mins < 1 ? "now"
+      : mins < 60 ? "in " + mins + " min"
+      : mins < 120 ? "in an hour"
+      : "in " + Math.round(mins / 60) + " hours";
+    return when + " \u00b7 " + soonest.text;
   }
 
   // signed distance from the front card, wrapped — the fan is a loop
