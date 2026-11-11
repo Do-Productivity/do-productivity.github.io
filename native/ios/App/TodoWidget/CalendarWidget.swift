@@ -311,13 +311,15 @@ struct CalProvider: TimelineProvider {
 }
 
 // ── the paper look ────────────────────────────────────────────────────────
+//
+// Shared with the lists widgets in TodoWidget.swift.
 
-private let paper = Color(red: 0.969, green: 0.953, blue: 0.914)
-private let ink = Color(red: 0.169, green: 0.149, blue: 0.125)
-private let inkSoft = Color(red: 0.42, green: 0.384, blue: 0.349)
-private let rust = Color(red: 0.784, green: 0.333, blue: 0.239)
+let paper = Color(red: 0.969, green: 0.953, blue: 0.914)
+let ink = Color(red: 0.169, green: 0.149, blue: 0.125)
+let inkSoft = Color(red: 0.42, green: 0.384, blue: 0.349)
+let rust = Color(red: 0.784, green: 0.333, blue: 0.239)
 
-private func serif(_ size: CGFloat) -> Font { .custom("Iowan Old Style", size: size) }
+func serif(_ size: CGFloat) -> Font { .custom("Iowan Old Style", size: size) }
 
 /// One line of an agenda: a tinted bar, a time, a title.
 private struct CalLine: View {

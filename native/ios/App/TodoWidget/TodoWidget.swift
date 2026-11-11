@@ -119,7 +119,7 @@ enum TodoStore {
                 title: titles[id] ?? id.capitalized,
                 tint: nil,
                 count: open.count,
-                items: sorted.prefix(8).map { TodoItem(text: $0.text ?? "", due: $0.due) }
+                items: sorted.prefix(14).map { TodoItem(text: $0.text ?? "", due: $0.due) }
             ))
         }
         return TodoPayload(build: nil, at: now, lists: lists, today: today, overdue: overdue)
@@ -183,59 +183,131 @@ struct TodoProvider: TimelineProvider {
 }
 
 // ── look ──────────────────────────────────────────────────────────────────
+//
+// The paper, the ink, the rust and the serif are the calendar widgets' own
+// (CalendarWidget.swift), so a lists widget beside a week widget reads as
+// one set: a serif heading with a rust full stop, a colour bar down the
+// side of every line, condensed semibold titles that wrap when there is
+// room for them.
 
-private extension Color {
-    static let paper = Color(red: 0.969, green: 0.953, blue: 0.914)   // #f7f3e9
-    static let ink   = Color(red: 0.169, green: 0.149, blue: 0.125)   // #2b2620
-    static let soft  = Color(red: 0.420, green: 0.384, blue: 0.349)   // #6b6259
-    static let late  = Color(red: 0.761, green: 0.255, blue: 0.047)   // overdue
-    static let good  = Color(red: 0.000, green: 0.659, blue: 0.420)   // #00A86B
-}
-
-private func dueLabel(_ ms: Double?) -> (String, Bool)? {
-    guard let ms = ms else { return nil }
-    let date = Date(timeIntervalSince1970: ms / 1000)
-    let late = date < Date()
-    let cal = Calendar.current
-    let fmt = DateFormatter()
-    if cal.isDateInToday(date) {
-        fmt.dateFormat = "HH:mm"
-        return (fmt.string(from: date), late)
-    }
-    if cal.isDateInTomorrow(date) {
-        fmt.dateFormat = "HH:mm"
-        return ("tmrw " + fmt.string(from: date), late)
-    }
-    fmt.dateFormat = "d MMM"
-    return (fmt.string(from: date), late)
-}
-
-struct TaskRow: View {
-    let item: TodoItem
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Circle()
-                .strokeBorder(Color.soft.opacity(0.55), lineWidth: 1.2)
-                .frame(width: 9, height: 9)
-                .padding(.top, 2)
-            Text(item.text)
-                .font(.system(size: 12))
-                .foregroundStyle(Color.ink)
-                .lineLimit(1)
-            Spacer(minLength: 2)
-            if let (label, late) = dueLabel(item.due) {
-                Text(label)
-                    .font(.system(size: 10, weight: late ? .semibold : .regular))
-                    .foregroundStyle(late ? Color.late : Color.soft)
-            }
+enum TodoLook {
+    /// A list's colour. The named tints are the calendar's; a colour picked
+    /// by hand arrives as "#rrggbb". The sync feed carries no tints at all,
+    /// so the two built-in lists fall back to the colours the app gives them.
+    static func tint(_ list: TodoList) -> Color {
+        if let t = list.tint {
+            if t.hasPrefix("#") { return hex(t) ?? CalStore.tint("amber") }
+            return CalStore.tint(t)
+        }
+        switch list.id {
+        case "personal": return CalStore.tint("red")
+        case "business": return CalStore.tint("blue")
+        default: return CalStore.tint("amber")
         }
     }
+
+    static func hex(_ s: String) -> Color? {
+        let digits = s.dropFirst()
+        guard digits.count == 6, let v = UInt32(digits, radix: 16) else { return nil }
+        var r = Double((v >> 16) & 0xff) / 255
+        var g = Double((v >> 8) & 0xff) / 255
+        var b = Double(v & 0xff) / 255
+        // A pale colour would vanish on paper, and a list's heading is set
+        // in it: bring it down to where it can still be read.
+        let light = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        if light > 0.5 { let k = 0.5 / light; r *= k; g *= k; b *= k }
+        return Color(red: r, green: g, blue: b)
+    }
+
+    /// When a task is due, in as few characters as say it: a time today,
+    /// "tmrw" and a time, a weekday inside the week, a date beyond it.
+    static func due(_ ms: Double?, at now: Date) -> (text: String, late: Bool)? {
+        guard let ms = ms else { return nil }
+        let date = Date(timeIntervalSince1970: ms / 1000)
+        let cal = Calendar.current
+        let late = date < now
+        if cal.isDate(date, inSameDayAs: now) { return (CalStore.clock(date), late) }
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: now),
+                                      to: cal.startOfDay(for: date)).day ?? 0
+        if days == 1 { return ("tmrw " + CalStore.clock(date), false) }
+        if days > 1 && days < 7 { return (CalStore.format(date, "EEE d"), false) }
+        return (CalStore.format(date, "d MMM"), late)
+    }
+}
+
+/// One task: a bar in its list's colour (rust once it is overdue), the
+/// title, and when it is due.
+struct TaskLine: View {
+    let item: TodoItem
+    let tint: Color
+    let now: Date
+    var titleSize: CGFloat = 10.5
+    /// How many lines the title may take. Above one, the row grows to fit
+    /// and the colour bar runs the full height of the wrapped title.
+    var lines: Int = 1
+
+    var body: some View {
+        let due = TodoLook.due(item.due, at: now)
+        let late = due?.late ?? false
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(item.text)
+                .font(.system(size: titleSize, weight: .semibold).width(.condensed))
+                .foregroundColor(ink)
+                .lineLimit(lines)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if let due = due {
+                Text(due.text)
+                    .font(.system(size: titleSize - 2, weight: .bold))
+                    .foregroundColor(late ? rust : inkSoft)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+        }
+        .padding(.leading, 6.5)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 1)
+                .fill(late ? rust : tint)
+                .frame(width: 2.5)
+                .padding(.vertical, 1)
+        }
+    }
+}
+
+/// A run of tasks under one heading — or under none, when the widget's own
+/// heading already says whose they are.
+struct TodoBlock {
+    let title: String?
+    let tint: Color
+    /// Everything open in it, shown or not.
+    let count: Int
+    let rows: [(item: TodoItem, tint: Color)]
+}
+
+/// A column of blocks and how many rows each one gets.
+struct TodoColumn {
+    let blocks: [TodoBlock]
+    let take: [Int]
+    var complete: Bool { zip(blocks, take).allSatisfy { $0.count == $1 } }
+}
+
+/// The two sizes of type. Compact is the week widget's own; roomy is for a
+/// widget with so little in it that the small type would leave it half empty.
+struct TodoType {
+    let title: CGFloat
+    let head: CGFloat
+    let line: CGFloat
+    let gap: CGFloat
+    static let compact = TodoType(title: 10.5, head: 15, line: 14, gap: 5)
+    static let roomy = TodoType(title: 12.5, head: 18, line: 17, gap: 7)
 }
 
 struct TodoWidgetView: View {
     var entry: TodoEntry
     @Environment(\.widgetFamily) private var family
+
+    private var now: Date { entry.date }
 
     private var lists: [TodoList] {
         let all = entry.payload?.lists ?? []
@@ -243,22 +315,39 @@ struct TodoWidgetView: View {
         return all.filter { $0.id == want }
     }
 
-    private var rowBudget: Int {
-        switch family {
-        case .systemSmall: return 4
-        case .systemMedium: return 5
-        default: return 11
-        }
+    /// Every open task in whatever this widget is scoped to, soonest first.
+    private var flat: [TodoItem] { soonest(lists.flatMap { $0.items }) { $0 } }
+    private var openCount: Int { lists.reduce(0) { $0 + $1.count } }
+
+    /// Dated before undated, then by date; otherwise the order they came in.
+    private func soonest<T>(_ all: [T], _ item: (T) -> TodoItem) -> [T] {
+        all.enumerated().sorted { a, b in
+            let x = item(a.element).due, y = item(b.element).due
+            if (x != nil) != (y != nil) { return x != nil }
+            if let x = x, let y = y, x != y { return x < y }
+            return a.offset < b.offset
+        }.map { $0.element }
     }
 
-    /// Every open task in whatever this widget is scoped to, soonest first.
-    private var flat: [TodoItem] {
-        lists.flatMap { $0.items }.sorted { a, b in
-            if (a.due != nil) != (b.due != nil) { return a.due != nil }
-            return (a.due ?? 0) < (b.due ?? 0)
+    /// Counted now, from the tasks themselves, so a task that turns overdue
+    /// while the phone is in a pocket is counted as late without the app
+    /// having to be opened.
+    private var counts: (late: Int, today: Int) {
+        var late = 0, today = 0
+        for task in lists.flatMap({ $0.items }) {
+            guard let ms = task.due else { continue }
+            let date = Date(timeIntervalSince1970: ms / 1000)
+            if date < now { late += 1 }
+            else if Calendar.current.isDate(date, inSameDayAs: now) { today += 1 }
         }
+        // A list sends its first few tasks only; the app's own count knows
+        // about the overdue ones past that.
+        if entry.listId == nil { late = max(late, entry.payload?.overdue ?? 0) }
+        // …but never more late tasks than there are open ones: a count left
+        // over from before the last one was ticked off must not sit beside
+        // "Nothing open."
+        return (min(late, openCount), today)
     }
-    private var openCount: Int { lists.reduce(0) { $0 + $1.count } }
 
     var body: some View {
         // Every widget family must adopt a container background on iOS 17
@@ -279,7 +368,7 @@ struct TodoWidgetView: View {
         case .accessoryInline, .accessoryCircular, .accessoryRectangular:
             Color.clear
         default:
-            Color.paper
+            paper
         }
     }
 
@@ -308,85 +397,264 @@ struct TodoWidgetView: View {
             }
 
         case .accessoryRectangular:
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(openCount) TO DO")
-                    .font(.system(size: 10, weight: .bold))
-                    .widgetAccentable()
-                ForEach(Array(flat.prefix(2)), id: \.self) { t in
-                    Text(t.text)
-                        .font(.system(size: 12, weight: .semibold))
-                        .lineLimit(1)
-                }
-                if flat.isEmpty {
-                    Text("Nothing open").font(.system(size: 12, weight: .semibold))
-                }
-            }
+            lockScreen
 
         default:
-            Group {
-                if entry.payload == nil {
-                    VStack(spacing: 4) {
-                        Text("No data yet")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.ink)
-                        Text("Open the app once")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color.soft)
+            if entry.payload == nil {
+                VStack(alignment: .leading, spacing: 7) {
+                    heading("To do")
+                    Text("Open Do. once to bring your lists in.")
+                        .font(serif(14).italic()).foregroundColor(inkSoft)
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(inset)
+            } else {
+                homeScreen
+            }
+        }
+    }
+
+    // ── the lock screen ──
+
+    private var lockScreen: some View {
+        let tasks = flat
+        let late = counts.late
+        // Fullest first: three tasks with their titles wrapped, then three
+        // on a line each, then fewer. Short titles take one line whatever
+        // they are allowed, so the first arrangement that fits is the one
+        // that shows the most.
+        let tries: [(rows: Int, lines: Int)] =
+            [(3, 3), (3, 2), (3, 1), (2, 3), (2, 2), (2, 1), (1, 3)]
+                .filter { $0.rows <= max(1, tasks.count) }
+        return VStack(alignment: .leading, spacing: 1) {
+            Text("\(openCount) TO DO" + (late > 0 ? " · \(late) LATE" : ""))
+                .font(.system(size: 10, weight: .bold))
+                .widgetAccentable()
+            if tasks.isEmpty {
+                Text("Nothing open").font(.system(size: 12, weight: .semibold))
+            } else {
+                ViewThatFits(in: .vertical) {
+                    ForEach(Array(tries.enumerated()), id: \.offset) { _, t in
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(tasks.prefix(t.rows).enumerated()), id: \.offset) { _, task in
+                                lockRow(task, lines: t.lines)
+                            }
+                        }
                     }
-                } else {
-                    content
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// When it is due and what it is, as one run of text so a long title
+    /// wraps under the time rather than beside it.
+    private func lockRow(_ task: TodoItem, lines: Int) -> some View {
+        let due = TodoLook.due(task.due, at: now)
+        let when = Text(due.map { $0.text + "\u{2002}" } ?? "")
+            .font(.system(size: 10.5, weight: .heavy).width(.condensed))
+        let what = Text(task.text)
+            .font(.system(size: 12, weight: .semibold).width(.condensed))
+        return (when + what)
+            .lineLimit(lines)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // ── the home screen ──
+
+    /// The system already keeps the content off the widget's edge; this is
+    /// the little more the larger sizes can afford.
+    private var inset: CGFloat { family == .systemSmall ? 0 : 6 }
+
+    private func heading(_ words: String) -> some View {
+        (Text(words).foregroundColor(ink) + Text(".").foregroundColor(rust))
+            .font(serif(family == .systemSmall ? 15 : 16).weight(.bold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
     }
 
     private var header: some View {
-        HStack(spacing: 5) {
-            Text(entry.listId == nil ? "To Do" : (lists.first?.title ?? "To Do"))
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color.ink)
-            Spacer(minLength: 2)
-            if let late = entry.payload?.overdue, late > 0 {
+        let (late, today) = counts
+        let small = family == .systemSmall
+        let title = entry.listId == nil ? "To do" : (lists.first?.title ?? "To do")
+        return HStack(alignment: .firstTextBaseline, spacing: 4) {
+            heading(title)
+            Spacer(minLength: 4)
+            if late > 0 {
                 Text("\(late) late")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.late)
+                    .font(.system(size: 10, weight: .semibold)).foregroundColor(rust)
             }
-            if let today = entry.payload?.today, today > 0 {
-                Text("\(today) today")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.good)
+            // The small one has room for one figure: the urgent one.
+            if today > 0 && !(small && late > 0) {
+                Text(late > 0 ? "· \(today) today" : "\(today) today")
+                    .font(.system(size: 10)).foregroundColor(inkSoft)
+            }
+            if late == 0 && today == 0 && openCount > 0 {
+                Text("\(openCount) open").font(.system(size: 10)).foregroundColor(inkSoft)
+            }
+        }
+        .lineLimit(1)
+    }
+
+    /// What goes under the heading. Every list in the two larger sizes is a
+    /// titled block per list, the dashboard's own shape. One list — or the
+    /// small size, which has no room for headings — is a single run, each
+    /// task still wearing its list's colour.
+    private var blocks: [TodoBlock] {
+        let open = lists.filter { !$0.items.isEmpty }
+        if entry.listId != nil || family == .systemSmall || open.count == 1 {
+            let rows = soonest(open.flatMap { l in
+                l.items.map { (item: $0, tint: TodoLook.tint(l)) }
+            }) { $0.item }
+            return rows.isEmpty ? [] : [TodoBlock(title: nil, tint: ink, count: openCount, rows: rows)]
+        }
+        return open.map { l in
+            let tint = TodoLook.tint(l)
+            return TodoBlock(title: l.title, tint: tint, count: l.count,
+                             rows: l.items.map { (item: $0, tint: tint) })
+        }
+    }
+
+    private var homeScreen: some View {
+        let all = blocks
+        return VStack(alignment: .leading, spacing: 7) {
+            header
+            if all.isEmpty {
+                Text("Nothing open.").font(serif(14).italic()).foregroundColor(inkSoft)
+                Spacer(minLength: 0)
+            } else {
+                GeometryReader { geo in
+                    let roomy = plan(all, .roomy, height: geo.size.height)
+                    let compact = plan(all, .compact, height: geo.size.height)
+                    // The larger type only when every task still fits with
+                    // its title in full; otherwise the week widget's type,
+                    // which gives up wrapping before it gives up a task.
+                    if roomy.allSatisfy({ $0.complete }) {
+                        ViewThatFits(in: .vertical) {
+                            columns(roomy, .roomy, cascade: false)
+                            columns(compact, .compact, cascade: true)
+                        }
+                    } else {
+                        columns(compact, .compact, cascade: true)
+                    }
+                }
+            }
+        }
+        .padding(inset)
+    }
+
+    /// Lay the blocks out in one column or two and give every block its
+    /// share of the rows that fit.
+    private func plan(_ all: [TodoBlock], _ t: TodoType, height: CGFloat) -> [TodoColumn] {
+        func fill(_ part: [TodoBlock]) -> TodoColumn {
+            let heads = part.filter { $0.title != nil }.count
+            let fixed = CGFloat(heads) * t.head + CGFloat(max(0, part.count - 1)) * t.gap
+            var budget = max(0, Int((height - fixed) / t.line))
+            // A run with no heading says "+3 more" on a line of its own.
+            if let run = part.first, run.title == nil, run.count > min(run.rows.count, budget) {
+                budget = max(0, budget - 1)
+            }
+            return TodoColumn(blocks: part,
+                              take: CalStore.share(part.map { $0.rows.count }, budget: budget))
+        }
+        guard family != .systemSmall else { return [fill(all)] }
+
+        if all.count == 1, let run = all.first {
+            // One run: a single column while it fits, so the titles get the
+            // whole width; two balanced ones when it does not.
+            let fits = Int(height / t.line)
+            let extra = run.count > run.rows.count ? 1 : 0
+            if run.rows.count + extra <= fits || fits < 1 { return [fill(all)] }
+            let hidden = run.count > min(run.rows.count, 2 * fits) ? 1 : 0
+            let shown = min(run.rows.count, 2 * fits - hidden)
+            let left = min(fits, (shown + hidden + 1) / 2)
+            return [
+                fill([TodoBlock(title: nil, tint: run.tint, count: left,
+                                rows: Array(run.rows.prefix(left)))]),
+                fill([TodoBlock(title: nil, tint: run.tint, count: run.count - left,
+                                rows: Array(run.rows.dropFirst(left)))]),
+            ]
+        }
+
+        let k = CalStore.split(all.map { $0.rows.count }, head: t.head, line: t.line, gap: t.gap)
+        return [fill(Array(all.prefix(k))), fill(Array(all.dropFirst(k)))]
+    }
+
+    private func columns(_ cols: [TodoColumn], _ t: TodoType, cascade: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ForEach(Array(cols.enumerated()), id: \.offset) { _, col in
+                column(col, t, cascade: cascade)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
     }
 
-    // One list: a plain run of tasks. Several: a titled block each, which is
-    // the dashboard's own shape.
-    private var content: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            header
-            if lists.count == 1, let only = lists.first {
-                ForEach(only.items.prefix(rowBudget), id: \.self) { TaskRow(item: $0) }
-                if only.count > rowBudget {
-                    Text("+\(only.count - rowBudget) more")
-                        .font(.system(size: 10)).foregroundStyle(Color.soft)
-                }
-                if only.items.isEmpty {
-                    Text("Nothing open").font(.system(size: 11)).foregroundStyle(Color.soft)
-                }
-            } else {
-                let share = max(1, rowBudget / max(1, min(lists.count, 3)))
-                ForEach(lists.prefix(3), id: \.id) { list in
-                    if !list.items.isEmpty {
-                        Text(list.title.uppercased())
-                            .font(.system(size: 9, weight: .bold))
-                            .tracking(0.6)
-                            .foregroundStyle(Color.soft)
-                            .padding(.top, 1)
-                        ForEach(list.items.prefix(share), id: \.self) { TaskRow(item: $0) }
-                    }
+    @ViewBuilder
+    private func column(_ col: TodoColumn, _ t: TodoType, cascade: Bool) -> some View {
+        let rows = col.take.reduce(0, +)
+        if cascade {
+            // Whatever height the rows leave over goes to long titles: the
+            // first arrangement that fits wins — every title on up to three
+            // lines, then as many as it can (soonest first) on two, down to
+            // the plain one line each.
+            let tries: [(rows: Int, lines: Int)] =
+                [(rows, 3)] + (0...rows).reversed().map { ($0, 2) }
+            ViewThatFits(in: .vertical) {
+                ForEach(Array(tries.enumerated()), id: \.offset) { _, a in
+                    stack(col, t, wrap: a.rows, lines: a.lines)
                 }
             }
-            Spacer(minLength: 0)
+        } else {
+            stack(col, t, wrap: rows, lines: 3)
+        }
+    }
+
+    /// The first `wrap` rows of the column may run to `lines` lines.
+    private func stack(_ col: TodoColumn, _ t: TodoType, wrap: Int, lines: Int) -> some View {
+        var starts: [Int] = []
+        var sum = 0
+        for n in col.take { starts.append(sum); sum += n }
+        return VStack(alignment: .leading, spacing: t.gap) {
+            ForEach(Array(col.blocks.enumerated()), id: \.offset) { i, b in
+                block(b, take: col.take[i], t) { starts[i] + $0 < wrap ? lines : 1 }
+            }
+        }
+    }
+
+    private func block(_ b: TodoBlock, take: Int, _ t: TodoType,
+                       lines: @escaping (Int) -> Int) -> some View {
+        let more = b.count - take
+        return VStack(alignment: .leading, spacing: 0) {
+            if let title = b.title {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: t.title, weight: .bold))
+                        .foregroundColor(b.tint)
+                        .lineLimit(1)
+                    Text("\(b.count)")
+                        .font(.system(size: t.title - 1.5)).foregroundColor(inkSoft)
+                    Spacer(minLength: 2)
+                    if more > 0 {
+                        Text("+\(more) more")
+                            .font(.system(size: 9)).foregroundColor(inkSoft).fixedSize()
+                    }
+                }
+                .frame(height: t.head)
+            }
+            ForEach(Array(b.rows.prefix(take).enumerated()), id: \.offset) { i, row in
+                let n = lines(i)
+                TaskLine(item: row.item, tint: row.tint, now: now, titleSize: t.title, lines: n)
+                    .frame(minHeight: t.line)
+                    .frame(height: n == 1 ? t.line : nil)
+            }
+            if b.title == nil && more > 0 {
+                Text("+\(more) more")
+                    .font(.system(size: 9)).foregroundColor(inkSoft)
+                    .padding(.leading, 6.5)
+                    .frame(height: t.line)
+            }
         }
     }
 }
