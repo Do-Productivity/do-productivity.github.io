@@ -7,6 +7,7 @@
 -- Part 2 gives every account its own Apple Calendar feed, so the calendar
 --   alerts stop depending on a GitHub token that only Ahmed has.
 -- Part 3 lets a person delete their own account from inside the app.
+-- Part 4 is private sync: no accounts, and nothing stored that can be read.
 
 -- ═══ PART 1 · the usage tracker is gone ═════════════════════════════
 -- The app used to send a random id per device so its owner could count
@@ -109,6 +110,149 @@ $$;
 revoke all on function public.delete_account() from public, anon;
 grant execute on function public.delete_account() to authenticated;
 
--- PostgREST caches the list of functions. Tell it to look again, so the
--- app does not get "not found" for the minute after this is run.
+-- ═══ PART 4 · private sync: nothing here can be read ═════════════════
+-- No accounts. A device makes a random id and a random key, encrypts its
+-- lists with the key, and stores the result under the id. The key never
+-- comes here, so these tables hold text nobody can read, belonging to
+-- nobody this database can name.
+--
+-- "auth" is a token derived from the key on the device. Only its SHA-256
+-- is kept. It proves that a caller may replace or erase a copy; it cannot
+-- be turned back into the key.
+--
+-- Row level security is on with no policies, so nothing reaches these
+-- tables except the five functions below.
+
+create table if not exists public.vaults (
+  id         uuid primary key,
+  auth_hash  text        not null,
+  blob       text        not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.vaults enable row level security;
+
+-- A second device joins with a one-time code. The key waits here wrapped
+-- by that code, for ten minutes, and is deleted the first time it is read.
+create table if not exists public.pairings (
+  id         text primary key,
+  blob       text        not null,
+  expires_at timestamptz not null
+);
+alter table public.pairings enable row level security;
+
+create or replace function public.vault_put(v uuid, auth text, body text)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  h     text := encode(sha256(convert_to(auth, 'utf8')), 'hex');
+  held  text;
+  stamp timestamptz := clock_timestamp();
+begin
+  if auth is null or length(auth) <> 64 or body is null or length(body) > 4000000 then
+    raise exception 'vault_put: bad request' using errcode = '22023';
+  end if;
+  select auth_hash into held from public.vaults where id = v for update;
+  if held is null then
+    insert into public.vaults (id, auth_hash, blob, updated_at) values (v, h, body, stamp);
+  elsif held = h then
+    update public.vaults set blob = body, updated_at = stamp where id = v;
+  else
+    raise exception 'vault_put: this key does not match the copy' using errcode = '42501';
+  end if;
+  return stamp;
+end;
+$$;
+
+create or replace function public.vault_get(v uuid, auth text, since timestamptz default null)
+returns json
+language plpgsql
+security definer
+stable
+set search_path = public
+as $$
+declare
+  h   text := encode(sha256(convert_to(coalesce(auth, ''), 'utf8')), 'hex');
+  rec public.vaults%rowtype;
+begin
+  select * into rec from public.vaults where id = v;
+  if not found then
+    return json_build_object('found', false);
+  end if;
+  if rec.auth_hash <> h then
+    raise exception 'vault_get: this key does not match the copy' using errcode = '42501';
+  end if;
+  if since is not null and rec.updated_at <= since then
+    return json_build_object('found', true, 'changed', false, 'at', rec.updated_at);
+  end if;
+  return json_build_object('found', true, 'changed', true, 'at', rec.updated_at, 'blob', rec.blob);
+end;
+$$;
+
+create or replace function public.vault_delete(v uuid, auth text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  h    text := encode(sha256(convert_to(coalesce(auth, ''), 'utf8')), 'hex');
+  held text;
+begin
+  select auth_hash into held from public.vaults where id = v;
+  if held is null then
+    return false;
+  end if;
+  if held <> h then
+    raise exception 'vault_delete: this key does not match the copy' using errcode = '42501';
+  end if;
+  delete from public.vaults where id = v;
+  return true;
+end;
+$$;
+
+create or replace function public.pair_put(p text, body text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p is null or p !~ '^[0-9a-f]{32}$' or body is null or length(body) > 4000 then
+    raise exception 'pair_put: bad request' using errcode = '22023';
+  end if;
+  delete from public.pairings where expires_at < now();
+  insert into public.pairings (id, blob, expires_at)
+  values (p, body, now() + interval '10 minutes')
+  on conflict (id) do update set blob = excluded.blob, expires_at = excluded.expires_at;
+end;
+$$;
+
+create or replace function public.pair_take(p text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare body text;
+begin
+  delete from public.pairings where expires_at < now();
+  delete from public.pairings where id = p returning blob into body;
+  return body;
+end;
+$$;
+
+revoke all on function public.vault_put(uuid, text, text) from public;
+revoke all on function public.vault_get(uuid, text, timestamptz) from public;
+revoke all on function public.vault_delete(uuid, text) from public;
+revoke all on function public.pair_put(text, text) from public;
+revoke all on function public.pair_take(text) from public;
+grant execute on function public.vault_put(uuid, text, text) to anon, authenticated;
+grant execute on function public.vault_get(uuid, text, timestamptz) to anon, authenticated;
+grant execute on function public.vault_delete(uuid, text) to anon, authenticated;
+grant execute on function public.pair_put(text, text) to anon, authenticated;
+grant execute on function public.pair_take(text) to anon, authenticated;
+
 notify pgrst, 'reload schema';

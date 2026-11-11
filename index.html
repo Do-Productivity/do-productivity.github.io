@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zh7DE7dSCiQdmYtYCC+NlxqItOh3BDATlDRUOncKmgA=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zChKM3p9DM6nTWQeomFHQ6l19Pemrbf9cVjGNTdjvCU=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1876,6 +1876,13 @@
   .modal-btn:disabled { opacity: 0.55; cursor: default; }
   .modal-details ul.leaves { margin: 8px 0 4px 18px; padding: 0; font-size: 12.5px; line-height: 1.5; }
   .modal-details ul.leaves li { margin: 0 0 6px; }
+  .vault-code {
+    font: 700 25px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 2px; text-align: center; color: var(--ink);
+    background: var(--card); border: 1px dashed var(--rule); border-radius: 8px;
+    padding: 16px 6px; margin: 10px 0 4px;
+    -webkit-user-select: all; user-select: all;
+  }
   .modal .modal-hint {
     font-size: 11px;
     color: var(--ink-faint);
@@ -2858,6 +2865,47 @@
     <h2>Sync across devices</h2>
 
     <div id="cloud-account">
+      <div id="vault-box">
+        <div id="vault-off">
+          <p><b>Use the same lists on all your devices.</b> No account and no email address. Your lists are scrambled on this device before they leave it, and only your own devices hold the key.</p>
+          <button class="modal-btn primary" id="vault-start-btn">Start syncing from this device</button>
+          <div class="cloud-or">or</div>
+          <input class="sync-token" id="vault-code-input" placeholder="Code from your other device" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="modal-btn" id="vault-join-btn">Join with this code</button>
+          <p class="modal-hint" id="vault-off-msg" role="status"></p>
+        </div>
+        <div id="vault-on" style="display:none">
+          <p><b>Sync is on.</b> This device holds the key. The server holds a scrambled copy that nobody can read without one of your devices.</p>
+          <button class="modal-btn primary" id="vault-sync-now">🔄 Sync now</button>
+          <p class="modal-hint" id="vault-status-line"></p>
+          <div id="legacy-remove" style="display:none">
+            <p class="modal-hint">Your old email account is still on the server.</p>
+            <button class="modal-btn" id="legacy-remove-btn">Remove my old email account</button>
+          </div>
+          <hr class="cloud-rule">
+          <p><b>Add another device.</b> Get a one-time code here and type it on the other device, under Sync. Then approve that device here. Nothing is handed over until you do.</p>
+          <button class="modal-btn" id="vault-pair-btn">Show a one-time code</button>
+          <div id="vault-code-out" style="display:none">
+            <div class="vault-code" id="vault-code-text"></div>
+            <p class="modal-hint" id="vault-wait">It works once, for 10 minutes. Waiting for the other device…</p>
+            <div id="vault-ask" style="display:none">
+              <p><b>A device is asking to join.</b> It shows the number <b id="vault-ask-n"></b>. Approve only if that is your device and the number matches.</p>
+              <button class="modal-btn primary" id="vault-approve-btn">Approve this device</button>
+              <button class="modal-btn" id="vault-refuse-btn">Refuse</button>
+            </div>
+          </div>
+          <p class="modal-hint" id="vault-on-msg" role="status"></p>
+          <hr class="cloud-rule">
+          <button class="modal-btn" id="vault-stop-btn">Stop syncing on this device</button>
+          <p class="modal-hint">Your lists stay on this device, and your other devices keep syncing.</p>
+          <details class="modal-details" id="vault-erase">
+            <summary>Erase the synced copy</summary>
+            <p class="modal-hint">This removes the scrambled copy from the server and stops sync on every device. It cannot be undone. The lists on each device stay where they are.</p>
+            <button class="modal-btn danger" id="vault-erase-btn">Erase the synced copy for good</button>
+            <p class="modal-hint" id="vault-erase-msg" role="status"></p>
+          </details>
+        </div>
+      </div>
       <div id="cloud-reset" style="display:none">
         <p><b>Choose a new password.</b> You opened a reset link, so this is the one moment you can set it without knowing the old one.</p>
         <input type="password" class="sync-token" id="cloud-newpass-input" placeholder="New password — at least 8 characters" autocomplete="new-password">
@@ -2883,6 +2931,12 @@
         </details>
       </div>
       <div id="cloud-signed-in" style="display:none">
+        <div id="legacy-switch">
+          <p><b>Sync no longer needs an email account.</b> Switch this device to private sync. Your lists are then scrambled before they leave the device, and your email address and the readable copy are erased from the server.</p>
+          <button class="modal-btn primary" id="legacy-switch-btn">Switch to private sync</button>
+          <p class="modal-hint" id="legacy-switch-msg" role="status"></p>
+          <hr class="cloud-rule">
+        </div>
         <div class="cloud-who">
           <div class="cloud-avatar" id="cloud-avatar">?</div>
           <div>Signed in as<br><b id="cloud-email">…</b></div>
@@ -2932,11 +2986,11 @@
       <details class="modal-details" id="cloud-leaves">
         <summary>What leaves this device</summary>
         <ul class="leaves">
-          <li><b>Without an account: nothing.</b> Your lists stay on this device.</li>
-          <li><b>With an account:</b> your email address and the lists you sync are kept on the app's server, so your devices can share them. They are stored in readable form, not locked with a key only you hold, so whoever runs the server could technically read them.</li>
-          <li><b>Calendar alerts:</b> only if you turn them on. Then the titles and times of dated tasks sit at a private address until you turn them off.</li>
-          <li><b>Never:</b> no counting of who opens the app, no advertising, no tracking.</li>
+          <li><b>Without sync: nothing.</b> Your lists stay on this device.</li>
+          <li><b>With sync:</b> a scrambled copy of your lists goes to the app's server, so your devices can share it. The key stays on your devices. Nobody else can read the copy, and that includes the people who run the server.</li>
+          <li><b>Never:</b> no email address, no name, no counting of who opens the app, no advertising, no tracking.</li>
           <li><b>Your calendar</b> is read on this device and is never sent.</li>
+          <li><b>Advanced options</b> you set up yourself, such as your own GitHub or a calendar link, talk to those services directly.</li>
         </ul>
       </details>
       <p class="modal-hint" id="cloud-unconfigured" style="display:none">Syncing between devices isn't switched on yet. Everything you write is saved on this device in the meantime, and works offline.</p>
@@ -3167,7 +3221,7 @@
   // silently stopped.
   var secrets = (function () {
     var KEYS = ["dia_todo_sync_v1", "dia_todo_cloud_session_v1",
-                "dia_todo_feed_token", "dia_todo_ms_v1"];
+                "dia_todo_feed_token", "dia_todo_ms_v1", "dia_todo_vault_v1"];
     var store = plug("SecureStore");
     var vault = {};
     var ready = !store;
@@ -5133,7 +5187,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-1721";
+  var BUILD = "2026-11-11-2058";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -10159,6 +10213,7 @@
   // Which backend owns the data right now. Cloud wins when signed in; the
   // gist stays available on its own for anyone who never makes an account.
   function syncActive() {
+    if (vaultActive()) return "vault";
     if (cloudSignedIn()) return "cloud";
     if (getSyncCfg()) return "gist";
     return null;
@@ -10557,20 +10612,500 @@
     }).catch(function () { /* the mirror is best-effort */ });
   }
 
+  // ── Private sync: no account, and nothing the server can read ────
+  // A device makes a random key and a random id. The lists are encrypted
+  // with the key before they leave, and the server keeps the result under
+  // the id. It never sees the key, so it holds something it cannot read,
+  // belonging to nobody it can name.
+  //
+  // Two things are derived from the key, and neither can be turned back
+  // into it: the key that encrypts the lists, and a token that proves to
+  // the server that this device may replace or erase the copy.
+  //
+  // A second device joins with a one-time code. The code is stretched into
+  // a key that wraps the real one; the wrapped key waits on the server for
+  // ten minutes and is deleted the first time it is fetched.
+  var VAULT_KEY = "dia_todo_vault_v1";
+  var vaultKeysCache = null;
+  var utf8 = new TextEncoder();
+
+  function loadVault() {
+    if (!cloudConfigured()) return null;
+    try {
+      var v = JSON.parse(secrets.getItem(VAULT_KEY));
+      return (v && v.id && v.k) ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function saveVault(v) { secrets.setItem(VAULT_KEY, JSON.stringify(v)); }
+
+  function vaultActive() { return !!loadVault(); }
+
+  // Still the vault this request started with? A reply that lands after
+  // the person stopped syncing must not switch it back on.
+  function vaultIs(v) { var now = loadVault(); return !!now && now.id === v.id; }
+
+  function forgetVault() {
+    secrets.removeItem(VAULT_KEY);
+    vaultKeysCache = null;
+    clearTimeout(syncState.pushTimer);
+    syncState.vaultAt = null;
+    syncState.lastRemote = null;
+    syncState.lastApplied = 0;
+    syncState.dirty = false;
+    syncState.lastError = null;
+  }
+
+  function randomBytes(n) { var b = new Uint8Array(n); crypto.getRandomValues(b); return b; }
+
+  function toB64(bytes) {
+    var out = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(out);
+  }
+
+  function fromB64(text) {
+    var raw = atob(text), out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  function toHex(bytes) {
+    var out = "";
+    for (var i = 0; i < bytes.length; i++) out += (bytes[i] + 0x100).toString(16).slice(1);
+    return out;
+  }
+
+  function newVaultId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    var b = randomBytes(16);
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    var h = toHex(b);
+    return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+  }
+
+  function vaultKeys(v) {
+    if (vaultKeysCache && vaultKeysCache.k === v.k) return Promise.resolve(vaultKeysCache);
+    var salt = utf8.encode("do-vault-v1");
+    return crypto.subtle.importKey("raw", fromB64(v.k), "HKDF", false, ["deriveKey", "deriveBits"]).then(function (base) {
+      return Promise.all([
+        crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: salt, info: utf8.encode("lists") },
+                                base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]),
+        crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: salt, info: utf8.encode("server-token") },
+                                 base, 256)
+      ]);
+    }).then(function (made) {
+      vaultKeysCache = { k: v.k, enc: made[0], auth: toHex(new Uint8Array(made[1])) };
+      return vaultKeysCache;
+    });
+  }
+
+  // AES-256-GCM with a fresh random nonce each time. The nonce travels in
+  // front of the ciphertext; "v1." is there so the format can change later.
+  function seal(key, text) {
+    var iv = randomBytes(12);
+    return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, utf8.encode(text)).then(function (ct) {
+      var out = new Uint8Array(12 + ct.byteLength);
+      out.set(iv, 0);
+      out.set(new Uint8Array(ct), 12);
+      return "v1." + toB64(out);
+    });
+  }
+
+  function unseal(key, blob) {
+    if (typeof blob !== "string" || blob.slice(0, 3) !== "v1.") {
+      return Promise.reject(new Error("the synced copy is in a format this build does not know"));
+    }
+    var raw = fromB64(blob.slice(3));
+    return crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.subarray(0, 12) }, key, raw.subarray(12)).then(function (pt) {
+      return new TextDecoder().decode(pt);
+    }, function () {
+      throw new Error("the synced copy could not be opened with this device's key");
+    });
+  }
+
+  function vaultRpc(name, body, keepalive) {
+    var opts = {
+      method: "POST",
+      cache: "no-store",
+      headers: { apikey: CLOUD_KEY, Authorization: "Bearer " + CLOUD_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    };
+    if (keepalive) opts.keepalive = true;
+    return fetch(CLOUD_URL + "/rest/v1/rpc/" + name, opts);
+  }
+
+  function vaultProblem(res) {
+    if (res.status === 404) return "private sync is not switched on for this app yet";
+    if (res.status === 401 || res.status === 403) return "this device's key does not match the synced copy";
+    return "the server answered with error " + res.status;
+  }
+
+  function vaultFetch(v, keys) {
+    return vaultRpc("vault_get", { v: v.id, auth: keys.auth, since: syncState.vaultAt || null }).then(function (res) {
+      if (!res.ok) throw new Error(vaultProblem(res));
+      return res.json();
+    });
+  }
+
+  // The copy was there and now is not: another device erased it. Sync
+  // stops here too, and the lists on this device are left alone.
+  function vaultGone() {
+    forgetVault();
+    refreshCloudAccount();
+    setSyncDot("ok");
+    flashStatus("The synced copy was erased from another device. Your lists are still here.");
+  }
+
+  function vaultMarkLive(v) {
+    if (v.live || !vaultIs(v)) return;
+    v.live = true;
+    saveVault(v);
+  }
+
+  function vaultPull() {
+    var v = loadVault();
+    if (!v) return;
+    if (syncState.dirty) { vaultPush(); return; }
+    if (document.querySelector(".task-edit, .due-edit-row")) return;
+    vaultKeys(v).then(function (keys) {
+      return vaultFetch(v, keys).then(function (j) {
+        if (!vaultIs(v)) return;
+        if (!j || !j.found) {
+          if (v.live) vaultGone();
+          else scheduleSyncPush();        // brand new: this device's lists are its start
+          return;
+        }
+        vaultMarkLive(v);
+        if (!j.changed) { syncState.lastError = null; setSyncDot("ok"); return; }
+        return unseal(keys.enc, j.blob).then(function (text) {
+          if (!vaultIs(v)) return;
+          var doc = JSON.parse(text);
+          var weHaveMore = mergeRemoteIntoLocal(doc);
+          syncState.vaultAt = j.at;
+          syncState.lastRemote = text;
+          syncState.lastApplied = doc.updatedAt || Date.now();
+          syncState.lastError = null;
+          if (weHaveMore) scheduleSyncPush();
+          else setSyncDot("ok");
+          setCloudStatusLine();
+        });
+      });
+    }).catch(function (err) {
+      syncState.lastError = (err && err.message) || "could not sync";
+      setSyncDot("bad");
+      setCloudStatusLine();
+    });
+  }
+
+  function vaultPush() {
+    var v = loadVault();
+    if (!v) return;
+    vaultKeys(v).then(function (keys) {
+      return vaultFetch(v, keys).then(function (j) {
+        if (!vaultIs(v)) return false;
+        if ((!j || !j.found) && v.live) { vaultGone(); return false; }
+        if (!j || !j.found || !j.changed) return true;
+        // Merge before overwriting: another device may have uploaded since
+        // this one last looked.
+        return unseal(keys.enc, j.blob).then(function (text) {
+          mergeRemoteIntoLocal(JSON.parse(text));
+          return true;
+        });
+      }).then(function (goOn) {
+        if (!goOn || !vaultIs(v)) return;
+        var doc = buildSyncDoc();
+        var json = JSON.stringify(doc);
+        return seal(keys.enc, json).then(function (blob) {
+          return vaultRpc("vault_put", { v: v.id, auth: keys.auth, body: blob });
+        }).then(function (res) {
+          if (!res.ok) throw new Error(vaultProblem(res));
+          return res.json();
+        }).then(function (at) {
+          if (!vaultIs(v)) return;
+          vaultMarkLive(v);
+          syncState.vaultAt = at;
+          syncState.dirty = false;
+          syncState.lastError = null;
+          syncState.lastApplied = doc.updatedAt;
+          syncState.lastRemote = json;
+          setSyncDot("ok");
+          setCloudStatusLine();
+          gistMirror();
+        });
+      });
+    }).catch(function (err) {
+      syncState.lastError = (err && err.message) || "upload failed";
+      setSyncDot("bad");
+      setCloudStatusLine();
+    });
+  }
+
+  // Leaving the page with a change not yet uploaded. Encrypting takes a
+  // moment the page may not have, so this is a best effort; the merge on
+  // the next launch uploads whatever it missed.
+  function vaultFlush() {
+    var v = loadVault(), keys = vaultKeysCache;
+    if (!v || !keys || keys.k !== v.k || !syncState.dirty) return;
+    clearTimeout(syncState.pushTimer);
+    seal(keys.enc, JSON.stringify(buildSyncDoc())).then(function (blob) {
+      return vaultRpc("vault_put", { v: v.id, auth: keys.auth, body: blob }, true);
+    }).catch(function () { /* the next launch retries */ });
+  }
+
+  function vaultBegin(v) {
+    saveVault(v);
+    vaultKeysCache = null;
+    syncState.vaultAt = null;
+    syncState.lastRemote = null;
+    syncState.lastApplied = 0;
+    syncState.lastError = null;
+    startSyncLoop();
+    refreshCloudAccount();
+    setSyncDot("busy");
+  }
+
+  function vaultStart() {
+    vaultBegin({ id: newVaultId(), k: toB64(randomBytes(32)), live: false });
+    scheduleSyncPush();
+  }
+
+  // ── Linking a second device with a one-time code ─────────
+  // Twelve characters from an alphabet with no look-alikes: sixty bits.
+  // PBKDF2 with 600,000 rounds stretches it, so that even someone holding
+  // a copy of the wrapped key cannot try codes fast enough to matter.
+  var PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+  function newPairCode() {
+    var b = randomBytes(12), out = "";
+    for (var i = 0; i < 12; i++) out += PAIR_ALPHABET.charAt(b[i] & 31);
+    return out;
+  }
+
+  function showPairCode(code) { return code.slice(0, 4) + "-" + code.slice(4, 8) + "-" + code.slice(8); }
+
+  function readPairCode(text) {
+    var out = "", up = String(text || "").toUpperCase();
+    for (var i = 0; i < up.length; i++) if (PAIR_ALPHABET.indexOf(up.charAt(i)) >= 0) out += up.charAt(i);
+    return out;
+  }
+
+  // One stretch of the code gives three things: where the request waits,
+  // where the answer waits, and the key that seals both.
+  function pairKeys(code) {
+    return crypto.subtle.importKey("raw", utf8.encode(code), "PBKDF2", false, ["deriveBits"]).then(function (base) {
+      return crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: utf8.encode("do-pair-v2"), iterations: 600000 }, base, 512);
+    }).then(function (bits) {
+      var b = new Uint8Array(bits);
+      return crypto.subtle.importKey("raw", b.slice(32, 64), "AES-GCM", false, ["encrypt", "decrypt"]).then(function (key) {
+        return { ask: toHex(b.subarray(0, 16)), answer: toHex(b.subarray(16, 32)), key: key };
+      });
+    });
+  }
+
+  function pairTake(slot) {
+    return vaultRpc("pair_take", { p: slot }).then(function (res) {
+      if (!res.ok) throw new Error(vaultProblem(res));
+      return res.json();
+    });
+  }
+
+  function pairPut(slot, key, message) {
+    return seal(key, JSON.stringify(message)).then(function (blob) {
+      return vaultRpc("pair_put", { p: slot, body: blob });
+    }).then(function (res) {
+      if (!res.ok) throw new Error(vaultProblem(res));
+      return true;
+    });
+  }
+
+  // Linking takes both devices. The device that already syncs shows a code
+  // and waits. The new device types it and asks to join, showing a number.
+  // The first device shows that number too, and nothing is handed over
+  // until its owner approves. So a code that is seen or guessed gives a
+  // stranger a request that gets refused, and never the lists.
+  var pairing = null;       // { timer, until, keys, onAsk } on the device that offers
+  var joining = null;       // { timer } on the device that asks
+
+  function pairStop() {
+    if (pairing) clearInterval(pairing.timer);
+    pairing = null;
+  }
+
+  function joinStop() {
+    if (joining) clearInterval(joining.timer);
+    joining = null;
+  }
+
+  // On the device that already syncs. Resolves with the code; onAsk(number)
+  // runs when another device has typed it.
+  function pairOffer(onAsk, onEnd) {
+    if (!loadVault()) return Promise.reject(new Error("Sync is not on for this device."));
+    pairStop();
+    var code = newPairCode();
+    return pairKeys(code).then(function (pk) {
+      // an empty read first, so a server that is not set up says so now
+      return pairTake(pk.ask).then(function () {
+        var mine = pairing = { keys: pk, until: Date.now() + 10 * 60000, asked: false, timer: 0 };
+        mine.timer = setInterval(function () {
+          if (pairing !== mine) return;
+          if (Date.now() > mine.until || !loadVault()) { pairStop(); if (onEnd) onEnd("The code has expired. Make a new one."); return; }
+          if (mine.asked) return;
+          pairTake(pk.ask).then(function (blob) {
+            if (!blob || pairing !== mine || mine.asked) return;
+            return unseal(pk.key, blob).then(function (text) {
+              var ask = JSON.parse(text);
+              if (!ask || !/^\d{2}$/.test(ask.n)) return;
+              mine.asked = true;
+              onAsk(ask.n);
+            });
+          }).catch(function () { /* a missed tick; the next one asks again */ });
+        }, 2000);
+        return code;
+      });
+    }).catch(function (err) {
+      throw new Error("The code could not be made: " + ((err && err.message) || "no connection") + ".");
+    });
+  }
+
+  // The owner's answer. Approving is the only moment the key leaves this
+  // device, sealed with the key made from the code.
+  function pairAnswer(approve) {
+    var mine = pairing, v = loadVault();
+    if (!mine || !mine.asked) return Promise.reject(new Error("No device is asking."));
+    pairStop();
+    var message = (approve && v) ? { ok: true, id: v.id, k: v.k } : { ok: false };
+    return pairPut(mine.keys.answer, mine.keys.key, message);
+  }
+
+  // On the new device. onNumber(n) runs once the request is sent; the
+  // promise settles when the other device has answered, or time runs out.
+  function pairAccept(text, onNumber) {
+    var code = readPairCode(text);
+    if (code.length !== 12) return Promise.reject(new Error("The code has 12 letters and digits. Check it and try again."));
+    joinStop();
+    return pairKeys(code).then(function (pk) {
+      var n = String(10 + (randomBytes(1)[0] % 90));
+      return pairPut(pk.ask, pk.key, { n: n }).then(function () {
+        onNumber(n);
+        return new Promise(function (resolve, reject) {
+          var mine = joining = { timer: 0 }, until = Date.now() + 10 * 60000;
+          mine.timer = setInterval(function () {
+            if (joining !== mine) { clearInterval(mine.timer); reject(new Error("Stopped.")); return; }
+            if (Date.now() > until) { joinStop(); reject(new Error("Nobody approved it in time. Make a new code and try again.")); return; }
+            pairTake(pk.answer).then(function (blob) {
+              if (!blob || joining !== mine) return;
+              joinStop();
+              return unseal(pk.key, blob).then(function (json) {
+                var got = JSON.parse(json);
+                if (!got || !got.ok) { reject(new Error("The other device refused. Nothing was shared.")); return; }
+                if (!got.id || !got.k) { reject(new Error("The answer did not carry a key.")); return; }
+                vaultBegin({ id: got.id, k: got.k, live: true });
+                syncState.dirty = false;
+                vaultPull();
+                resolve(true);
+              });
+            }).catch(function () { /* a missed tick; the next one asks again */ });
+          }, 2000);
+        });
+      }, function (err) {
+        throw new Error("The request could not be sent: " + ((err && err.message) || "no connection") + ".");
+      });
+    });
+  }
+
+  function vaultErase() {
+    var v = loadVault();
+    if (!v) return Promise.reject(new Error("Sync is not on for this device."));
+    return vaultKeys(v).then(function (keys) {
+      return vaultRpc("vault_delete", { v: v.id, auth: keys.auth }).then(null, function () {
+        throw new Error("No connection. Nothing was erased.");
+      });
+    }).then(function (res) {
+      if (!res.ok) throw new Error("The copy could not be erased: " + vaultProblem(res) + ". Nothing was erased.");
+      forgetVault();
+      return true;
+    });
+  }
+
+  // A device still signed in to an email account from before. One tap
+  // moves it over: read the old copy a last time, make the private copy,
+  // and only then delete the account, so there is never a moment with no
+  // copy at all.
+  function legacySwitch() {
+    return cloudFetch("/rest/v1/documents?select=doc").then(function (res) {
+      if (!res.ok) throw new Error("The old synced copy could not be read (error " + res.status + "). Nothing was changed.");
+      return res.json();
+    }, function () {
+      throw new Error("No connection. Nothing was changed.");
+    }).then(function (rows) {
+      if (rows && rows.length && rows[0].doc && rows[0].doc.lists) mergeRemoteIntoLocal(rows[0].doc);
+      var v = { id: newVaultId(), k: toB64(randomBytes(32)), live: false };
+      return vaultKeys(v).then(function (keys) {
+        var doc = buildSyncDoc();
+        var json = JSON.stringify(doc);
+        return seal(keys.enc, json).then(function (blob) {
+          return vaultRpc("vault_put", { v: v.id, auth: keys.auth, body: blob });
+        }).then(function (res) {
+          if (!res.ok) throw new Error("Private sync could not be started: " + vaultProblem(res) + ". Nothing was changed.");
+          return res.json();
+        }).then(function (at) {
+          v.live = true;
+          vaultBegin(v);
+          syncState.vaultAt = at;
+          syncState.lastApplied = doc.updatedAt;
+          syncState.lastRemote = json;
+          syncState.dirty = false;
+          setSyncDot("ok");
+          return cloudDeleteAccount().then(function () {
+            // deleting the account clears the sync marks; these belong to the new copy
+            syncState.lastApplied = doc.updatedAt;
+            syncState.lastRemote = json;
+            return "";
+          }, function (err) {
+            return (err && err.message) || "The old account could not be removed.";
+          });
+        });
+      });
+    });
+  }
+
+  function refreshVaultBox() {
+    var box = document.getElementById("vault-box");
+    if (!box) return;
+    var on = vaultActive(), legacy = cloudSignedIn();
+    box.style.display = (!cloudConfigured() || cloudResetMode || (legacy && !on)) ? "none" : "";
+    document.getElementById("vault-off").style.display = on ? "none" : "";
+    document.getElementById("vault-on").style.display = on ? "" : "none";
+    document.getElementById("legacy-remove").style.display = (on && legacy) ? "" : "none";
+    if (!on) {
+      pairStop();
+      document.getElementById("vault-code-out").style.display = "none";
+      document.getElementById("vault-code-text").textContent = "";
+    }
+    if (on) setCloudStatusLine();
+  }
+
   // ── Backend dispatch ─────────────────────────────────────
 
   function syncPushNow() {
-    if (cloudSignedIn()) cloudPush();
+    if (vaultActive()) vaultPush();
+    else if (cloudSignedIn()) cloudPush();
     else if (getSyncCfg()) pushSync();
   }
 
   function syncPullNow() {
-    if (cloudSignedIn()) cloudPull();
+    if (vaultActive()) vaultPull();
+    else if (cloudSignedIn()) cloudPull();
     else if (getSyncCfg()) pullSync();
   }
 
   function syncFlushNow() {
-    if (cloudSignedIn()) cloudFlush();
+    if (vaultActive()) vaultFlush();
+    else if (cloudSignedIn()) cloudFlush();
     else if (getSyncCfg()) flushPendingSync();
   }
 
@@ -11025,6 +11560,8 @@
     else if (syncState.dirty) parts.push("uploading…");
     if (syncState.lastError) parts.push("Last error: " + syncState.lastError);
     line.textContent = parts.join(" · ");
+    var vaultLine = document.getElementById("vault-status-line");
+    if (vaultLine) vaultLine.textContent = line.textContent;
   }
 
   // True only between opening a reset link and saving the new password.
@@ -11156,6 +11693,7 @@
     var un = document.getElementById("cloud-unconfigured");
     var reset = document.getElementById("cloud-reset");
     if (!out || !inn || !un) return;
+    refreshVaultBox();
     // A recovery token signs you in, so without this the person would be
     // shown the ordinary signed-in panel and never get to set a password.
     if (reset) reset.style.display = cloudResetMode ? "" : "none";
@@ -11177,8 +11715,10 @@
     if (g) g.style.display = CLOUD_GOOGLE ? "" : "none";
     if (or) or.style.display = CLOUD_GOOGLE ? "" : "none";
     var s = loadCloudSession();
-    out.style.display = s ? "none" : "";
-    inn.style.display = s ? "" : "none";
+    // No new email accounts are made. The old panel shows only for a device
+    // that is still signed in to one and has not switched to private sync.
+    out.style.display = "none";
+    inn.style.display = (s && !vaultActive()) ? "" : "none";
     if (s) {
       document.getElementById("cloud-email").textContent = s.email || "your account";
       document.getElementById("cloud-avatar").textContent =
@@ -11835,11 +12375,157 @@
         refreshCloudAccount();
         setSyncDot("busy");
         if (syncActive()) syncPullNow();
-        cloudAuthMessage("Your account and everything synced to it have been deleted. The lists on this device are still here.");
+        say("vault-off-msg", "Your account and everything synced to it have been deleted. The lists on this device are still here.");
         flashStatus("Account deleted. Your lists are still here on this device.");
       }).catch(function (err) {
         disarmDelete();
         delMsg.textContent = (err && err.message) || "The account could not be deleted. Nothing was deleted.";
+      });
+    });
+
+    // ── Private sync ──
+    function el(id) { return document.getElementById(id); }
+    function say(id, text) { var n = el(id); if (n) n.textContent = text || ""; }
+    function busy(btn, label) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = label; }
+    function idle(btn) { btn.disabled = false; if (btn.dataset.label) btn.textContent = btn.dataset.label; }
+
+    el("vault-start-btn").addEventListener("click", function () {
+      say("vault-off-msg", "");
+      vaultStart();
+      flashStatus("Sync is on. Your lists are scrambled before they leave this device.");
+    });
+
+    function join() {
+      var btn = el("vault-join-btn"), box = el("vault-code-input");
+      say("vault-off-msg", "");
+      busy(btn, "Checking the code…");
+      pairAccept(box.value, function (n) {
+        btn.textContent = "Waiting for approval…";
+        say("vault-off-msg", "This device shows the number " + n + ". Approve it on your other device, where the code is.");
+      }).then(function () {
+        idle(btn);
+        box.value = "";
+        flashStatus("This device is linked. Your lists are syncing.");
+      }).catch(function (err) {
+        idle(btn);
+        say("vault-off-msg", (err && err.message) || "That code did not work.");
+      });
+    }
+    el("vault-join-btn").addEventListener("click", join);
+    el("vault-code-input").addEventListener("keydown", function (e) { if (e.key === "Enter") join(); });
+
+    el("vault-sync-now").addEventListener("click", function () {
+      syncState.lastRemote = null;   // force a re-read even if nothing changed
+      syncState.vaultAt = null;
+      setCloudStatusLine();
+      vaultPull();
+      setTimeout(setCloudStatusLine, 1200);
+    });
+
+    function codeAway(message) {
+      el("vault-code-out").style.display = "none";
+      el("vault-ask").style.display = "none";
+      el("vault-code-text").textContent = "";
+      say("vault-on-msg", message || "");
+    }
+    el("vault-pair-btn").addEventListener("click", function () {
+      var btn = el("vault-pair-btn");
+      codeAway("");
+      busy(btn, "Making a code…");
+      pairOffer(function (n) {
+        say("vault-ask-n", n);
+        el("vault-wait").style.display = "none";
+        el("vault-ask").style.display = "";
+      }, codeAway).then(function (code) {
+        idle(btn);
+        el("vault-code-text").textContent = showPairCode(code);
+        el("vault-wait").style.display = "";
+        el("vault-code-out").style.display = "";
+      }).catch(function (err) {
+        idle(btn);
+        codeAway((err && err.message) || "The code could not be made.");
+      });
+    });
+    function answer(approve) {
+      pairAnswer(approve).then(function () {
+        codeAway(approve ? "Approved. The other device is linking now." : "Refused. Nothing was shared, and the code no longer works.");
+      }).catch(function (err) {
+        codeAway("The answer could not be sent: " + ((err && err.message) || "no connection") + ". Make a new code.");
+      });
+    }
+    el("vault-approve-btn").addEventListener("click", function () { answer(true); });
+    el("vault-refuse-btn").addEventListener("click", function () { answer(false); });
+
+    el("vault-stop-btn").addEventListener("click", function () {
+      forgetVault();
+      refreshCloudAccount();
+      setSyncDot("busy");
+      if (syncActive()) syncPullNow();
+      flashStatus("Sync is off on this device. Your lists are still here.");
+    });
+
+    // Erasing takes two taps, like deleting an account did.
+    var erase = el("vault-erase-btn"), eraseArmed = 0, eraseTimer = null;
+    function disarmErase() {
+      eraseArmed = 0;
+      clearTimeout(eraseTimer);
+      erase.disabled = false;
+      erase.classList.remove("armed");
+      erase.textContent = "Erase the synced copy for good";
+    }
+    erase.addEventListener("click", function () {
+      if (!eraseArmed) {
+        eraseArmed = Date.now();
+        say("vault-erase-msg", "");
+        erase.classList.add("armed");
+        erase.textContent = "Tap again to erase for good";
+        eraseTimer = setTimeout(disarmErase, 8000);
+        return;
+      }
+      clearTimeout(eraseTimer);
+      erase.disabled = true;
+      erase.textContent = "Erasing…";
+      vaultErase().then(function () {
+        disarmErase();
+        el("vault-erase").open = false;
+        refreshCloudAccount();
+        setSyncDot("busy");
+        if (syncActive()) syncPullNow();
+        say("vault-off-msg", "The synced copy has been erased. The lists on this device are still here.");
+        flashStatus("Synced copy erased. Your lists are still here on this device.");
+      }).catch(function (err) {
+        disarmErase();
+        say("vault-erase-msg", (err && err.message) || "The copy could not be erased. Nothing was erased.");
+      });
+    });
+
+    el("legacy-switch-btn").addEventListener("click", function () {
+      var btn = el("legacy-switch-btn");
+      say("legacy-switch-msg", "");
+      busy(btn, "Switching…");
+      legacySwitch().then(function (leftover) {
+        idle(btn);
+        refreshCloudAccount();
+        say("vault-on-msg", leftover
+          ? "Private sync is on. Your old email account is still on the server: " + leftover
+          : "Private sync is on. Your email address and the old readable copy have been erased from the server.");
+        flashStatus("Private sync is on.");
+      }).catch(function (err) {
+        idle(btn);
+        say("legacy-switch-msg", (err && err.message) || "The switch did not finish. Nothing was changed.");
+      });
+    });
+
+    el("legacy-remove-btn").addEventListener("click", function () {
+      var btn = el("legacy-remove-btn");
+      busy(btn, "Removing…");
+      cloudDeleteAccount().then(function () {
+        idle(btn);
+        refreshCloudAccount();
+        say("vault-on-msg", "Your email address and the old readable copy have been erased from the server.");
+      }).catch(function (err) {
+        idle(btn);
+        say("vault-on-msg", (err && err.message) || "The old account could not be removed.");
       });
     });
   })();

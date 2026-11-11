@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, last checked against build `2026-11-11-1721`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-11-2058`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -52,6 +52,18 @@ Worth stating, because it is why the fixes were small:
 - **No secrets in the repository**, which matters because GitHub Pages requires
   it to be public. The server-side keys live in environment variables; history
   is clean too.
+- **Sync holds nothing readable** (build `2026-11-11-2058`). No accounts. A
+  device makes a random 256-bit key, derives an AES-256-GCM key and a server
+  token from it with HKDF, and uploads only ciphertext under a random id. The
+  server keeps the SHA-256 of the token and never sees the key. A second device
+  joins with a 12-character one-time code (60 bits, stretched with 600,000
+  rounds of PBKDF2) and only after the first device approves a two-digit number
+  shown on both. Until approval the key is nowhere on the server. *Verified:* 45
+  checks against a mock server that mirrors the SQL. **Not verified:** the SQL
+  functions on the live database, and the flow on two real phones. **Known
+  limits:** the vault functions are open to anyone with the public key, so they
+  can be filled with junk; an old email account stays readable until its owner
+  taps "Switch to private sync" or it is deleted by hand.
 - **No usage counter.** Until build `2026-11-11-1721` the app sent a random id
   per device so opens could be counted. That is removed, the calendar feed is
   off until the person turns it on, and `supabase-setup.sql` now drops the
