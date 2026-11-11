@@ -73,9 +73,24 @@ class MainViewController: CAPBridgeViewController {
                 depth = max(depth, frame.maxY - bounds.minY)
             }
         }
+        // The fold, while the phone is partly open like a book: a band down
+        // the screen that nothing should sit on.
+        var foldLeft: CGFloat = 0, foldRight: CGFloat = 0
+        if #available(iOS 27.1, *) {
+            let bounds = web.bounds
+            for region in web.reservedRegions(kind: .division) where region.isActive {
+                let frame = region.frame.intersection(bounds)
+                if frame.isNull || frame.isEmpty { continue }
+                guard frame.height >= bounds.height * 0.8, frame.width < bounds.width * 0.3 else { continue }
+                foldLeft = frame.minX - bounds.minX
+                foldRight = frame.maxX - bounds.minX
+            }
+        }
         let js = "(function(){var s=document.documentElement.style;" +
             "s.setProperty('--occl-w','\(Int(reach.rounded(.up)))px');" +
             "s.setProperty('--occl-b','\(Int(depth.rounded(.up)))px');" +
+            "s.setProperty('--fold-l','\(Int(foldLeft.rounded(.down)))px');" +
+            "s.setProperty('--fold-r','\(Int(foldRight.rounded(.up)))px');" +
             "window.dispatchEvent(new Event('occlusion'));})()"
         if !force && js == occlusionSent { return }
         occlusionSent = js

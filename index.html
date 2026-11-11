@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3VZN/OiKfeJqGCPwFtofoc6UHXXZZ1RiafYiYjFCjEk=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-J5uno7F+T36BVe+qEpPZEkm0nomUZWTuwJ86iW8G++M=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2404,60 +2404,10 @@
     /* Folded Duo: Done sits to the left of the status pill. The spread
        cards run up beside the pill; the script keeps them left of it. */
     html.has-pill .deck-head { padding-right: calc(var(--occl-w, 0px) + 6px); }
-    /* Folded Duo. The top band is shared three ways: the card in focus on
-       the left, kept short; Search, Today and Sync in a column beside it;
-       the status pill on the right. The band ends where the pill ends, so
-       the list below starts as high as it can and keeps its full width.
-       Spread out, the deck's two buttons stand in the strip under the pill
-       and the cards run to the bottom of the screen. */
     @media (max-width: 720px) {
-      html.has-pill { --rail: 96px; --band: 124px; }
-      /* the carousel has no pile under the card, so the card itself is
-         taller: the list must not start above the pill's lower end */
-      html.has-pill:has(.card-fan.theme-ios27) { --band: 150px; }
-      /* Sheets such as Sync keep to the left of the pill, and the three
-         buttons stay underneath them: 9 is one below the sheets' own layer. */
-      html.has-pill .modal-overlay { padding-right: calc(var(--occl-w, 0px) + 6px); }
-      html.has-pill .toolbar {
-        position: fixed; z-index: 9;
-        top: calc(10px + env(safe-area-inset-top, 0px));
-        right: calc(var(--occl-w, 0px) + 2px);
-        width: var(--rail); height: var(--band);
-        flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px;
-        margin: 0; padding: 0;
-      }
-      html.has-pill .toolbar h1,
-      html.has-pill .toolbar .build-stamp { display: none; }
-      html.has-pill .toolbar .toolbar-btn {
-        flex: 1 1 0; min-height: 0; padding: 0 2px;
-        font-size: 9px; letter-spacing: 1px; text-align: center;
-      }
-      html.has-pill .toolbar .sync-dot { position: absolute; right: 7px; bottom: 7px; }
-      html.has-pill .toolbar .err-dot { position: absolute; right: -8px; top: -8px; flex: none; }
-      /* The status line was the spacer that pushed the buttons right. In a
-         column it would be a fourth, invisible button; it becomes a toast. */
-      html.has-pill .toolbar .status-msg {
-        position: fixed; z-index: 60; flex: none;
-        left: 12px; right: 12px; bottom: 14px;
-        text-align: center; padding: 9px 14px; border-radius: 999px;
-        background: var(--ink); color: var(--card); pointer-events: none;
-      }
+      /* the card is only a way to change list here; the list is the point */
       html.has-pill .fan-card,
-      html.has-pill .card-fan.theme-ios27 .fan-card { height: var(--band); padding: 14px 16px; }
-      /* the card is narrower here than on any phone: the title gives way */
-      html.has-pill .fan-card .fc-title { font-size: 23px; }
-      html.has-pill .fan-card .fc-sub { font-size: 9px; letter-spacing: 2px; }
-      html.has-pill .card-fan { margin-right: calc(var(--pill-gutter, 0px) + var(--rail) + 8px); }
-
-      /* The list pushed up under the pill: its contents already keep clear
-         of the pill all the way down, which leaves a strip under it. The
-         three buttons stand there. */
-      html.has-pill.pill-panel .toolbar {
-        top: calc(var(--occl-b, 0px) + 8px); right: 10px;
-        width: calc(var(--occl-w, 0px) - 16px); height: auto; gap: 7px;
-      }
-      html.has-pill.pill-panel .toolbar .toolbar-btn { flex: none; height: 32px; }
-
+      html.has-pill .card-fan.theme-ios27 .fan-card { height: 112px; padding: 14px 16px; }
       /* Spread down the screen, the deck's two buttons stand under the
          pill. As a grid they stay at the bottom, where the grid leaves room. */
       html.has-pill .card-fan:not(.theme-ios27) .deck-foot {
@@ -2901,6 +2851,58 @@
   @media (hover: none) {
     .task-delete, .task-datebtn { opacity: 1; }
   }
+
+  /* ── iPhone Duo ── */
+    /* iPhone Duo, to Apple's pattern. Wherever the phone draws its status
+       pill over a corner of the app, the controls stand in one column under
+       it, as symbols, and stay there in every state. Everything else keeps
+       to the left of that column, from the top of the screen to the bottom.
+       The shell measures the pill: --occl-w is how far in it reaches,
+       --occl-b how far down. */
+    html.has-pill { --side: calc(var(--occl-w, 0px) + 6px); }
+    html.has-pill .layout {
+      padding-right: var(--side);
+      --glyph-gutter: 0px; --pill-gutter: 0px; --panel-gutter: 0px;
+    }
+    /* sheets such as Sync keep to the left of the column too; the controls
+       sit one layer below the sheets */
+    html.has-pill .modal-overlay { padding-right: var(--side); }
+    html.has-pill .toolbar {
+      position: fixed; z-index: 9;
+      top: calc(var(--occl-b, 0px) + 14px);
+      right: calc(var(--occl-w, 0px) / 2 - 18px);
+      width: 52px; height: auto;
+      display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px;
+      margin: 0; padding: 0;
+    }
+    html.has-pill .toolbar h1,
+    html.has-pill .toolbar .build-stamp { display: none; }
+    html.has-pill .toolbar .toolbar-btn {
+      flex: none; width: 52px; height: 52px; min-height: 0; padding: 0;
+      border-radius: 50%; font-size: 0; letter-spacing: 0; color: transparent;
+      background-color: var(--card); background-position: center;
+      background-repeat: no-repeat; background-size: 23px;
+    }
+    html.has-pill .toolbar .toolbar-btn.off { opacity: .5; }
+    html.has-pill #search-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2711%27%20cy%3D%2711%27%20r%3D%276.5%27%2F%3E%3Cpath%20d%3D%27M16%2016l4.5%204.5%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #today-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Crect%20x%3D%274%27%20y%3D%275%27%20width%3D%2716%27%20height%3D%2715%27%20rx%3D%273%27%2F%3E%3Cpath%20d%3D%27M4%2010h16M8%203v4M16%203v4%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #runs-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M5%206h14M5%2012h14M5%2018h9%27%2F%3E%3Ccircle%20cx%3D%2718.5%27%20cy%3D%2718%27%20r%3D%272.2%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #cal-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%278%27%2F%3E%3Cpath%20d%3D%27M12%207.5V12l3%202%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #sync-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M20%2012a8%208%200%200%201-14.3%204.9M4%2012a8%208%200%200%201%2014.3-4.9%27%2F%3E%3Cpath%20d%3D%27M18.6%203.4v3.9h-3.9M5.4%2020.6v-3.9h3.9%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #undo-drawer { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M9%2014L4%209l5-5%27%2F%3E%3Cpath%20d%3D%27M4%209h10a6%206%200%200%201%200%2012h-3%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill .toolbar .sync-dot { position: absolute; right: 2px; bottom: 2px; }
+    html.has-pill .toolbar .err-dot { position: absolute; right: -6px; top: -12px; flex: none; }
+    /* The status line was the spacer that pushed the buttons right. In a
+       column it would be an invisible extra button; it becomes a toast. */
+    html.has-pill .toolbar .status-msg {
+      position: fixed; z-index: 60; flex: none;
+      left: 12px; right: 12px; bottom: 14px;
+      text-align: center; padding: 9px 14px; border-radius: 999px;
+      background: var(--ink); color: var(--card); pointer-events: none;
+    }
+    /* With the deck spread out the screen belongs to the cards, and Done
+       is the control. */
+    html.has-pill body.deck-open .toolbar { opacity: 0; visibility: hidden; pointer-events: none; }
 
   /* ── Print ───────────────────────────────── */
   @media print {
@@ -5284,7 +5286,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-2236";
+  var BUILD = "2026-11-11-2310";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -12805,7 +12807,34 @@
           : "";
       }
     }
-    window.addEventListener("occlusion", function () { root.removeAttribute("data-pill"); check(); });
+    // Partly folded, the screen has a fold down the middle. The lists are
+    // dealt out to the two halves so that none of them sits on it: the
+    // shell hands over where the fold starts and ends (--fold-l, --fold-r).
+    function fitFold() {
+      var grid = document.querySelector(".panels");
+      if (!grid) return;
+      var fl = px("--fold-l"), fr = px("--fold-r");
+      var shown = [].filter.call(grid.children, function (el) { return el.offsetWidth > 0 || el.style.marginLeft; });
+      shown.forEach(function (el) { el.style.marginLeft = ""; });
+      var box = grid.getBoundingClientRect();
+      var n = shown.length, gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+      var left = fl - box.left, right = box.right - fr;
+      if (!(fr > fl) || innerWidth <= 720 || n < 2 || left < 120 || right < 120) {
+        grid.style.gridTemplateColumns = "";
+        root.classList.remove("has-fold");
+        return;
+      }
+      var k = Math.min(n - 1, Math.max(1, Math.round(n * left / (left + right))));
+      var wl = (left - gap * (k - 1)) / k, wr = (right - gap * (n - k - 1)) / (n - k);
+      grid.style.gridTemplateColumns = "repeat(" + k + ", " + wl.toFixed(1) + "px) repeat(" + (n - k) + ", " + wr.toFixed(1) + "px)";
+      shown[k].style.marginLeft = Math.max(0, fr - fl - gap).toFixed(1) + "px";
+      root.classList.add("has-fold");
+    }
+    window.addEventListener("occlusion", function () { root.removeAttribute("data-pill"); check(); fitFold(); });
+    window.addEventListener("resize", function () { setTimeout(fitFold, 0); });
+    // a column shown or hidden changes how the lists divide
+    document.addEventListener("click", function () { setTimeout(fitFold, 80); }, true);
+    setTimeout(fitFold, 900);
     window.addEventListener("resize", check);
     window.addEventListener("deck-moved", function () { check(); setTimeout(check, 350); });
     document.addEventListener("transitionend", check, true);
