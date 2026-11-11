@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mCq9Dlua5TqXYU6ivss4D/tUkvQ2OwRbn27JjvYMEtI=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3VZN/OiKfeJqGCPwFtofoc6UHXXZZ1RiafYiYjFCjEk=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2006,7 +2006,7 @@
     }
     .toolbar {
       padding-left: max(0px, calc(env(safe-area-inset-left, 0px) - 20px));
-      padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 20px));
+      padding-right: max(0px, calc(env(safe-area-inset-right, 0px) - 20px), calc(var(--occl-w, 0px) - 4px));
     }
     .toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 
@@ -2021,6 +2021,20 @@
        22px so a device reporting a huge inset cannot eat the card.
        --glyph-gutter is 0 on every phone that does not overlay anything. */
     .layout { --glyph-gutter: min(22px, max(0px, calc(env(safe-area-inset-right, 0px) - 20px))); }
+    /* The inset above turned out not to describe the pill: on a real folded
+       Duo it reports about 30px, and the pill reaches about 76px in from
+       the edge and 166px down. The app's shell now measures the pill itself
+       and hands over --occl-w (how far in it reaches) and --occl-b (how far
+       down). The deck of cards and the toolbar sit beside the pill, so they
+       give way by its full width. The open list sits below it and keeps its
+       width, unless it has been pushed up under the pill: the script marks
+       that with .pill-over-panel. */
+    :root { --sab: env(safe-area-inset-bottom, 0px); }
+    .layout {
+      --pill-gutter: max(var(--glyph-gutter), calc(var(--occl-w, 0px) - 4px));
+      --panel-gutter: var(--glyph-gutter);
+    }
+    .layout.pill-over-panel { --panel-gutter: var(--pill-gutter); }
     /* the fan carries the gutter in its own margin shorthand further down —
        a separate rule here would lose to it on source order */
     .toolbar h1 { font-size: 11px; letter-spacing: 2.5px; }
@@ -2147,7 +2161,7 @@
     .note-link-select { font-size: 16px; }
     .panel {
       /* right side carries the glyph gutter — see --glyph-gutter above */
-      padding: 14px calc(15px + var(--glyph-gutter, 0px)) 8px 15px;
+      padding: 14px calc(15px + var(--panel-gutter, 0px)) 8px 15px;
       min-height: 0;
       min-width: 0;
       border-radius: 14px;
@@ -2224,7 +2238,7 @@
       display: block; position: relative;
       /* the last 14px sits behind the page below, so the pile reads as
          tucked under it instead of being cut off by a line in mid-air */
-      margin: 0 var(--glyph-gutter, 0px) -14px 0;
+      margin: 0 var(--pill-gutter, 0px) -14px 0;
       height: 196px;                      /* until the script has measured */
       touch-action: none;                 /* both axes are gestures here */
       -webkit-user-select: none; user-select: none;
@@ -2387,6 +2401,77 @@
       top: calc(env(safe-area-inset-top, 0px) + 6px); height: 42px;
       padding: 0 18px; justify-content: space-between;
     }
+    /* Folded Duo: Done sits to the left of the status pill. The spread
+       cards run up beside the pill; the script keeps them left of it. */
+    html.has-pill .deck-head { padding-right: calc(var(--occl-w, 0px) + 6px); }
+    /* Folded Duo. The top band is shared three ways: the card in focus on
+       the left, kept short; Search, Today and Sync in a column beside it;
+       the status pill on the right. The band ends where the pill ends, so
+       the list below starts as high as it can and keeps its full width.
+       Spread out, the deck's two buttons stand in the strip under the pill
+       and the cards run to the bottom of the screen. */
+    @media (max-width: 720px) {
+      html.has-pill { --rail: 96px; --band: 124px; }
+      /* the carousel has no pile under the card, so the card itself is
+         taller: the list must not start above the pill's lower end */
+      html.has-pill:has(.card-fan.theme-ios27) { --band: 150px; }
+      /* Sheets such as Sync keep to the left of the pill, and the three
+         buttons stay underneath them: 9 is one below the sheets' own layer. */
+      html.has-pill .modal-overlay { padding-right: calc(var(--occl-w, 0px) + 6px); }
+      html.has-pill .toolbar {
+        position: fixed; z-index: 9;
+        top: calc(10px + env(safe-area-inset-top, 0px));
+        right: calc(var(--occl-w, 0px) + 2px);
+        width: var(--rail); height: var(--band);
+        flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px;
+        margin: 0; padding: 0;
+      }
+      html.has-pill .toolbar h1,
+      html.has-pill .toolbar .build-stamp { display: none; }
+      html.has-pill .toolbar .toolbar-btn {
+        flex: 1 1 0; min-height: 0; padding: 0 2px;
+        font-size: 9px; letter-spacing: 1px; text-align: center;
+      }
+      html.has-pill .toolbar .sync-dot { position: absolute; right: 7px; bottom: 7px; }
+      html.has-pill .toolbar .err-dot { position: absolute; right: -8px; top: -8px; flex: none; }
+      /* The status line was the spacer that pushed the buttons right. In a
+         column it would be a fourth, invisible button; it becomes a toast. */
+      html.has-pill .toolbar .status-msg {
+        position: fixed; z-index: 60; flex: none;
+        left: 12px; right: 12px; bottom: 14px;
+        text-align: center; padding: 9px 14px; border-radius: 999px;
+        background: var(--ink); color: var(--card); pointer-events: none;
+      }
+      html.has-pill .fan-card,
+      html.has-pill .card-fan.theme-ios27 .fan-card { height: var(--band); padding: 14px 16px; }
+      /* the card is narrower here than on any phone: the title gives way */
+      html.has-pill .fan-card .fc-title { font-size: 23px; }
+      html.has-pill .fan-card .fc-sub { font-size: 9px; letter-spacing: 2px; }
+      html.has-pill .card-fan { margin-right: calc(var(--pill-gutter, 0px) + var(--rail) + 8px); }
+
+      /* The list pushed up under the pill: its contents already keep clear
+         of the pill all the way down, which leaves a strip under it. The
+         three buttons stand there. */
+      html.has-pill.pill-panel .toolbar {
+        top: calc(var(--occl-b, 0px) + 8px); right: 10px;
+        width: calc(var(--occl-w, 0px) - 16px); height: auto; gap: 7px;
+      }
+      html.has-pill.pill-panel .toolbar .toolbar-btn { flex: none; height: 32px; }
+
+      /* Spread down the screen, the deck's two buttons stand under the
+         pill. As a grid they stay at the bottom, where the grid leaves room. */
+      html.has-pill .card-fan:not(.theme-ios27) .deck-foot {
+        left: auto; right: 8px; bottom: auto;
+        top: calc(var(--occl-b, 0px) + 10px);
+        width: calc(var(--occl-w, 0px) - 10px);
+        flex-direction: column; gap: 10px; padding: 0;
+      }
+      html.has-pill .card-fan:not(.theme-ios27) .deck-foot::before { display: none; }
+      html.has-pill .card-fan:not(.theme-ios27) .deck-act {
+        width: 100%; white-space: normal; text-align: center;
+        font-size: 11px; line-height: 1.25; padding: 12px 4px; border-radius: 16px;
+      }
+    }
     /* A long deck scrolls, and what scrolls goes under the heading and the
        buttons rather than through them: paper that thins out to nothing. */
     .deck-head::before, .deck-foot::before {
@@ -2481,7 +2566,7 @@
     .toolbar { gap: 3px; }
     .toolbar-btn { padding: 7px 5px; font-size: 8px; letter-spacing: 0.2px; }
     .build-stamp { display: none; }
-    .panel { padding: 13px calc(10px + var(--glyph-gutter, 0px)) 7px 10px; }
+    .panel { padding: 13px calc(10px + var(--panel-gutter, 0px)) 7px 10px; }
     .add-input, .task-edit { font-size: 16px; }
     .task-text { font-size: 14.5px; }
     .mobile-tab { font-size: 15px; }
@@ -2504,7 +2589,7 @@
     .build-stamp { font-size: 8px; letter-spacing: 0.5px; }
     .layout { padding-left: clamp(6px, env(safe-area-inset-left, 0px), 20px);
               padding-right: clamp(6px, env(safe-area-inset-right, 0px), 20px); }
-    .panel { padding: 15px calc(12px + var(--glyph-gutter, 0px)) 8px 12px; }
+    .panel { padding: 15px calc(12px + var(--panel-gutter, 0px)) 8px 12px; }
     .mobile-tab { font-size: 16px; padding: 10px 6px 8px; }
   }
 
@@ -3007,7 +3092,7 @@
 
     <details class="modal-details" id="advanced-sync">
       <summary>Advanced — GitHub gist, calendar feeds, Outlook</summary>
-      <p class="modal-hint">This device is running build <b id="build-text">…</b>. Tasks and notes arrive even on an old build, so stale code still looks alive — if the number is behind, tap here.</p>
+      <p class="modal-hint"><span id="pill-text"></span>This device is running build <b id="build-text">…</b>. Tasks and notes arrive even on an old build, so stale code still looks alive — if the number is behind, tap here.</p>
       <button class="modal-btn" id="force-update-btn">⬇️ Force update now</button>
       <hr class="cloud-rule">
       <p class="modal-hint">The GitHub-token route below predates accounts. With an account, the calendar feed comes from the account itself (just above) &mdash; this is now only needed for the home screen widget, and it keeps publishing to it once an account holds the real data.</p>
@@ -3346,6 +3431,9 @@
   }
 
   window.addEventListener("error", function (e) {
+    // The browser's own note that a layout took more than one pass to
+    // settle. Nothing failed, and it is not worth a red dot.
+    if (e && /ResizeObserver loop/.test(String(e.message))) return;
     errRecord("error", (e && e.message) || "script error",
       e && e.filename ? (String(e.filename).replace(/^.*\//, "") + ":" + e.lineno + ":" + e.colno) : "");
   });
@@ -5196,7 +5284,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-2116";
+  var BUILD = "2026-11-11-2236";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -8665,6 +8753,27 @@
     var W = 0, CW = 0, CH = 0, X0 = 0, tuck = 0, strip = 56;
     var ox = 0, oy = 0;           // where the box sits on the screen
     var TOP = 0, SPREAD = 0, scroll = 0, scrollMax = 0, VW = 0;
+    // Spread out on a folded Duo, the cards wrap round the status pill. A
+    // card whose top is still beside the pill keeps to its left (scale OS);
+    // one that starts below it takes the whole width (scale OSW). OL is the
+    // left margin, OLIM the height below which a card may be wide.
+    var OL = 0, OS = 1, OSW = 1, OLIM = 0;
+
+    function openAll(spread, sc) {
+      var over = sc < 0 ? -sc : 0, out = [];
+      var y = TOP + over * 0.5 - (sc > 0 ? sc : 0);
+      for (var i = 0; i < cards.length; i++) {
+        var k = (OSW > OS && y >= OLIM) ? OSW : OS;
+        out.push({ x: OL - CW * (1 - k) / 2, y: y, s: k });
+        y += (spread + over * 0.16) * k;
+      }
+      return out;
+    }
+    // where the last card ends, for a given spacing, with nothing scrolled
+    function openBottom(spread) {
+      var all = openAll(spread, 0), last = all[all.length - 1];
+      return last ? last.y + CH * last.s : TOP;
+    }
     var closedAt = 0;
 
     var cond = 0;                 // 0 = all of it showing, 1 = put away
@@ -8690,7 +8799,17 @@
     var OFF = 0, BULGE = 0, STEP = 1;
     var PK = 200, PD = 2 * 0.76 * Math.sqrt(200);
     var ticking = false, tickAt = 0;
+    var squeezeNote = 0;
     var COLS = 2, CELL = 0, GSCALE = 1, GM = 18, GGAP = 12;
+    // On a folded Duo the status pill sits over the right-hand cell of the
+    // top row (or rows). GSKIP is how many rows lose that cell; the cards
+    // flow past it.
+    var GSKIP = 0;
+    function gridSlot(i) {
+      var slot = i;
+      for (var r = 0; r < GSKIP; r++) if (slot >= r * COLS + (COLS - 1)) slot++;
+      return slot;
+    }
 
     var GAP = 10;                 // between the front card and the pile
     var K = 250, ZETA = 0.8;      // stiffness, and how quickly it stops ringing
@@ -8807,7 +8926,7 @@
     // Every card at once, two across — three where the screen is wide.
     function gridTarget(i) {
       var over = scroll < 0 ? -scroll : 0;
-      var col = i % COLS, row = Math.floor(i / COLS);
+      var slot = gridSlot(i), col = slot % COLS, row = Math.floor(slot / COLS);
       return {
         x: GM + col * (CELL + GGAP) - CW * (1 - GSCALE) / 2,
         y: TOP + row * (CH * GSCALE + GGAP + over * 0.12) + over * 0.5 - (scroll > 0 ? scroll : 0),
@@ -8836,11 +8955,7 @@
     // dragged.
     function openTarget(i) {
       var over = scroll < 0 ? -scroll : 0;
-      return {
-        x: (VW - CW) / 2,
-        y: TOP + i * (SPREAD + over * 0.16) + over * 0.5 - (scroll > 0 ? scroll : 0),
-        s: 1
-      };
+      return openAll(SPREAD, scroll)[i] || { x: OL, y: TOP, s: OS };
     }
 
     function neighbour(step) {
@@ -9091,18 +9206,51 @@
         COLS = VW >= 600 ? 3 : 2;
         CELL = (VW - 2 * GM - (COLS - 1) * GGAP) / COLS;
         GSCALE = Math.min(1, CELL / CW);
-        var ch = CH * GSCALE, rows = Math.ceil(n / COLS);
+        var ch = CH * GSCALE;
+        var gridRoot = getComputedStyle(document.documentElement);
+        var pillDepth = (parseFloat(gridRoot.getPropertyValue("--occl-w")) || 0) > 0
+          ? (parseFloat(gridRoot.getPropertyValue("--occl-b")) || 0) + 6 : 0;
+        GSKIP = 0;
+        if (COLS === 2) while (GSKIP < 3 && TOP + GSKIP * (ch + GGAP) < pillDepth) GSKIP++;
+        var rows = Math.ceil((n + GSKIP) / COLS);
         SPREAD = ch + GGAP;
         scrollMax = Math.max(0, TOP + rows * ch + (rows - 1) * GGAP - floor);
         // a long grid opens with the row you are on in view
-        scroll = fresh ? clamp(Math.floor(active / COLS) * SPREAD - (floor - TOP - ch) / 2, 0, scrollMax)
+        scroll = fresh ? clamp(Math.floor(gridSlot(active) / COLS) * SPREAD - (floor - TOP - ch) / 2, 0, scrollMax)
                        : clamp(scroll, 0, scrollMax);
         return;
       }
-      SPREAD = clamp((floor - TOP - CH) / (n - 1), 58, Math.round(CH * 0.74));
-      scrollMax = Math.max(0, TOP + (n - 1) * SPREAD + CH - floor);
+      // Beside a status pill the cards cannot be centred: they start at the
+      // left edge. They scale about their top centre.
+      var rootStyle = getComputedStyle(document.documentElement);
+      var pill = parseFloat(rootStyle.getPropertyValue("--occl-w")) || 0;
+      if (pill > 0) {
+        // the deck's buttons stand beside the cards here, not below them
+        floor = window.innerHeight - 12 - (parseFloat(rootStyle.getPropertyValue("--sab")) || 0);
+        OL = 10;
+        OS = clamp((VW - pill - 8 - OL) / CW, 0.85, 1.6);
+        OSW = OS;      // every card keeps to the left of the pill
+        OLIM = (parseFloat(rootStyle.getPropertyValue("--occl-b")) || 0) + 6;
+      } else {
+        OL = (VW - CW) / 2;
+        OS = OSW = 1;
+        OLIM = 0;
+      }
+      // The widest spacing that still ends above the buttons. Card sizes
+      // depend on where each one lands, so it is searched for, not solved.
+      var lo = 58, hi = Math.round(CH * (pill > 0 ? 1.04 : 0.74));
+      if (openBottom(hi) <= floor) SPREAD = hi;
+      else if (openBottom(lo) >= floor) SPREAD = lo;
+      else {
+        for (var step = 0; step < 18; step++) {
+          var mid = (lo + hi) / 2;
+          if (openBottom(mid) <= floor) lo = mid; else hi = mid;
+        }
+        SPREAD = lo;
+      }
+      scrollMax = Math.max(0, openBottom(SPREAD) - floor);
       // a long deck opens with the card you are on in view
-      scroll = fresh ? clamp(active * SPREAD - (floor - TOP - CH) / 2, 0, scrollMax)
+      scroll = fresh ? clamp(active * SPREAD - (floor - TOP - CH * OSW) / 2, 0, scrollMax)
                      : clamp(scroll, 0, scrollMax);
     }
     function remeasure() {
@@ -9279,7 +9427,13 @@
 
     function condense(k) {
       cond = clamp(k, 0, 1);
+      var wasSqueezed = fanRoot.classList.contains("squeezed");
       fanRoot.classList.toggle("squeezed", cond > 0.01);
+      // the list has moved up or down: whoever lays out round it should look again
+      if (wasSqueezed !== (cond > 0.01) || cond < 0.02 || cond > 0.98) {
+        clearTimeout(squeezeNote);
+        squeezeNote = setTimeout(function () { window.dispatchEvent(new Event("deck-moved")); }, 60);
+      }
       if (!W) return;                      // never condense what could not be measured
       hgt.t = lerp(fullHeight(), awayHeight(), cond);
       kick();
@@ -12618,6 +12772,46 @@
       syncPullNow();
     });
   });
+
+  // ── The folded iPhone Duo's status pill ─────────────────
+  // The shell sets --occl-w and --occl-b and fires "occlusion". This marks
+  // whether the open list has risen under the pill, and keeps a measured
+  // fallback for a folded Duo whose pill iOS did not describe.
+  (function () {
+    var root = document.documentElement;
+    function px(name) { return parseFloat(getComputedStyle(root).getPropertyValue(name)) || 0; }
+    function check() {
+      if (NATIVE && !px("--occl-w") && innerWidth >= 460 && innerWidth <= 472 && innerHeight <= 700) {
+        root.style.setProperty("--occl-w", "78px");
+        root.style.setProperty("--occl-b", "168px");
+        root.setAttribute("data-pill", "measured");
+      }
+      var had = root.classList.contains("has-pill"), has = px("--occl-w") > 0;
+      root.classList.toggle("has-pill", has);
+      // the deck measures its cards on resize; their height just changed
+      if (had !== has) setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 0);
+      var layout = document.querySelector(".layout");
+      var panel = document.querySelector(".panel.expanded");
+      if (layout) {
+        root.classList.toggle("pill-panel", !!panel && px("--occl-w") > 0 && panel.getBoundingClientRect().top < px("--occl-b") - 14);
+        layout.classList.toggle("pill-over-panel",
+          // a few points of overlap only touch the two rounded corners
+          !!panel && px("--occl-w") > 0 && panel.getBoundingClientRect().top < px("--occl-b") - 14);
+      }
+      var note = document.getElementById("pill-text");
+      if (note) {
+        note.textContent = px("--occl-w")
+          ? "Covered corner: " + px("--occl-w") + " × " + px("--occl-b") + (root.getAttribute("data-pill") ? " (fallback)" : "") + ". "
+          : "";
+      }
+    }
+    window.addEventListener("occlusion", function () { root.removeAttribute("data-pill"); check(); });
+    window.addEventListener("resize", check);
+    window.addEventListener("deck-moved", function () { check(); setTimeout(check, 350); });
+    document.addEventListener("transitionend", check, true);
+    setTimeout(check, 800);
+    setTimeout(check, 3000);
+  })();
 
   // ── Pull-to-refresh (touch devices) ──────────────────────
 
