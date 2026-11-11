@@ -326,23 +326,34 @@ private struct CalLine: View {
     var timeWidth: CGFloat = 38
     var timeSize: CGFloat = 8.5
     var titleSize: CGFloat = 10.5
+    /// How many lines the title may take. Above one, the row grows to fit
+    /// and the colour bar runs the full height of the wrapped title.
+    var lines: Int = 1
 
     var body: some View {
         let live = item.isNow(at: now)
-        HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 1)
-                .fill(live ? rust : CalStore.tint(item.tint))
-                .frame(width: 2.5, height: titleSize)
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text(CalStore.label(item, at: now))
                 .font(.system(size: timeSize, weight: .bold))
                 .foregroundColor(live ? rust : inkSoft)
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .frame(width: timeWidth, alignment: .leading)
+            // Condensed: these rows sit in half-width columns, where a
+            // title lost its last word more often than it kept it.
             Text(item.text)
-                .font(.system(size: titleSize, weight: .semibold))
+                .font(.system(size: titleSize, weight: .semibold).width(.condensed))
                 .foregroundColor(ink)
-                .lineLimit(1)
+                .lineLimit(lines)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
+        }
+        .padding(.leading, 6.5)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 1)
+                .fill(live ? rust : CalStore.tint(item.tint))
+                .frame(width: 2.5)
+                .padding(.vertical, 1)
         }
     }
 }
@@ -426,18 +437,35 @@ struct CalTodayView: View {
                     }
                 } else if left.count == 1, let only = left.first {
                     // One thing left: give it the room.
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(CalStore.label(only, at: now).uppercased())
-                            .font(.system(size: 10, weight: .bold)).widgetAccentable()
-                        Text(only.text).font(.system(size: 13, weight: .semibold)).lineLimit(2)
+                    // Larger type while the whole title fits in three
+                    // lines of it (about 55 characters); past that, the
+                    // row size, four lines of which is all this slot holds.
+                    if only.text.count <= 55 {
+                        lockOne(only, size: 13, lines: 3)
+                    } else {
+                        lockOne(only, size: 11.5, lines: 4)
                     }
                 } else {
-                    // The day, as many lines of it as this phone has room
-                    // for: four on the larger ones, three on the rest.
+                    // The day, with the titles in full wherever the room
+                    // allows. A title cut off at "[2027 Plannin…" tells you
+                    // there is a meeting and not which one, so a long title
+                    // runs on to a second line before another row is added.
+                    // The arrangements are tried from the fullest down, and
+                    // the first that fits this phone's widget is the one
+                    // drawn. Short titles still get four rows; two long
+                    // ones get two lines each; on a busy day the next
+                    // thing is in full and the ones after it take a line
+                    // apiece, so no line of the widget is left empty while
+                    // an event goes unshown.
                     ViewThatFits(in: .vertical) {
-                        lockRows(left, 4)
-                        lockRows(left, 3)
-                        lockRows(left, 2)
+                        lockRows(left, 4, full: 4)
+                        lockRows(left, 3, full: 3)
+                        lockRows(left, 3, full: 2)
+                        lockRows(left, 3, full: 1)
+                        lockRows(left, 2, full: 2)
+                        lockRows(left, 2, full: 1)
+                        lockRows(left, 3, full: 0)
+                        lockRows(left, 2, full: 0)
                     }
                 }
             }
@@ -448,20 +476,42 @@ struct CalTodayView: View {
         }
     }
 
-    private func lockRows(_ items: [CalItem], _ n: Int) -> some View {
+    /// The only thing left today, time and title as one run of text so
+    /// every wrapped line gets the full width.
+    private func lockOne(_ it: CalItem, size: CGFloat, lines: Int) -> some View {
+        (Text(CalStore.label(it, at: now) + "\u{2002}")
+            .font(.system(size: size - 1.5, weight: .heavy).width(.condensed))
+         + Text(it.text)
+            .font(.system(size: size, weight: .semibold).width(.condensed)))
+            .lineLimit(lines)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// One arrangement of the day for the lock screen: `n` rows, the
+    /// first `full` of them allowed a second line, the rest held to one.
+    ///
+    /// The time and the title are one run of text, not two columns. In
+    /// columns, the second line of a title started under the first and
+    /// the strip under the time stayed empty — a fifth of the widget, on
+    /// every wrapped line. As one run, a title that wraps comes back to
+    /// the left edge and uses the whole width. The letters are the
+    /// condensed cut of the system face, a little smaller than before.
+    /// Together that is about three times as much of a long title.
+    private func lockRows(_ items: [CalItem], _ n: Int, full: Int) -> some View {
         let shown = Array(items.prefix(n))
-        let timeW = CalStore.timeWidth(shown, at: now, perChar: 6.2)
-        return VStack(alignment: .leading, spacing: 1) {
+        // Four separate rows only fit the lock-screen slot with no gap between them.
+        return VStack(alignment: .leading, spacing: shown.count >= 4 ? 0 : 1) {
             ForEach(Array(shown.enumerated()), id: \.offset) { i, it in
-                HStack(spacing: 4) {
-                    Text(CalStore.label(it, at: now))
-                        .font(.system(size: 10, weight: .bold))
-                        .lineLimit(1).minimumScaleFactor(0.8)
-                        .frame(width: timeW, alignment: .leading)
-                        .widgetAccentable(i == 0)
-                    Text(it.text)
-                        .font(.system(size: 12, weight: i == 0 ? .bold : .medium))
-                        .lineLimit(1)
+                HStack(alignment: .lastTextBaseline, spacing: 2) {
+                    (Text(CalStore.label(it, at: now) + "\u{2002}")
+                        .font(.system(size: 10, weight: .heavy).width(.condensed))
+                     + Text(it.text)
+                        .font(.system(size: 11.5, weight: i == 0 ? .bold : .medium)
+                            .width(.condensed)))
+                        .lineLimit(i < full ? 2 : 1)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                     if i == shown.count - 1 && items.count > shown.count {
                         Spacer(minLength: 2)
                         Text("+\(items.count - shown.count)")
@@ -684,7 +734,11 @@ struct CalAgendaView: View {
                                                head: headH, line: lineH, gap: gap)
                     HStack(alignment: .top, spacing: 12) {
                         column(Array(days.prefix(split)), height: geo.size.height)
-                        column(Array(days.dropFirst(split)), height: geo.size.height)
+                        // One day known: no second column, so the first
+                        // is not held to half the width beside a blank.
+                        if split < days.count {
+                            column(Array(days.dropFirst(split)), height: geo.size.height)
+                        }
                     }
                 }
             }
@@ -705,15 +759,26 @@ struct CalAgendaView: View {
         let take = CalStore.share(lists.map { $0.count }, budget: budget)
         let shown = zip(lists, take).flatMap { $0.prefix($1) }
         let timeW = CalStore.timeWidth(shown, at: now, perChar: 5.2)
-        return VStack(alignment: .leading, spacing: gap) {
-            ForEach(Array(days.enumerated()), id: \.offset) { i, day in
-                block(day, lists[i], take[i], timeW)
+        // Whatever height the rows leave over goes to long titles: the
+        // first arrangement that fits wins — every title on up to three
+        // lines, then as many days as it can (nearest first) on two, down
+        // to the plain one line each.
+        let tries: [(days: Int, lines: Int)] =
+            [(days.count, 3)] + (0...days.count).reversed().map { ($0, 2) }
+        return ViewThatFits(in: .vertical) {
+            ForEach(Array(tries.enumerated()), id: \.offset) { _, t in
+                VStack(alignment: .leading, spacing: gap) {
+                    ForEach(Array(days.enumerated()), id: \.offset) { i, day in
+                        block(day, lists[i], take[i], timeW, lines: i < t.days ? t.lines : 1)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    private func block(_ day: CalDay, _ list: [CalItem], _ take: Int, _ timeW: CGFloat) -> some View {
+    private func block(_ day: CalDay, _ list: [CalItem], _ take: Int, _ timeW: CGFloat,
+                       lines: Int) -> some View {
         let isToday = Calendar.current.isDate(day.date, inSameDayAs: now)
         // Not shown here, plus any the app left out of the payload.
         let more = list.count - take + max(0, day.count - day.items.count)
@@ -733,7 +798,9 @@ struct CalAgendaView: View {
             }
             .frame(height: headH)
             ForEach(Array(list.prefix(take).enumerated()), id: \.offset) { _, it in
-                CalLine(item: it, now: now, timeWidth: timeW).frame(height: lineH)
+                CalLine(item: it, now: now, timeWidth: timeW, lines: lines)
+                    .frame(minHeight: lineH)
+                    .frame(height: lines == 1 ? lineH : nil)
             }
         }
     }
