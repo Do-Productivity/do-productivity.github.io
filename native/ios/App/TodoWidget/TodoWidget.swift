@@ -72,8 +72,8 @@ enum TodoStore {
 
     static func fromGroup() -> TodoPayload? {
         guard let defaults = UserDefaults(suiteName: group) else { return nil }
-        let raw = defaults.string(forKey: "CapacitorStorage.widgetData")
-            ?? defaults.string(forKey: "widgetData")
+        let raw = defaults.string(forKey: "widgetData")
+            ?? defaults.string(forKey: "CapacitorStorage.widgetData")
         guard let json = raw, let data = json.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(TodoPayload.self, from: data)
     }

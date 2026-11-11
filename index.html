@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7nt8I1uxS+2eKQdjMzSvauGzAyMj3ytig8ebS0meJTg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ke1lEI1sVBAiiB2OhD6P9HQ27W9hWkJ6+LmL7DH/OfI=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -5105,7 +5105,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-0952";
+  var BUILD = "2026-11-11-1026";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -11866,11 +11866,9 @@
     if (!NATIVE) return;
 
     var LN = plug("LocalNotifications");
-    var Prefs = plug("Preferences");
     var AppPlug = plug("App");
     var Widget = plug("WidgetBridge");
 
-    var GROUP = "group.com.ahmedmohsen.todolist.shared";
     var CAP = 48;            // iOS keeps 64 pending; leave headroom
     var OURS = 1000000;      // our ids start here, so we only ever cancel ours
 
@@ -11973,7 +11971,7 @@
     }
 
     function writeWidget() {
-      if (!Prefs) return Promise.resolve();
+      if (!Widget || !Widget.set) return Promise.resolve();
       warmCalendar();
       var now = Date.now();
       var end = new Date(); end.setHours(23, 59, 59, 999);
@@ -12042,11 +12040,10 @@
         errRecord("native", "could not build the widget payload: " + e.message, "writeWidget");
         return Promise.resolve();
       }
-      return Prefs.configure({ group: GROUP })
-        .then(function () {
-          return Prefs.set({ key: "widgetData", value: JSON.stringify(payload) });
-        })
-        .then(function () { if (Widget && Widget.reload) return Widget.reload(); })
+      // Through our own bridge, into the App Group the widgets read. Not
+      // through the Preferences plugin: its "group" option is only a key
+      // prefix inside the app's own storage, which no widget can see.
+      return Widget.set({ value: JSON.stringify(payload) })
         .catch(function (e) {
           errRecord("native", "widget payload not written: " + (e && e.message), "writeWidget");
         });

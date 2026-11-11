@@ -39,6 +39,22 @@ struct CalItem: Codable, Hashable {
     let kind: String?        // "task" | "event" | "allday"
     let tint: String?
 
+    init(text: String, start: Double, end: Double, kind: String?, tint: String?) {
+        self.text = text; self.start = start; self.end = end
+        self.kind = kind; self.tint = tint
+    }
+
+    /// Forgiving on purpose. One event with no title or no end must cost
+    /// that one line, not the whole lock screen.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        text = (try? c.decode(String.self, forKey: .text)) ?? "(no title)"
+        start = (try? c.decode(Double.self, forKey: .start)) ?? 0
+        end = (try? c.decode(Double.self, forKey: .end)) ?? start
+        kind = try? c.decode(String.self, forKey: .kind)
+        tint = try? c.decode(String.self, forKey: .tint)
+    }
+
     var startsAt: Date { Date(timeIntervalSince1970: start / 1000) }
     var endsAt: Date { Date(timeIntervalSince1970: end / 1000) }
     var isAllDay: Bool { kind == "allday" }
@@ -55,6 +71,18 @@ struct CalDay: Codable, Hashable {
     let count: Int
     let items: [CalItem]
 
+    init(at: Double, count: Int, items: [CalItem]) {
+        self.at = at; self.count = count; self.items = items
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        at = try c.decode(Double.self, forKey: .at)
+        let all = (try? c.decode([CalItem].self, forKey: .items)) ?? []
+        items = all.filter { $0.start > 0 }
+        count = (try? c.decode(Int.self, forKey: .count)) ?? items.count
+    }
+
     var date: Date { Date(timeIntervalSince1970: at / 1000) }
 }
 
@@ -65,12 +93,12 @@ enum CalStore {
     /// once by the app, read by whichever widget happens to be on screen.
     static func load() -> (events: [CalItem], days: [CalDay], at: Date?) {
         guard let defaults = UserDefaults(suiteName: TodoStore.group),
-              let raw = defaults.string(forKey: "CapacitorStorage.widgetData")
-                     ?? defaults.string(forKey: "widgetData"),
+              let raw = defaults.string(forKey: "widgetData")
+                     ?? defaults.string(forKey: "CapacitorStorage.widgetData"),
               let data = raw.data(using: .utf8),
               let doc = try? JSONDecoder().decode(CalPayload.self, from: data)
         else { return ([], [], nil) }
-        return (doc.events ?? [], doc.days ?? [],
+        return ((doc.events ?? []).filter { $0.start > 0 }, doc.days ?? [],
                 doc.at.map { Date(timeIntervalSince1970: $0 / 1000) })
     }
 
