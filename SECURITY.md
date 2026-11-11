@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, against build `2026-11-10-2358`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-11-0952`.
 
 This is not a reassurance document. Where something is weak, it says so.
 

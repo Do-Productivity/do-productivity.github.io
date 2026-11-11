@@ -448,6 +448,7 @@ struct TodoWidgetBundle: WidgetBundle {
         // shows them in this order.
         CalTodayWidget()
         CalWeekWidget()
+        CalAgendaWidget()
         TodoAllWidget()
         TodoPersonalWidget()
         TodoBusinessWidget()

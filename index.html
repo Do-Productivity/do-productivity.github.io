@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Y+a3B7K90ndiXDvRg7BnzTp6lA9/alZXhLateGH9Q5A=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7nt8I1uxS+2eKQdjMzSvauGzAyMj3ytig8ebS0meJTg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -5105,7 +5105,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-10-2358";
+  var BUILD = "2026-11-11-0952";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6149,6 +6149,19 @@
     } catch (e) { /* a corrupt cache is just an empty one */ }
   })();
 
+  // Every reader of a calendar ends here. One function rather than three
+  // copies of the same two lines, because something outside this file's
+  // view of the world needs to hear about it: the lock-screen widget only
+  // knows what the app last told it, and "the calendar just arrived" is
+  // exactly the moment it has to be told again.
+  var onCalendarCached = null;
+  function saveMsCache() {
+    try {
+      localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
+    } catch (e) { /* a full quota should not break the calendar */ }
+    if (onCalendarCached) { try { onCalendarCached(); } catch (e) {} }
+  }
+
   function dayKey(ts) {
     var d = new Date(ts);
     return d.getFullYear() + "-" +
@@ -6651,9 +6664,7 @@
           });
         });
       });
-      try {
-        localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
-      } catch (e) {}
+      saveMsCache();
       if (done) done();
     });
   }
@@ -6756,9 +6767,7 @@
           appleTime: ev.appleTime || 0
         });
       });
-      try {
-        localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
-      } catch (e) {}
+      saveMsCache();
       if (done) done();
     }).catch(function (e) {
       msFetching[range] = false;
@@ -6837,9 +6846,7 @@
           where: (ev.location && ev.location.displayName) || ""
         });
       });
-      try {
-        localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
-      } catch (e) { /* a full quota should not break the calendar */ }
+      saveMsCache();
       if (done) done();
     }).catch(function (e) {
       msFetching[range] = false;
@@ -11944,8 +11951,30 @@
     // Written into the App Group so the widget can read it with no network
     // and no token. If the group is unavailable (a free signing team may
     // refuse it) the widget falls back to the public feed on its own.
+    // The widget can only show what the app has read, and the app only read
+    // a day's calendar when you looked at that day. So a lock screen said
+    // "Nothing left today" on a morning full of meetings, to anyone who had
+    // not opened the calendar card since midnight. Now writing the widget
+    // also asks for the week; when it arrives the cache says so (see
+    // saveMsCache) and the widget is written again with the meetings in.
+    //
+    // Only where reading needs no new permission. Asking for the calendar
+    // is a decision the person makes in the calendar, not a sheet that
+    // appears because a widget wanted feeding.
+    function warmCalendar() {
+      try {
+        // Same order as ensureExternalEvents, so "may read" is asked about
+        // the source that will actually be used: on a phone with no feed
+        // that is the phone's own calendar, whatever else is connected.
+        var mayRead = icsFeeds().length > 0 ||
+          (calBridge() ? localStorage.getItem(CAL_PERM_KEY) === "1" : msConnected());
+        if (mayRead) ensureExternalEvents(startOfDay(Date.now(), 0), 7);
+      } catch (e) { /* the widget still gets the tasks */ }
+    }
+
     function writeWidget() {
       if (!Prefs) return Promise.resolve();
+      warmCalendar();
       var now = Date.now();
       var end = new Date(); end.setHours(23, 59, 59, 999);
       var payload = { build: BUILD, at: now, lists: [], today: 0, overdue: 0,
@@ -11975,9 +12004,13 @@
                             kind: ev.allDay ? "allday" : "event", tint: "violet" });
           });
           dayItems.sort(function (a, b) { return a.start - b.start; });
+          // Enough of each day for a widget that lists the week, not just
+          // counts it. Today gets more: by the afternoon the first dozen
+          // things are over, and a widget handed only those has nothing
+          // left to say about a day that is still going.
           payload.days.push({ at: d0, count: dayItems.length,
-                              items: dayItems.slice(0, 6) });
-          if (di === 0) payload.events = dayItems.slice(0, 8);
+                              items: dayItems.slice(0, di === 0 ? 24 : 12) });
+          if (di === 0) payload.events = dayItems.slice(0, 24);
         }
       } catch (e) {
         payload.events = [];
@@ -12030,6 +12063,7 @@
 
     // Every task write goes through these two, so this is the whole set of
     // places the device needs to hear about.
+    onCalendarCached = function () { sync(); };
     var _saveTasks = saveTasks, _saveScheduled = saveScheduled;
     saveTasks = function (key, arr) { _saveTasks(key, arr); sync(); };
     saveScheduled = function (arr) { _saveScheduled(arr); sync(); };
