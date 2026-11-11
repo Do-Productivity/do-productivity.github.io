@@ -106,9 +106,10 @@
   .plan small { display: block; font-size: 8.8pt; opacity: .8; margin-top: .6mm; line-height: 1.35; }
   .plan .tag { display: inline-block; background: var(--rust); color: #fff; font-size: 6.8pt; font-weight: 800;
     letter-spacing: .08em; border-radius: 3mm; padding: .7mm 2.2mm; margin-bottom: 1.4mm; }
-  .plan .price { text-align: right; white-space: nowrap; }
-  .plan .price b { font-size: 16pt; font-weight: 800; color: inherit; display: block; }
-  .plan .price span { font-size: 8.5pt; opacity: .8; }
+  .plan .price { white-space: nowrap; display: grid; gap: 1.6mm; }
+  .plan .price div { display: grid; grid-template-columns: auto auto; gap: 2.5mm; align-items: baseline; justify-content: end; }
+  .plan .price b { font-size: 14pt; font-weight: 800; color: inherit; text-align: right; }
+  .plan .price span { font-size: 7.5pt; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .7; text-align: right; }
   .fine { font-size: 8.8pt; line-height: 1.45; margin-top: 3.5mm; }
 
   .steps { list-style: none; display: grid; gap: 3.2mm; counter-reset: s; }
@@ -239,14 +240,14 @@
     <div>
       <h3>The price, when it gets there</h3>
       <div class="plan once">
-        <div><span class="tag">BEST VALUE</span><h4>Once, for good</h4><small>Pay once. No renewals, ever.<br>EGP 499 in Egypt.</small></div>
-        <div class="price"><b>$9.99</b><span>once</span></div>
+        <div><span class="tag">BEST VALUE</span><h4>Once, for good</h4><small>Pay once.<br>No renewals, ever.</small></div>
+        <div class="price"><div><span>Egypt</span><b>EGP 499</b></div><div><span>Elsewhere</span><b>$9.99</b></div></div>
       </div>
       <div class="plan month">
-        <div><h4>Monthly</h4><small>Cancel any time.<br>EGP 149.99 in Egypt.</small></div>
-        <div class="price"><b>$2.99</b><span>a month</span></div>
+        <div><h4>Monthly</h4><small>Each month.<br>Cancel any time.</small></div>
+        <div class="price"><div><span>Egypt</span><b>EGP 149.99</b></div><div><span>Elsewhere</span><b>$2.99</b></div></div>
       </div>
-      <p class="fine">Everything works for <b>14 days</b> first, with no card asked for. The web version you can open today is free.</p>
+      <p class="fine">Everything works for <b>14 days</b> first, with no card asked for. Other countries pay in their own currency. The web version you can open today is free.</p>
     </div>
   </div>
 
