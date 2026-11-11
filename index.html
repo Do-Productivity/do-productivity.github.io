@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6M67kbUJlP/jYOSBnZ7QsgCv6T8A2gQ2mksJ6ZkTZrg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zh7DE7dSCiQdmYtYCC+NlxqItOh3BDATlDRUOncKmgA=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1871,6 +1871,11 @@
     border-color: var(--red);
     color: #fff;
   }
+  .modal-btn.danger { color: var(--red); border-color: var(--red); }
+  .modal-btn.danger.armed { background: var(--red); color: #fff; }
+  .modal-btn:disabled { opacity: 0.55; cursor: default; }
+  .modal-details ul.leaves { margin: 8px 0 4px 18px; padding: 0; font-size: 12.5px; line-height: 1.5; }
+  .modal-details ul.leaves li { margin: 0 0 6px; }
   .modal .modal-hint {
     font-size: 11px;
     color: var(--ink-faint);
@@ -2870,7 +2875,7 @@
         <button class="modal-btn cloud-google" id="cloud-google-btn" style="display:none"><span class="g">G</span> Continue with Google</button>
         <button class="modal-btn quiet" id="cloud-forgot-btn">Forgotten your password?</button>
         <p class="modal-hint" id="cloud-auth-msg"></p>
-        <p class="modal-hint">Your list stays private to your account — nobody else can read it, not even from another account on the same app.</p>
+        <p class="modal-hint">Your list is private to your account: no other account can read it. You can delete the account, and everything synced to it, at any time.</p>
         <details class="modal-details">
           <summary>No password — email me a link instead</summary>
           <p class="modal-hint">Sends a one-time link to the address above. Slower, and it depends on the mail sender being set up.</p>
@@ -2886,6 +2891,11 @@
         <p class="modal-hint" id="cloud-status-line"></p>
         <div id="cloud-cal" style="display:none">
           <hr class="cloud-rule">
+          <div id="cloud-cal-off">
+            <p><b>Calendar alerts are off.</b> Turning them on publishes the titles and times of your dated tasks at a private address, so Apple Calendar can subscribe to it and ring exactly on time. Anyone holding that address can read those titles.</p>
+            <button class="modal-btn" id="cloud-cal-on-btn">Turn on Calendar alerts</button>
+          </div>
+          <div id="cloud-cal-on" style="display:none">
           <p><b>Automatic Calendar alerts:</b> tap this once on your iPhone and every task you give a date to appears in Apple Calendar by itself &mdash; alerts included, nothing else to do, ever.</p>
           <a class="modal-btn primary" id="cloud-subscribe-link" href="#">🗓 Subscribe in Apple Calendar</a>
           <p class="modal-hint">iPhone shows &ldquo;Subscribe to calendar?&rdquo; &mdash; tap Subscribe. Alarms then ring <b>exactly</b> on time, because Apple rings them locally.</p>
@@ -2906,11 +2916,29 @@
           </details>
           <p class="modal-hint" id="cloud-cal-wait" style="display:none">Your calendar address appears here after the first sync &mdash; tap <b>Sync now</b>.</p>
           <p class="modal-hint" id="cloud-cal-bad" style="display:none">The calendar feed isn&rsquo;t switched on for this app yet, so there is nothing to subscribe to. Your tasks still sync normally, and you can add any single dated task to your calendar with the ⏰ button on the task itself.</p>
+          <button class="modal-btn quiet" id="cloud-cal-off-btn">Turn Calendar alerts off and erase the published copy</button>
+          </div>
         </div>
         <hr class="cloud-rule">
         <button class="modal-btn" id="cloud-signout-btn">Sign out of this device</button>
         <p class="modal-hint">Signing out leaves your tasks on this device but stops them syncing.</p>
+        <details class="modal-details" id="cloud-delete">
+          <summary>Delete my account</summary>
+          <p class="modal-hint">This erases your account from the server, with everything synced to it: your email address, the synced copy of your lists, and the calendar address. It cannot be undone. The lists on this device stay here.</p>
+          <button class="modal-btn danger" id="cloud-delete-btn">Delete my account for good</button>
+          <p class="modal-hint" id="cloud-delete-msg" role="status"></p>
+        </details>
       </div>
+      <details class="modal-details" id="cloud-leaves">
+        <summary>What leaves this device</summary>
+        <ul class="leaves">
+          <li><b>Without an account: nothing.</b> Your lists stay on this device.</li>
+          <li><b>With an account:</b> your email address and the lists you sync are kept on the app's server, so your devices can share them. They are stored in readable form, not locked with a key only you hold, so whoever runs the server could technically read them.</li>
+          <li><b>Calendar alerts:</b> only if you turn them on. Then the titles and times of dated tasks sit at a private address until you turn them off.</li>
+          <li><b>Never:</b> no counting of who opens the app, no advertising, no tracking.</li>
+          <li><b>Your calendar</b> is read on this device and is never sent.</li>
+        </ul>
+      </details>
       <p class="modal-hint" id="cloud-unconfigured" style="display:none">Syncing between devices isn't switched on yet. Everything you write is saved on this device in the meantime, and works offline.</p>
     </div>
 
@@ -5105,7 +5133,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-1255";
+  var BUILD = "2026-11-11-1721";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -10042,6 +10070,8 @@
   function clearCloudSession() {
     secrets.removeItem(CLOUD_SESSION_KEY);
     secrets.removeItem("dia_todo_feed_token");
+    // The calendar choice belongs to the account, not to the device.
+    try { localStorage.removeItem("dia_todo_feed_choice"); } catch (e) { /* nothing kept */ }
   }
 
   function cloudSignedIn() { return !!loadCloudSession(); }
@@ -10061,6 +10091,34 @@
 
   function feedToken() {
     return cloudSignedIn() ? secrets.getItem(FEED_TOKEN_KEY) : null;
+  }
+
+  // The feed puts the titles of dated tasks at an address anyone holding it
+  // can read. So it is off until the person turns it on, and while it is off
+  // every sync uploads an empty feed, which erases whatever was published.
+  // The choice rides in the sync document with the time it was made, so the
+  // latest decision wins on every device.
+  var FEED_CHOICE_KEY = "dia_todo_feed_choice";
+
+  function feedChoice() {
+    try {
+      var c = JSON.parse(localStorage.getItem(FEED_CHOICE_KEY));
+      if (c && typeof c.on === "boolean") return { on: c.on, at: +c.at || 0 };
+    } catch (e) { /* unreadable is the same as never chosen */ }
+    return { on: false, at: 0 };
+  }
+
+  function feedOn() { return feedChoice().on; }
+
+  function setFeedChoice(on) {
+    localStorage.setItem(FEED_CHOICE_KEY, JSON.stringify({ on: !!on, at: Date.now() }));
+  }
+
+  function adoptFeedChoice(remoteDoc) {
+    var r = remoteDoc && remoteDoc.feed;
+    if (!r || typeof r.on !== "boolean" || !(+r.at > feedChoice().at)) return;
+    localStorage.setItem(FEED_CHOICE_KEY, JSON.stringify({ on: r.on, at: +r.at }));
+    refreshCloudAccount();
   }
 
   // Whether the database is actually answering that address with a real
@@ -10306,6 +10364,27 @@
     }
   }
 
+  // Erases the account on the server: the sign-in, the synced lists and the
+  // calendar feed go with it. The database does the deleting, as the person
+  // who is signed in and nobody else. Nothing local is touched until the
+  // server has said yes, so a failure leaves everything as it was.
+  function cloudDeleteAccount() {
+    if (!cloudSignedIn()) return Promise.reject(new Error("You are not signed in on this device."));
+    return cloudFetch("/rest/v1/rpc/delete_account", { method: "POST", body: "{}" }).then(function (res) {
+      if (res.status === 404) throw new Error("Deleting accounts is not switched on for this app yet. Nothing was deleted.");
+      if (res.status === 401) throw new Error("This device's sign-in has expired. Sign in again, then delete. Nothing was deleted.");
+      if (!res.ok) throw new Error("The account could not be deleted (error " + res.status + "). Nothing was deleted.");
+      clearTimeout(syncState.pushTimer);
+      clearCloudSession();
+      syncState.lastRemote = null;
+      syncState.lastApplied = 0;
+      syncState.dirty = false;
+      return true;
+    }, function () {
+      throw new Error("No connection. Nothing was deleted. Try again when you are online.");
+    });
+  }
+
   // Tokens come back in the fragment. Capture them, learn who it is, then
   // strip the fragment so a refresh or a shared URL carries no credentials.
   function captureCloudRedirect() {
@@ -10372,6 +10451,7 @@
       // becomes its starting point.
       if (!rows.length || !rows[0].doc || !rows[0].doc.lists) { scheduleSyncPush(); return; }
       var doc = rows[0].doc;
+      adoptFeedChoice(doc);
       var json = JSON.stringify(doc);
       if (json === syncState.lastRemote) return;
       var weHaveMore = mergeRemoteIntoLocal(doc);
@@ -10394,6 +10474,7 @@
     }).then(function (rows) {
       if (rows && rows.length && rows[0].feed_token) rememberFeedToken(rows[0].feed_token);
       var remoteDoc = (rows && rows.length) ? rows[0].doc : null;
+      adoptFeedChoice(remoteDoc);
       // Merge before overwriting, exactly as the gist path does — another
       // device may have pushed since this one last looked.
       if (remoteDoc && remoteDoc.lists && (remoteDoc.updatedAt || 0) > syncState.lastApplied) {
@@ -10418,9 +10499,9 @@
         body: JSON.stringify({
           user_id: s.uid,
           doc: doc,
-          // The finished calendar rides along, so the account's feed is
-          // rendered by the same proven code as the gist one.
-          ics: buildRemindersICS(),
+          // The finished calendar rides along only when the person turned
+          // calendar alerts on. Otherwise null, which empties the feed.
+          ics: feedOn() ? buildRemindersICS() : null,
           updated_at: new Date().toISOString()
         })
       }).then(function (res) {
@@ -10451,9 +10532,9 @@
         body: JSON.stringify({
           user_id: s.uid,
           doc: doc,
-          // The finished calendar rides along, so the account's feed is
-          // rendered by the same proven code as the gist one.
-          ics: buildRemindersICS(),
+          // The finished calendar rides along only when the person turned
+          // calendar alerts on. Otherwise null, which empties the feed.
+          ics: feedOn() ? buildRemindersICS() : null,
           updated_at: new Date().toISOString()
         })
       });
@@ -10559,7 +10640,8 @@
       customLists: loadCustomLists(),
       notes: loadNotes(),
       tints: loadTintMap(),
-      runs: loadScheduled()
+      runs: loadScheduled(),
+      feed: feedChoice()
     };
   }
 
@@ -11106,11 +11188,14 @@
       var path = feedPath();
       if (cal) {
         cal.style.display = "";
+        var alertsOn = feedOn();
+        document.getElementById("cloud-cal-off").style.display = alertsOn ? "none" : "";
+        document.getElementById("cloud-cal-on").style.display = alertsOn ? "" : "none";
         var feedOk = feedChecked !== false;
         document.getElementById("cloud-subscribe-link").style.display = (path && feedOk) ? "" : "none";
         document.getElementById("cloud-cal-wait").style.display = path ? "none" : "";
         document.getElementById("cloud-cal-bad").style.display = (path && !feedOk) ? "" : "none";
-        if (path) verifyFeed();
+        if (path && alertsOn) verifyFeed();
         if (path) {
           document.getElementById("cloud-subscribe-link").href = "webcal://" + path;
           document.getElementById("cloud-feed-box").value = "https://" + path;
@@ -11704,6 +11789,59 @@
       if (syncActive()) syncPullNow();
       flashStatus("Signed out. Your tasks are still here on this device.");
     });
+
+    // Calendar alerts, on or off. Either way the next sync carries it out:
+    // on uploads the calendar, off uploads an empty one in its place.
+    function chooseFeed(on) {
+      setFeedChoice(on);
+      feedChecked = null;
+      refreshCloudAccount();
+      scheduleSyncPush();
+      flashStatus(on ? "Calendar alerts are on." : "Calendar alerts are off. The published copy is being erased.");
+    }
+    var calOn = document.getElementById("cloud-cal-on-btn");
+    var calOff = document.getElementById("cloud-cal-off-btn");
+    if (calOn) calOn.addEventListener("click", function () { chooseFeed(true); });
+    if (calOff) calOff.addEventListener("click", function () { chooseFeed(false); });
+
+    // Deleting the account takes two taps on purpose: the first only arms
+    // the button, and it disarms itself if the second does not follow.
+    var del = document.getElementById("cloud-delete-btn");
+    var delMsg = document.getElementById("cloud-delete-msg");
+    var armedAt = 0, armTimer = null;
+    function disarmDelete() {
+      armedAt = 0;
+      clearTimeout(armTimer);
+      del.disabled = false;
+      del.classList.remove("armed");
+      del.textContent = "Delete my account for good";
+    }
+    if (del) del.addEventListener("click", function () {
+      if (!armedAt) {
+        armedAt = Date.now();
+        delMsg.textContent = "";
+        del.classList.add("armed");
+        del.textContent = "Tap again to delete for good";
+        armTimer = setTimeout(disarmDelete, 8000);
+        return;
+      }
+      clearTimeout(armTimer);
+      del.disabled = true;
+      del.textContent = "Deleting…";
+      cloudDeleteAccount().then(function () {
+        disarmDelete();
+        var box = document.getElementById("cloud-delete");
+        if (box) box.open = false;
+        refreshCloudAccount();
+        setSyncDot("busy");
+        if (syncActive()) syncPullNow();
+        cloudAuthMessage("Your account and everything synced to it have been deleted. The lists on this device are still here.");
+        flashStatus("Account deleted. Your lists are still here on this device.");
+      }).catch(function (err) {
+        disarmDelete();
+        delMsg.textContent = (err && err.message) || "The account could not be deleted. Nothing was deleted.";
+      });
+    });
   })();
 
   // Boot the right backend. A sign-in redirect has to be consumed first,
@@ -11711,70 +11849,12 @@
   // is wasted.
   if (!navigator.onLine) setNetBanner(true);
 
-  // ── Usage ping ───────────────────────────────────────────
-  // One random id per device, so the tracker page can count how many
-  // people actually opened the app — including everyone who never makes
-  // an account. Nothing identifying travels with it: no email, no task
-  // text, just the id and a timestamp. Twice an hour at most.
-  //
-  // The throttle lives on the device, so anything that clears the table
-  // server side leaves every device thinking it has already checked in.
-  // Half an hour is short enough that the count recovers on its own.
-  //
-  // It runs on waking as well as on load, the same way the update check
-  // does. This app is a pinned tab and a home-screen icon — it can sit
-  // open for days — and a boot-only ping made those devices invisible to
-  // the counter precisely because they were the ones in constant use.
-
-  function usagePing() {
-    if (!cloudConfigured()) return;
-    // A copy being worked on is not a person using the app. Without this,
-    // every local test run adds a device to the count and the figure that
-    // is meant to say "how many people" quietly measures development too.
-    if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ||
-        /\.(localhost|test|local)$/.test(location.hostname)) return;
-    var ID_KEY = "dia_todo_device_id";
-    var AT_KEY = "dia_todo_pinged_at";
-    var EVERY = 30 * 6e4;
-
-    function uuidFallback() {
-      var b = new Uint8Array(16);
-      crypto.getRandomValues(b);
-      b[6] = (b[6] & 0x0f) | 0x40;
-      b[8] = (b[8] & 0x3f) | 0x80;
-      var h = [];
-      for (var i = 0; i < 16; i++) h.push((b[i] + 0x100).toString(16).slice(1));
-      return h.slice(0, 4).join("") + "-" + h.slice(4, 6).join("") + "-" +
-             h.slice(6, 8).join("") + "-" + h.slice(8, 10).join("") + "-" +
-             h.slice(10, 16).join("");
-    }
-
-    try {
-      // a stored time in the future means a clock moved; treat it as stale
-      var last = +localStorage.getItem(AT_KEY) || 0;
-      var since = Date.now() - last;
-      if (since >= 0 && since < EVERY) return;
-      var id = localStorage.getItem(ID_KEY);
-      if (!id) {
-        id = (crypto.randomUUID ? crypto.randomUUID() : uuidFallback());
-        localStorage.setItem(ID_KEY, id);
-      }
-      // Through cloudFetch so a signed-in device sends its token too, which
-      // is how the tracker tells this person's own devices from everyone's.
-      cloudFetch("/rest/v1/rpc/record_visit", {
-        method: "POST",
-        body: JSON.stringify({ device: id })
-      }).then(function (res) {
-        if (res.ok) localStorage.setItem(AT_KEY, String(Date.now()));
-      }).catch(function () { /* offline — it pings on a later open */ });
-    } catch (e) { /* storage blocked, so there is nothing to count with */ }
-  }
-
-  secrets.whenReady(usagePing);
-  window.addEventListener("focus", usagePing);
-  document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) usagePing();
-  });
+  // The app used to count opens with a random id per device. It sends
+  // nothing of the kind any more; this only forgets the id it once made.
+  try {
+    localStorage.removeItem("dia_todo_device_id");
+    localStorage.removeItem("dia_todo_pinged_at");
+  } catch (e) { /* storage blocked, so nothing was kept either */ }
 
   // Whether this device is signed in is a question for the Keychain on a
   // phone, and the Keychain has to be asked. Nothing that depends on the

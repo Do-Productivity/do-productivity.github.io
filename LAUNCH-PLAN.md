@@ -496,7 +496,8 @@ lock screen, offline, privacy.
 advantage. It still is, but it is no longer trivial, because the app now asks for
 calendar access.
 
-- Nothing leaves the device unless sync is turned on. No accounts. No analytics.
+- Nothing leaves the device unless sync is turned on. No account needed. No
+  analytics, and no counting of opens (removed in build `2026-11-11-1721`).
 - **Calendar data is read on the device and never transmitted.** Say so plainly.
 - The purpose string is already in `Info.plist`
   (`NSCalendarsFullAccessUsageDescription`) and must keep describing the real

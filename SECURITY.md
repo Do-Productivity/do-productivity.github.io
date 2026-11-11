@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, last checked against build `2026-11-11-1255`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-11-1721`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -52,6 +52,10 @@ Worth stating, because it is why the fixes were small:
 - **No secrets in the repository**, which matters because GitHub Pages requires
   it to be public. The server-side keys live in environment variables; history
   is clean too.
+- **No usage counter.** Until build `2026-11-11-1721` the app sent a random id
+  per device so opens could be counted. That is removed, the calendar feed is
+  off until the person turns it on, and `supabase-setup.sql` now drops the
+  counter's table and the owner-only statistics function.
 - **Zero `console.log` calls**, so nothing leaks into a device log — and the
   native bridge is told to keep quiet too (see 5 below; it was not, at first).
 - **The Supabase key in the file is the publishable one** — that is its job.
@@ -283,11 +287,14 @@ what stands between the app and review is mostly not security.
 
 **Blocks review, and is code:**
 
-- **An account can be made in the app but not deleted in it.** Apple requires
-  deletion wherever creation is offered (guideline 5.1.1(v)). The database has
-  no delete policy either, so this needs one small server function as well as
-  a button. Until it exists, either build it or leave accounts out of the
-  iPhone version.
+- **Account deletion: built in the app, waiting on one database step.** Sync →
+  *Delete my account* takes two taps and calls `delete_account()`, which removes
+  the person's row in `documents` and their `auth.users` row, as that person and
+  nobody else (guideline 5.1.1(v)). The function is in `supabase-setup.sql` and
+  **has to be run once in the Supabase SQL editor**; until then the button says
+  deleting is not switched on and deletes nothing. *Verified:* 28 checks against
+  a mock server (build `2026-11-11-1721`). **Not verified:** the function on the
+  live database.
 - **The paywall has no Terms of Use or Privacy Policy link.** Required beside
   any subscription (3.1.2). Only matters on the day `Store.enforced` is true.
 

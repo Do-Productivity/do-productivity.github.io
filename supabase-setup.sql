@@ -3,112 +3,25 @@
 -- Safe to run again later: every statement is create-if-absent or
 -- replace-in-place, and it never touches anybody's tasks.
 --
--- Part 1 gives the usage tracker something to count.
+-- Part 1 removes the usage tracker, and the figures it had gathered.
 -- Part 2 gives every account its own Apple Calendar feed, so the calendar
 --   alerts stop depending on a GitHub token that only Ahmed has.
+-- Part 3 lets a person delete their own account from inside the app.
 
--- ═══ PART 1 · usage tracker ══════════════════════════════════════════
--- Records a random id per device, a first-seen, a last-seen, and the
--- account id when that device happens to be signed in — which is what lets
--- the tracker say whose phone a device is, and tell your own from everyone
--- else's. The table itself holds no names, no emails and no task text; the
--- owner-only view below joins the account emails in from Supabase's own
--- auth table at read time.
+-- ═══ PART 1 · the usage tracker is gone ═════════════════════════════
+-- The app used to send a random id per device so its owner could count
+-- opens, and an owner-only function listed every account's email beside
+-- its devices. The app no longer sends that id, and the owner no longer
+-- keeps any of it. These lines remove the functions and DELETE THE DATA
+-- already gathered. That cannot be undone, which is the intention.
+--
+-- A build of the app from before this change still calls record_visit. It
+-- gets "not found", which it has always treated as "try again later".
 
-create table if not exists public.pings (
-  device_id  uuid        primary key,
-  user_id    uuid,
-  first_seen timestamptz not null default now(),
-  last_seen  timestamptz not null default now(),
-  hits       integer     not null default 1
-);
-alter table public.pings add column if not exists user_id uuid;
-
-alter table public.pings enable row level security;
--- Deliberately no policies: nothing can read or write this table directly.
--- Only the functions below touch it, and they run as its owner.
-
-create or replace function public.record_visit(device uuid)
-returns void
-language sql
-security definer
-set search_path = public
-as $$
-  insert into public.pings (device_id, user_id) values (device, auth.uid())
-  on conflict (device_id) do update
-    set last_seen = now(),
-        hits      = pings.hits + 1,
-        user_id   = coalesce(auth.uid(), pings.user_id);
-$$;
-
-revoke all on function public.record_visit(uuid) from public;
-grant execute on function public.record_visit(uuid) to anon, authenticated;
-
--- Only the owner sees the figures. Membership of this one-row table is the
--- whole check, which keeps the owner's email out of a public repository and
--- survives an account being recreated — change the row, not the function.
-create table if not exists public.app_owners (user_id uuid primary key);
-alter table public.app_owners enable row level security;   -- no policies, same as pings
-
--- First run only: whoever signed up first owns the app. If that is ever the
--- wrong person, replace the row in the Supabase table editor with the right
--- user id from Authentication → Users.
-insert into public.app_owners (user_id)
-select id from auth.users
-where not exists (select 1 from public.app_owners)
-order by created_at limit 1;
-
-create or replace function public.app_stats()
-returns json
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare result json;
-begin
-  -- Emails and the device-to-account links below are only safe to return
-  -- because nobody else can get this far.
-  if not exists (select 1 from public.app_owners o where o.user_id = auth.uid()) then
-    raise exception 'app_stats is for the owner of this app only'
-      using errcode = '42501';
-  end if;
-
-  select json_build_object(
-    'generated', now(),
-    'me',        auth.uid(),
-    'people', (
-      select coalesce(json_agg(json_build_object(
-        'id',          u.id,
-        'email',       u.email,
-        'joined',      u.created_at,
-        'last_signin', u.last_sign_in_at,
-        'last_sync',   d.updated_at
-      ) order by u.created_at), '[]'::json)
-      from auth.users u
-      left join public.documents d on d.user_id = u.id
-    ),
-    'devices', (
-      select coalesce(json_agg(json_build_object(
-        'label', left(p.device_id::text, 8),   -- enough to tell two rows apart
-        'first', p.first_seen,
-        'last',  p.last_seen,
-        'hits',  p.hits,
-        'user',  p.user_id,                    -- null until it pings signed in
-        'mine',  coalesce(p.user_id = auth.uid(), false)
-      ) order by p.first_seen), '[]'::json)
-      from public.pings p
-    )
-  ) into result;
-  return result;
-end;
-$$;
-
--- Supabase grants EXECUTE on new public functions to anon and authenticated
--- by default, and revoking from PUBLIC does not remove those named grants —
--- so anon has to be revoked explicitly. Account holders keep the grant and
--- are turned away by the owner check inside the function.
-revoke all on function public.app_stats() from public, anon;
-grant execute on function public.app_stats() to authenticated;
+drop function if exists public.app_stats();
+drop function if exists public.record_visit(uuid);
+drop table if exists public.pings;
+drop table if exists public.app_owners;
 
 -- ═══ PART 2 · a calendar feed per account ════════════════════════════
 -- The app already knows how to render its reminders as an .ics calendar —
@@ -164,3 +77,38 @@ $$;
 -- subscribable feed URL — and the token is the only way in.
 revoke all on function public.feed(uuid) from public;
 grant execute on function public.feed(uuid) to anon, authenticated;
+
+-- ═══ PART 3 · deleting an account ════════════════════════════════════
+-- Called by the app as the person who is signed in. It removes that
+-- person and nobody else: auth.uid() comes from their own session, and
+-- there is no parameter to point it at anyone else.
+--
+-- The row in documents holds the synced lists, the calendar feed and its
+-- address. It goes first, explicitly, rather than trusting the cascade
+-- alone. Deleting the auth.users row then removes the email address, the
+-- password hash and every session, so other devices are signed out the
+-- next time their token is checked.
+
+create or replace function public.delete_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then
+    raise exception 'delete_account needs a signed-in person'
+      using errcode = '42501';
+  end if;
+  delete from public.documents where user_id = me;
+  delete from auth.users where id = me;
+end;
+$$;
+
+revoke all on function public.delete_account() from public, anon;
+grant execute on function public.delete_account() to authenticated;
+
+-- PostgREST caches the list of functions. Tell it to look again, so the
+-- app does not get "not found" for the minute after this is run.
+notify pgrst, 'reload schema';
