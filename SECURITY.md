@@ -261,6 +261,52 @@ the App Store version goes up.
 
 ---
 
+## Before the App Store
+
+Checked on 11 November 2026 against build `2026-11-10-2358`. Security held;
+what stands between the app and review is mostly not security.
+
+**Checked and holding:**
+
+- Every regression check below passes; the payment and Keychain tests pass.
+- The **Release** configuration builds and runs — until now only Debug had ever
+  been built. It launches on an iPhone and on an iPad simulator.
+- The live database refuses a stranger: asked with the public key alone,
+  `documents`, `pings` and `app_owners` each return nothing, and the owner-only
+  statistics function answers 401.
+- The app carries **privacy manifests** now (`PrivacyInfo.xcprivacy`, one in the
+  app and one in the widget). They were missing, and App Store Connect rejects
+  an upload that uses `UserDefaults` without declaring why. They state: no
+  tracking; an email address and the synced lists are collected, tied to the
+  account, for the app to work; `UserDefaults` is used for the app's own
+  settings and for handing the day to its own widget.
+
+**Blocks review, and is code:**
+
+- **An account can be made in the app but not deleted in it.** Apple requires
+  deletion wherever creation is offered (guideline 5.1.1(v)). The database has
+  no delete policy either, so this needs one small server function as well as
+  a button. Until it exists, either build it or leave accounts out of the
+  iPhone version.
+- **The paywall has no Terms of Use or Privacy Policy link.** Required beside
+  any subscription (3.1.2). Only matters on the day `Store.enforced` is true.
+
+**Blocks review, and is not code:**
+
+- The Apple Developer Program. Signing today is the free personal team, whose
+  profiles last seven days and cannot upload.
+- A privacy policy at a public address — every app needs one — and the App
+  Privacy answers, which must say what the manifest says.
+- The name. The bundle still calls itself "My To Do List".
+- The build is universal (iPhone and iPad). That means iPad screenshots and an
+  iPad review. It runs there; nobody has used it there.
+
+**Not verified:** a password-reset or sign-in email opened on the phone — the
+link returns to the website, not the app. A real purchase. A real archive,
+which needs the paid account.
+
+---
+
 ## Checking this has not regressed
 
 Run before any release:

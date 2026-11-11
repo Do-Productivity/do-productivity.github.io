@@ -231,7 +231,7 @@ public class StoreBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     override public func load() {
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
             Store.shared.changed = { [weak self] in
                 self?.notifyListeners("entitlement", data: Store.shared.status())
             }

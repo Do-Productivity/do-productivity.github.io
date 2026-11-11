@@ -24,6 +24,8 @@
 		E0E14591ACD647C90EEA438C /* CalendarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05304E939BFF4EEF78ED524F /* CalendarBridge.swift */; };
 		570BE0B1D6E0A1B2C3D4E502 /* StoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */; };
 		5EC0DE5701A1B2C3D4E5F602 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */; };
+		9817AC1E0A1B2C3D4E5F7002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */; };
+		9817AC1E0A1B2C3D4E5F7012 /* TodoWidget/PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9817AC1E0A1B2C3D4E5F7011 /* TodoWidget/PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +56,8 @@
 		05304E939BFF4EEF78ED524F /* CalendarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarBridge.swift; sourceTree = "<group>"; };
 		570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreBridge.swift; sourceTree = "<group>"; };
 		5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
+		9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		9817AC1E0A1B2C3D4E5F7011 /* TodoWidget/PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = TodoWidget/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		3D554B27B1B7760C46E77233 /* TodoWidget/TodoWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TodoWidget/TodoWidget.entitlements; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
@@ -93,6 +97,7 @@
 				C9054973B9BE3AFA9A4330B4 /* TodoWidget/Info.plist */,
 				3D554B27B1B7760C46E77233 /* TodoWidget/TodoWidget.entitlements */,
 				9C1040D18EC5C85358874D05 /* TodoWidget/CalendarWidget.swift */,
+				9817AC1E0A1B2C3D4E5F7011 /* TodoWidget/PrivacyInfo.xcprivacy */,
 			);
 			name = TodoWidget;
 			sourceTree = "<group>";
@@ -132,6 +137,7 @@
 				05304E939BFF4EEF78ED524F /* CalendarBridge.swift */,
 				570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */,
 				5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */,
+				9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */,
 				606544C19AFA6C2082FC8ED4 /* MainViewController.swift */,
 			);
 			path = App;
@@ -167,6 +173,7 @@
 			buildConfigurationList = 359F48798C914F24E0A4825A /* Build configuration list for PBXNativeTarget "TodoWidget" */;
 			buildPhases = (
 				FBE442DEB41906714E9D6665 /* Sources */,
+				9817AC1E0A1B2C3D4E5F7020 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -226,6 +233,15 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				9817AC1E0A1B2C3D4E5F7002 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9817AC1E0A1B2C3D4E5F7020 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9817AC1E0A1B2C3D4E5F7012 /* TodoWidget/PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
