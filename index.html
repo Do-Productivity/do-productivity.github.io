@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zChKM3p9DM6nTWQeomFHQ6l19Pemrbf9cVjGNTdjvCU=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mCq9Dlua5TqXYU6ivss4D/tUkvQ2OwRbn27JjvYMEtI=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2872,6 +2872,10 @@
           <div class="cloud-or">or</div>
           <input class="sync-token" id="vault-code-input" placeholder="Code from your other device" autocomplete="off" autocapitalize="characters" spellcheck="false">
           <button class="modal-btn" id="vault-join-btn">Join with this code</button>
+          <div id="vault-number" style="display:none">
+            <input class="sync-token" id="vault-number-input" placeholder="4-digit number from your other device" autocomplete="off" inputmode="numeric" maxlength="4">
+            <button class="modal-btn primary" id="vault-number-btn">Finish linking</button>
+          </div>
           <p class="modal-hint" id="vault-off-msg" role="status"></p>
         </div>
         <div id="vault-on" style="display:none">
@@ -2883,15 +2887,20 @@
             <button class="modal-btn" id="legacy-remove-btn">Remove my old email account</button>
           </div>
           <hr class="cloud-rule">
-          <p><b>Add another device.</b> Get a one-time code here and type it on the other device, under Sync. Then approve that device here. Nothing is handed over until you do.</p>
+          <p><b>Add another device.</b> Get a one-time code here and type it on the other device, under Sync. Approve it here, then type the number this device shows back on the other one. Nothing can be opened until both are done.</p>
           <button class="modal-btn" id="vault-pair-btn">Show a one-time code</button>
           <div id="vault-code-out" style="display:none">
             <div class="vault-code" id="vault-code-text"></div>
             <p class="modal-hint" id="vault-wait">It works once, for 10 minutes. Waiting for the other device…</p>
             <div id="vault-ask" style="display:none">
-              <p><b>A device is asking to join.</b> It shows the number <b id="vault-ask-n"></b>. Approve only if that is your device and the number matches.</p>
+              <p><b>A device is asking to join.</b> Approve only if you have just typed this code on your own device.</p>
               <button class="modal-btn primary" id="vault-approve-btn">Approve this device</button>
               <button class="modal-btn" id="vault-refuse-btn">Refuse</button>
+            </div>
+            <div id="vault-number-out" style="display:none">
+              <p><b>Approved.</b> Now type this number on the other device to finish:</p>
+              <div class="vault-code" id="vault-number-text"></div>
+              <p class="modal-hint">Without this number the other device cannot open anything.</p>
             </div>
           </div>
           <p class="modal-hint" id="vault-on-msg" role="status"></p>
@@ -5187,7 +5196,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-2058";
+  var BUILD = "2026-11-11-2116";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -10897,7 +10906,7 @@
   // where the answer waits, and the key that seals both.
   function pairKeys(code) {
     return crypto.subtle.importKey("raw", utf8.encode(code), "PBKDF2", false, ["deriveBits"]).then(function (base) {
-      return crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: utf8.encode("do-pair-v2"), iterations: 600000 }, base, 512);
+      return crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: utf8.encode("do-pair-v3"), iterations: 600000 }, base, 512);
     }).then(function (bits) {
       var b = new Uint8Array(bits);
       return crypto.subtle.importKey("raw", b.slice(32, 64), "AES-GCM", false, ["encrypt", "decrypt"]).then(function (key) {
@@ -10922,11 +10931,13 @@
     });
   }
 
-  // Linking takes both devices. The device that already syncs shows a code
-  // and waits. The new device types it and asks to join, showing a number.
-  // The first device shows that number too, and nothing is handed over
-  // until its owner approves. So a code that is seen or guessed gives a
-  // stranger a request that gets refused, and never the lists.
+  // Linking goes back and forth. The device that already syncs shows a
+  // code and waits. The new device types it and asks to join. The first
+  // device's owner approves, and that device then shows a four-digit
+  // number, which has to be typed on the new device. The key is sealed
+  // with the code and that number together, so a stranger who saw or
+  // guessed the code, and even got approved by mistake, still holds
+  // something that will not open.
   var pairing = null;       // { timer, until, keys, onAsk } on the device that offers
   var joining = null;       // { timer } on the device that asks
 
@@ -10949,7 +10960,7 @@
     return pairKeys(code).then(function (pk) {
       // an empty read first, so a server that is not set up says so now
       return pairTake(pk.ask).then(function () {
-        var mine = pairing = { keys: pk, until: Date.now() + 10 * 60000, asked: false, timer: 0 };
+        var mine = pairing = { keys: pk, code: code, until: Date.now() + 10 * 60000, asked: false, timer: 0 };
         mine.timer = setInterval(function () {
           if (pairing !== mine) return;
           if (Date.now() > mine.until || !loadVault()) { pairStop(); if (onEnd) onEnd("The code has expired. Make a new one."); return; }
@@ -10958,9 +10969,9 @@
             if (!blob || pairing !== mine || mine.asked) return;
             return unseal(pk.key, blob).then(function (text) {
               var ask = JSON.parse(text);
-              if (!ask || !/^\d{2}$/.test(ask.n)) return;
+              if (!ask || !ask.join) return;
               mine.asked = true;
-              onAsk(ask.n);
+              onAsk();
             });
           }).catch(function () { /* a missed tick; the next one asks again */ });
         }, 2000);
@@ -10977,20 +10988,27 @@
     var mine = pairing, v = loadVault();
     if (!mine || !mine.asked) return Promise.reject(new Error("No device is asking."));
     pairStop();
-    var message = (approve && v) ? { ok: true, id: v.id, k: v.k } : { ok: false };
-    return pairPut(mine.keys.answer, mine.keys.key, message);
+    if (!approve || !v) {
+      return pairPut(mine.keys.answer, mine.keys.key, { ok: false }).then(function () { return ""; });
+    }
+    var r = randomBytes(2), number = String(1000 + ((r[0] * 256 + r[1]) % 9000));
+    return pairKeys(mine.code + "#" + number).then(function (nk) {
+      return seal(nk.key, JSON.stringify({ id: v.id, k: v.k }));
+    }).then(function (box) {
+      return pairPut(mine.keys.answer, mine.keys.key, { ok: true, box: box });
+    }).then(function () { return number; });
   }
 
-  // On the new device. onNumber(n) runs once the request is sent; the
-  // promise settles when the other device has answered, or time runs out.
-  function pairAccept(text, onNumber) {
+  // On the new device. onSent() runs once the request is out. When the
+  // other device approves, askNumber(message) must resolve with the number
+  // its owner types; the promise settles when that number opens the key.
+  function pairAccept(text, onSent, askNumber) {
     var code = readPairCode(text);
     if (code.length !== 12) return Promise.reject(new Error("The code has 12 letters and digits. Check it and try again."));
     joinStop();
     return pairKeys(code).then(function (pk) {
-      var n = String(10 + (randomBytes(1)[0] % 90));
-      return pairPut(pk.ask, pk.key, { n: n }).then(function () {
-        onNumber(n);
+      return pairPut(pk.ask, pk.key, { join: 1 }).then(function () {
+        onSent();
         return new Promise(function (resolve, reject) {
           var mine = joining = { timer: 0 }, until = Date.now() + 10 * 60000;
           mine.timer = setInterval(function () {
@@ -11001,12 +11019,26 @@
               joinStop();
               return unseal(pk.key, blob).then(function (json) {
                 var got = JSON.parse(json);
-                if (!got || !got.ok) { reject(new Error("The other device refused. Nothing was shared.")); return; }
-                if (!got.id || !got.k) { reject(new Error("The answer did not carry a key.")); return; }
-                vaultBegin({ id: got.id, k: got.k, live: true });
-                syncState.dirty = false;
-                vaultPull();
-                resolve(true);
+                if (!got || !got.ok || !got.box) { reject(new Error("The other device refused. Nothing was shared.")); return; }
+                var tries = 0;
+                (function ask(message) {
+                  askNumber(message).then(function (typed) {
+                    var number = String(typed || "").replace(/\D/g, "");
+                    return pairKeys(code + "#" + number).then(function (nk) {
+                      return unseal(nk.key, got.box);
+                    }).then(function (inner) {
+                      var key = JSON.parse(inner);
+                      vaultBegin({ id: key.id, k: key.k, live: true });
+                      syncState.dirty = false;
+                      vaultPull();
+                      resolve(true);
+                    }, function () {
+                      tries++;
+                      if (tries >= 5) { reject(new Error("The number did not match five times. Make a new code and start again.")); return; }
+                      ask("That number does not match. Check the other device and try again.");
+                    });
+                  }, reject);
+                })("");
               });
             }).catch(function () { /* a missed tick; the next one asks again */ });
           }, 2000);
@@ -12399,18 +12431,38 @@
       var btn = el("vault-join-btn"), box = el("vault-code-input");
       say("vault-off-msg", "");
       busy(btn, "Checking the code…");
-      pairAccept(box.value, function (n) {
+      pairAccept(box.value, function () {
         btn.textContent = "Waiting for approval…";
-        say("vault-off-msg", "This device shows the number " + n + ". Approve it on your other device, where the code is.");
+        say("vault-off-msg", "Now approve this device on your other device, where the code is.");
+      }, function (message) {
+        btn.textContent = "Approved";
+        say("vault-off-msg", message || "Approved. Now type the 4-digit number your other device is showing.");
+        el("vault-number").style.display = "";
+        el("vault-number-input").value = "";
+        el("vault-number-input").focus();
+        return new Promise(function (resolve) { numberWaiter = resolve; });
       }).then(function () {
         idle(btn);
+        el("vault-number").style.display = "none";
         box.value = "";
         flashStatus("This device is linked. Your lists are syncing.");
       }).catch(function (err) {
         idle(btn);
+        numberWaiter = null;
+        el("vault-number").style.display = "none";
         say("vault-off-msg", (err && err.message) || "That code did not work.");
       });
     }
+    var numberWaiter = null;
+    function giveNumber() {
+      if (!numberWaiter) return;
+      var done = numberWaiter;
+      numberWaiter = null;
+      say("vault-off-msg", "Checking the number…");
+      done(el("vault-number-input").value);
+    }
+    el("vault-number-btn").addEventListener("click", giveNumber);
+    el("vault-number-input").addEventListener("keydown", function (e) { if (e.key === "Enter") giveNumber(); });
     el("vault-join-btn").addEventListener("click", join);
     el("vault-code-input").addEventListener("keydown", function (e) { if (e.key === "Enter") join(); });
 
@@ -12425,15 +12477,16 @@
     function codeAway(message) {
       el("vault-code-out").style.display = "none";
       el("vault-ask").style.display = "none";
+      el("vault-number-out").style.display = "none";
       el("vault-code-text").textContent = "";
+      say("vault-number-text", "");
       say("vault-on-msg", message || "");
     }
     el("vault-pair-btn").addEventListener("click", function () {
       var btn = el("vault-pair-btn");
       codeAway("");
       busy(btn, "Making a code…");
-      pairOffer(function (n) {
-        say("vault-ask-n", n);
+      pairOffer(function () {
         el("vault-wait").style.display = "none";
         el("vault-ask").style.display = "";
       }, codeAway).then(function (code) {
@@ -12447,8 +12500,11 @@
       });
     });
     function answer(approve) {
-      pairAnswer(approve).then(function () {
-        codeAway(approve ? "Approved. The other device is linking now." : "Refused. Nothing was shared, and the code no longer works.");
+      pairAnswer(approve).then(function (number) {
+        if (!approve) { codeAway("Refused. Nothing was shared, and the code no longer works."); return; }
+        el("vault-ask").style.display = "none";
+        say("vault-number-text", number);
+        el("vault-number-out").style.display = "";
       }).catch(function (err) {
         codeAway("The answer could not be sent: " + ((err && err.message) || "no connection") + ". Make a new code.");
       });
