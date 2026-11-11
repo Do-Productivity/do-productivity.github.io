@@ -8,14 +8,15 @@
 
 The name is **Do.** — the mark that is already on the icon.
 
-Goal: a **free** app with a real month inside it, then **$0.99/month, cancel
-anytime** or **$9.99 once for life** (EGP 10 / EGP 99 in Egypt) — sold on what it
-does when the phone unfolds.
+Goal: a **free** app with fourteen real days inside it, then **$9.99 once for
+life** or **$2.99/month, cancel anytime** (EGP 499 / EGP 149.99 in Egypt) — sold
+on what it does when the phone unfolds, to the people who have just bought an
+iPhone Duo.
 
 This plan is written in the order the risks actually bite, not in the order the
 work feels exciting. The first section is the one that can stop everything.
 
-*Revised 10 November 2026, after the calendar shipped.*
+*Revised 11 November 2026: fourteen-day trial, new prices, the iPhone Duo as the door.*
 
 ---
 
@@ -149,7 +150,7 @@ which is the actual test:
 | 7 | Native swipe actions and haptics | 1 day | The list feels like a list, not a page |
 
 1–4 are the minimum I would submit on. 5–7 are what make someone keep paying
-after the free month rather than merely approve the app.
+after the fourteen free days rather than merely approve the app.
 
 **The deeper question, stated once and then dropped.** A web layer is a ceiling
 on how iOS the app can ever feel, and you compete with apps that are native to
@@ -192,15 +193,47 @@ is: **the day you actually have, on a phone that opens.**
 
 ---
 
-## 4. Price: free for a month, then a dollar or ten
+## 4. Price: fourteen free days, then $9.99 for good
 
-Free to download. Every feature works for a full month. After that, either
-**$0.99 a month**, cancel whenever you like, or **$9.99 once** and never again.
+Free to download. Every feature works for **fourteen days**. After that, either
+**$9.99 once** and never again, or **$2.99 a month**, cancel whenever you like.
+In Egypt the same two plans are **EGP 499 once** or **EGP 149.99 a month**.
 
-This replaces the paid-up-front model, and it is the right change. The hardest
-thing to sell is an unknown app at $9.99 from a product page. The easiest is a
-month of the whole thing for nothing. The price stops being a decision people
-make before they have used it.
+| | United States | Egypt |
+|---|---|---|
+| Lifetime, once | **$9.99** | **EGP 499** |
+| Monthly, cancel anytime | $2.99 | EGP 149.99 |
+| Free trial | 14 days | 14 days |
+
+### The monthly plan is there to be turned down
+
+Both plans are always on the screen, side by side, and the monthly one is
+deliberately the worse deal. Lifetime costs less than **four months** of
+monthly, in dollars and in pounds alike. Nobody has to work that out: the
+plans screen says "Less than 4 months of the monthly plan" on the lifetime
+card, calculated from the two prices the App Store returns, so it stays true in
+every currency.
+
+That is the whole job of $2.99. It is not there to be bought; it is there so
+that $9.99 reads as the obvious choice rather than as a price to think about.
+Anyone who does take it is paying well for the privilege of not committing.
+
+### Who this is priced for: the new iPhone Duo owner
+
+The first weeks with a phone that opens are when people go looking for apps
+that do something with the open screen, and Do. on the unfolded Duo — three
+columns, side by side — is the one screenshot in the category that looks like
+that. So the offer is built around that person and that moment:
+
+- **Fourteen days, not a month.** The trial has to end while the phone is still
+  new and the habit is still forming. A month is long enough to forget the app
+  was ever a trial.
+- **One easy yes.** $9.99 once is an impulse beside the price of the phone, and
+  it asks for no subscription on a device they are still setting up.
+- **The Duo leads everything**: the first screenshot, the first line of the
+  listing, the first bullet on the plans screen.
+
+Everyone else gets the same offer; it is simply written for the Duo owner first.
 
 ### One detail that decides how this gets built
 
@@ -209,8 +242,8 @@ Apple's free trial is an *introductory offer*, and it attaches to a
 does not give you what you asked for, because the lifetime buyer would never get
 a trial at all.
 
-So the month is **ours, not Apple's**: the app runs its own thirty days, with no
-card and no account, and at the end shows one screen with both options on it.
+So the fourteen days are **ours, not Apple's**: the app runs its own clock, with
+no card and no account, and at the end shows one screen with both options on it.
 That is allowed, it is a far lower barrier, and it is the only way one trial
 covers both prices.
 
@@ -229,27 +262,39 @@ the first payment** rather than only after a year.
 | | gross | Apple at 15% | you receive |
 |---|---|---|---|
 | Lifetime, once | $9.99 | $1.50 | **$8.49** |
-| Subscription, per month | $0.99 | $0.15 | **$0.84** |
-| Subscription, twelve months | $11.88 | $1.78 | **$10.10** |
+| Subscription, per month | $2.99 | $0.45 | **$2.54** |
+| Subscription, twelve months | $35.88 | $5.38 | **$30.50** |
 
-### The number to notice: ten months
+### The number to notice: the fourth month
 
-A subscriber passes the lifetime buyer at **ten months** ($8.49 ÷ $0.84). Anyone
-who expects to still be using Do. past next summer is better off buying lifetime,
-and most people who like it will work that out. **Expect lifetime to carry most of
-the revenue**, with the subscription as the low-commitment door for everyone else.
+A subscriber has paid more than a lifetime buyer by their **fourth month**
+($8.49 ÷ $2.54 = 3.3). So **expect lifetime to carry nearly all of the revenue.**
+That is the design, not a flaw in it — but it does mean Do. earns once per
+person. Growth has to come from new people, not from renewals.
 
-That is fine, and I would keep your numbers. If you ever want the subscription to
-do more of the work, the lever is the **lifetime** price, not the monthly one — at
-$19.99 the crossover moves to twenty months. Early on, adoption and word of mouth
-matter more than revenue per user, and a $9.99 lifetime is an easy yes.
+If you ever want recurring income to matter, the lever is the **lifetime**
+price, not the monthly one: at $19.99 the crossover moves to the seventh month
+and monthly starts to look reasonable again.
 
-### $1.00 is not a price point
+### Setting the prices
 
-Apple sells at fixed tiers. The one you mean is **$0.99**. Likewise EGP 99 for
-lifetime should keep its ten-to-one shape, so about **EGP 10 a month**, rounded to
-whichever tier Apple actually offers. *Unverified:* I could not confirm Apple's
-exact EGP tiers. Check the price grid in App Store Connect.
+You set these yourself, in App Store Connect, once the products exist:
+
+| product ID | type | United States | Egypt |
+|---|---|---|---|
+| `com.ahmedmohsen.todolist.lifetime` | non-consumable | $9.99 | EGP 499 |
+| `com.ahmedmohsen.todolist.monthly` | auto-renewing, one month | $2.99 | EGP 149.99 |
+
+Choose the United States price as the base, then override Egypt by hand —
+otherwise Apple converts from dollars at its own rate. *Unverified:* I could not
+confirm that EGP 499 and EGP 149.99 are both on Apple's Egyptian price list. If
+one is not, take the nearest step and keep the "less than four months" shape.
+
+The app never types a price it charges: every price a person can pay comes from
+StoreKit, in their own currency. Until the products exist the plans screen
+shows the two plans as a preview — $9.99 and $2.99, or EGP 499 and EGP 149.99
+on a phone set to Egypt — which cannot be tapped and disappears the day the
+paywall is switched on.
 
 ### What this might earn
 
@@ -259,30 +304,32 @@ beta. They are here so the shape is visible, not so anybody budgets against them
 | step | assumed | people |
 |---|---|---|
 | Downloads | — | 10,000 |
-| Still using it on day 30 | 35% | 3,500 |
-| Pay at the end of the month | 10% | 350 |
-| …choose lifetime | 60% | 210 |
-| …choose monthly | 40% | 140 |
+| Still using it on day 14 | 35% | 3,500 |
+| Pay at the end of the trial | 10% | 350 |
+| …choose lifetime | 80% | 280 |
+| …choose monthly | 20% | 70 |
 
 | revenue, net of Apple | working | |
 |---|---|---|
-| Lifetime | 210 × $8.49 | $1,783 |
-| Subscriptions | 140 × 5 months × $0.84 | $588 |
-| **Total per 10,000 downloads** | | **$2,371** |
-| Per download | | $0.24 |
+| Lifetime | 280 × $8.49 | $2,377 |
+| Subscriptions | 70 × 3 months × $2.54 | $533 |
+| **Total per 10,000 downloads** | | **$2,910** |
+| Per download | | $0.29 |
 
-Five months is a deliberately unkind average subscriber life; cheap utility
-subscriptions churn hard.
+Three months is a guess at how long someone stays on a plan that is plainly the
+worse deal before they either switch to lifetime or leave. The 35% and the 10%
+are carried over unchanged from the month-long version of this plan; a shorter
+trial could move either one, in either direction.
 
-**Why this beats $9.99 up front.** To earn the same $2,371 at $9.99 you would need
-**279 sales**. The problem is not the 279 — it is that a paid app never gets the
+**Why this beats $9.99 up front.** To earn the same $2,910 at $9.99 you would need
+**343 sales**. The problem is not the 343 — it is that a paid app never gets the
 ten thousand downloads in the first place. People do not try paid apps. Free with
-a real month inside it is the only version of this that gets word of mouth, and
-word of mouth is the entire distribution plan for a solo developer with no ad
+fourteen real days inside it is the only version of this that gets word of mouth,
+and word of mouth is the entire distribution plan for a solo developer with no ad
 budget.
 
-**Breaking even:** $99 of Apple membership is **12 lifetime sales**, or 118
-subscriber-months. That is a low bar, and lower than it was at $9.99 on the door.
+**Breaking even:** $99 of Apple membership is **12 lifetime sales**, or 39
+subscriber-months.
 
 ---
 
@@ -333,7 +380,7 @@ for an individual account.
 team — profiles go to 365 days.
 
 **Phase 1b — purchases and the paywall (me, ~1 week)**
-StoreKit 2: the two products, the thirty-day clock, the paywall, the entitlement
+StoreKit 2: the two products, the fourteen-day clock, the paywall, the entitlement
 check in one place, and a **Restore Purchases** button — mandatory, or rejection.
 No server needed: StoreKit 2 verifies signed transactions on the device, so
 hosting stays at zero.
@@ -479,12 +526,12 @@ Stated plainly so nobody builds on sand:
   ask what a monthly fee buys in an app that works offline. The answer is sync,
   calendar sources and continued updates — and the lifetime option shows the
   subscription is a convenience, not a toll.
-- **The free month is ours, so a reinstall can reset it.** Keychain and iCloud
-  key-value storage survive deletion and make it awkward. At a dollar a month,
+- **The free fortnight is ours, so a reinstall can reset it.** Keychain and iCloud
+  key-value storage survive deletion and make it awkward. At these prices,
   some leakage is cheaper than annoying honest people.
 - **Two products double the edge cases** for one developer: restore, upgrading
   monthly → lifetime, refunds, Family Sharing. Write the entitlement check once.
-- **The reviewer will never see the paywall** behind a thirty-day trial unless
+- **The reviewer will never see the paywall** behind a fourteen-day trial unless
   the review notes say how to reach it.
 - **TestFlight builds expire after 90 days**, so a long beta needs re-uploads.
 - **Review outcomes are never certain.** Section 2 reduces the 4.2 risk; it
@@ -496,7 +543,7 @@ Stated plainly so nobody builds on sand:
 
 1. **You:** enrol in the Apple Developer Program, one Apple ID, and enrol in the
    Small Business Program in App Store Connect the same day.
-2. **Me:** rename the app to **Do.**, build the paywall and the thirty-day
+2. **Me:** rename the app to **Do.**, build the paywall and the fourteen-day
    clock, then replace the web date input with a native picker. The name has to be right before any asset exists; the picker is
    the one visible flaw.
 3. **Both:** shoot the unfold once, roughly, on a phone. Before any polish. If

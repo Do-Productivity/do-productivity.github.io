@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-iI1NTUgyPeci4sdbleg2WkK7F4LztY+OW7ot8glezCs=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6M67kbUJlP/jYOSBnZ7QsgCv6T8A2gQ2mksJ6ZkTZrg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -5105,7 +5105,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-1142";
+  var BUILD = "2026-11-11-1255";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -10966,7 +10966,7 @@
   //
   // In a browser there is no store, so there is no membership and nothing
   // is ever held back.
-  var membership = { state: "trial", entitled: true, enforced: false, trialDaysLeft: 30, storeReady: false };
+  var membership = { state: "trial", entitled: true, enforced: false, trialDaysLeft: 14, trialDays: 14, storeReady: false };
 
   // An answer that was asked for before a newer one arrived is out of date
   // by the time it lands, and must not paint over the newer one.
@@ -10984,6 +10984,7 @@
       entitled: m.entitled !== false,
       enforced: m.enforced === true,
       trialDaysLeft: +m.trialDaysLeft || 0,
+      trialDays: +m.trialDays || 14,
       storeReady: m.storeReady === true
     };
     drawMembership();
@@ -11004,13 +11005,14 @@
     }
     if (!shop) return;
     var d = membership.trialDaysLeft;
+    var free = "your " + membership.trialDays + " free days";
     var line = {
       lifetime: "Do. is yours for good. Thank you.",
       subscribed: "You are subscribed. Thank you.",
-      trial: (d === 1 ? "One day" : d + " days") + " left of your free month. Everything works.",
+      trial: (d === 1 ? "One day" : d + " days") + " left of " + free + ". Everything works.",
       expired: membership.enforced
-        ? "Your free month has ended. Your lists are all still here; adding to them needs a plan."
-        : "Your free month has ended. Nothing is locked."
+        ? "Y" + free.slice(1) + " have ended. Your lists are all still here; adding to them needs a plan."
+        : "Y" + free.slice(1) + " have ended. Nothing is locked."
     }[membership.state] || "";
     document.getElementById("member-line").textContent = line;
     var paid = membership.state === "lifetime" || membership.state === "subscribed";
@@ -11034,11 +11036,11 @@
   }
 
   // The one question the rest of the app asks. True in a browser, true
-  // during the free month, true for anyone who has paid, and true for
+  // during the free trial, true for anyone who has paid, and true for
   // everyone while enforcement is switched off in Swift.
   function mayAdd() {
     if (membership.entitled) return true;
-    flashStatus("Your free month has ended — everything you wrote is still here.");
+    flashStatus("Your " + membership.trialDays + " free days have ended — everything you wrote is still here.");
     showPlans();
     return false;
   }

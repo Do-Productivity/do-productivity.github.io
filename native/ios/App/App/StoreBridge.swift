@@ -8,23 +8,52 @@ import Security
 
 /// The two things Do. sells. The identifiers are the contract with App Store
 /// Connect: the products created there must carry exactly these.
+///
+/// The monthly plan is deliberately the worse deal. It is on the screen so
+/// that the lifetime price beside it reads as the obvious one: for good, for
+/// less than four months of renting.
 enum Plan {
-    static let monthly = "com.ahmedmohsen.todolist.monthly"     // auto-renewing, $0.99
-    static let lifetime = "com.ahmedmohsen.todolist.lifetime"   // non-consumable, $9.99
+    static let monthly = "com.ahmedmohsen.todolist.monthly"     // auto-renewing: $2.99, EGP 149.99 in Egypt
+    static let lifetime = "com.ahmedmohsen.todolist.lifetime"   // non-consumable: $9.99, EGP 499 in Egypt
     static let all: Set<String> = [monthly, lifetime]
 }
 
-// MARK: - The free month
+/// What the two plans are meant to cost, for the one moment the App Store
+/// cannot say: before the products exist there. These figures are drawn only
+/// on the preview below, which cannot be tapped and disappears the day
+/// `Store.enforced` is switched on. A price anybody can pay always comes from
+/// StoreKit, in the buyer's own currency.
+enum Intended {
+    static var egypt: Bool {
+        if #available(iOS 16, *) { return Locale.current.region?.identifier == "EG" }
+        return (Locale.current as NSLocale).countryCode == "EG"
+    }
+    static var monthly: (text: String, value: Double) { egypt ? ("EGP 149.99", 149.99) : ("$2.99", 2.99) }
+    static var lifetime: (text: String, value: Double) { egypt ? ("EGP 499", 499) : ("$9.99", 9.99) }
 
-/// The thirty days start the first time the app runs and are counted from a
-/// date in the Keychain, which survives deleting the app; a date in
-/// localStorage would hand out a fresh month to anyone who reinstalled.
+    /// "Less than 4 months of the monthly plan", worked out from the two
+    /// prices on the screen — so it is true in every currency, or it is not
+    /// said at all.
+    static func worth(lifetime: Double, monthly: Double) -> String? {
+        guard monthly > 0, lifetime > monthly else { return nil }
+        let ratio = lifetime / monthly
+        let whole = ratio.rounded(.up)
+        return whole == ratio ? "The price of \(Int(whole)) months of the monthly plan"
+                              : "Less than \(Int(whole)) months of the monthly plan"
+    }
+}
+
+// MARK: - The fourteen free days
+
+/// The fourteen days start the first time the app runs and are counted from
+/// a date in the Keychain, which survives deleting the app; a date in
+/// localStorage would hand out a fresh trial to anyone who reinstalled.
 ///
 /// A second value keeps the latest moment the app has ever seen. The trial
 /// is measured from whichever is later, that or the clock, so winding the
-/// phone's date back does not wind the month back with it.
+/// phone's date back does not wind the trial back with it.
 enum TrialClock {
-    static let days = 30
+    static let days = 14
     private static let service = "com.ahmedmohsen.todolist.entitlement"
     private static let startedKey = "trial_started_v1"
     private static let seenKey = "latest_seen_v1"
@@ -93,7 +122,7 @@ enum TrialClock {
 final class Store: ObservableObject {
     static let shared = Store()
 
-    /// The one switch. While this is false nothing is ever locked: the month
+    /// The one switch. While this is false nothing is ever locked: the trial
     /// is counted and the plans can be shown, but running out changes
     /// nothing. It becomes true in the release that ships with the products
     /// live in App Store Connect, and not before — an enforced paywall with
@@ -211,6 +240,7 @@ final class Store: ObservableObject {
             "entitled": state != "expired" || !Store.enforced,
             "enforced": Store.enforced,
             "trialDaysLeft": left,
+            "trialDays": TrialClock.days,
             "trialEndsAt": ends.timeIntervalSince1970 * 1000,
             "storeReady": load == .ready
         ]
@@ -337,6 +367,7 @@ struct PlansView: View {
                     .padding(.top, 4)
 
                 VStack(alignment: .leading, spacing: 13) {
+                    point("Three columns, side by side, on the open iPhone Duo")
                     point("Every list, note and scheduled task")
                     point("Your calendar beside the things you owe it")
                     point("Sync across your devices, reminders that ring")
@@ -385,11 +416,11 @@ struct PlansView: View {
         switch state {
         case "lifetime": return "Yours for good. Thank you."
         case "subscribed": return "You are subscribed. Thank you."
-        case "expired": return "Your free month has ended."
+        case "expired": return "Your \(TrialClock.days) free days have ended."
         default:
             let d = status["trialDaysLeft"] as? Int ?? 0
-            return d == 1 ? "One day left of your free month."
-                          : "\(d) days left of your free month."
+            return d == 1 ? "One day left of your \(TrialClock.days) free days."
+                          : "\(d) days left of your \(TrialClock.days) free days."
         }
     }
 
@@ -408,70 +439,123 @@ struct PlansView: View {
         case .loading:
             HStack { Spacer(); ProgressView(); Spacer() }.padding(.vertical, 30)
         case .unavailable:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("The plans are not on sale yet.")
-                    .font(.system(size: 17, weight: .semibold, design: .serif))
-                    .foregroundColor(Palette.ink)
-                Text("Nothing is locked in the meantime. When they open this is where they will be: one payment for good, or a small one each month that you can stop whenever you like.")
-                    .font(.system(size: 14))
-                    .foregroundColor(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
+            if Store.enforced {
+                notice("The plans could not be loaded.",
+                       "Check the connection and open this screen again. Everything you have written is still here.")
+            } else {
+                // Before the products exist in App Store Connect: the two
+                // plans as they will be, to look at and not to tap.
+                VStack(alignment: .leading, spacing: 12) {
+                    card(lifetime: true, price: Intended.lifetime.text,
+                         worth: Intended.worth(lifetime: Intended.lifetime.value, monthly: Intended.monthly.value),
+                         mine: false, busy: false, action: nil)
+                    card(lifetime: false, price: Intended.monthly.text, worth: nil,
+                         mine: false, busy: false, action: nil)
+                    Text("These open with the App Store release. Until then nothing is locked and nothing can be bought.")
+                        .font(.system(size: 13))
+                        .foregroundColor(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 16).fill(Palette.card))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Palette.rule))
         case .ready:
             VStack(spacing: 12) {
                 ForEach(store.products, id: \.id) { product in
-                    planCard(product)
+                    card(lifetime: product.id == Plan.lifetime,
+                         price: product.displayPrice,
+                         worth: product.id == Plan.lifetime ? worth : nil,
+                         mine: store.owned.contains(product.id),
+                         busy: store.busy == product.id) {
+                        Task { await store.buy(product) }
+                    }
                 }
             }
         }
     }
 
-    private func planCard(_ product: Product) -> some View {
-        let lifetime = product.id == Plan.lifetime
-        let mine = store.owned.contains(product.id)
-        return Button {
-            Task { await store.buy(product) }
-        } label: {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(lifetime ? "Once, for good" : "Monthly")
-                        .font(.system(size: 19, weight: .bold, design: .serif))
-                    Text(lifetime ? "Pay once. No renewals, ever."
-                                  : "Renews each month. Cancel any time.")
-                        .font(.system(size: 13))
-                        .opacity(0.8)
+    /// The lifetime price measured in months of the monthly one, from the
+    /// prices StoreKit gave for this storefront.
+    private var worth: String? {
+        guard let once = store.products.first(where: { $0.id == Plan.lifetime }),
+              let month = store.products.first(where: { $0.id == Plan.monthly }) else { return nil }
+        return Intended.worth(lifetime: NSDecimalNumber(decimal: once.price).doubleValue,
+                              monthly: NSDecimalNumber(decimal: month.price).doubleValue)
+    }
+
+    private func notice(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 17, weight: .semibold, design: .serif))
+                .foregroundColor(Palette.ink)
+            Text(body)
+                .font(.system(size: 14))
+                .foregroundColor(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16).fill(Palette.card))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Palette.rule))
+    }
+
+    /// One plan. With an action it is a button that hands over to Apple's
+    /// payment sheet; without one it is a picture of a plan and nothing more.
+    @ViewBuilder
+    private func card(lifetime: Bool, price: String, worth: String?, mine: Bool, busy: Bool,
+                      action: (() -> Void)?) -> some View {
+        let face = HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                if worth != nil {
+                    Text("BEST VALUE")
+                        .font(.system(size: 10, weight: .heavy))
+                        .kerning(0.6)
+                        .foregroundColor(Palette.card)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Capsule().fill(Palette.red))
+                        .padding(.bottom, 3)
                 }
-                Spacer(minLength: 8)
-                if store.busy == product.id {
-                    ProgressView().tint(lifetime ? Palette.card : Palette.ink)
-                } else if mine {
-                    Text("Yours").font(.system(size: 15, weight: .bold))
-                } else {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(product.displayPrice)
-                            .font(.system(size: 21, weight: .bold, design: .rounded))
-                        if !lifetime {
-                            Text("a month").font(.system(size: 11)).opacity(0.75)
-                        }
-                    }
+                Text(lifetime ? "Once, for good" : "Monthly")
+                    .font(.system(size: 19, weight: .bold, design: .serif))
+                Text(lifetime ? "Pay once. No renewals, ever."
+                              : "Renews each month. Cancel any time.")
+                    .font(.system(size: 13))
+                    .opacity(0.8)
+                if let worth {
+                    Text(worth)
+                        .font(.system(size: 13, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .foregroundColor(lifetime ? Palette.card : Palette.ink)
-            .padding(.horizontal, 18).padding(.vertical, 17)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(lifetime ? Palette.ink : Palette.card)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(lifetime ? Color.clear : Palette.rule)
-            )
+            Spacer(minLength: 8)
+            if busy {
+                ProgressView().tint(lifetime ? Palette.card : Palette.ink)
+            } else if mine {
+                Text("Yours").font(.system(size: 15, weight: .bold))
+            } else {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(price)
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .fixedSize()
+                    Text(lifetime ? "once" : "a month").font(.system(size: 11)).opacity(0.75)
+                }
+            }
         }
-        .disabled(store.busy != nil || mine)
+        .foregroundColor(lifetime ? Palette.card : Palette.ink)
+        .padding(.horizontal, 18).padding(.vertical, 17)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(lifetime ? Palette.ink : Palette.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(lifetime ? Color.clear : Palette.rule)
+        )
+        if let action {
+            Button(action: action) { face }
+                .disabled(store.busy != nil || mine)
+        } else {
+            face
+        }
     }
 }

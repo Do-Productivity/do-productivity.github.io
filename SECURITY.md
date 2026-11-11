@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, last checked against build `2026-11-11-1142`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-11-1255`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -190,7 +190,7 @@ It always does, for every app. See below.
 ## Money
 
 The purchase layer is **built and switched off**. `StoreBridge.swift` holds the
-whole of it — the products, the thirty-day clock, the paywall — behind one
+whole of it — the products, the fourteen-day clock, the paywall — behind one
 constant, `Store.enforced = false`. While it is false nobody is ever asked to
 pay and nothing is gated. It stays false until the two products exist in App
 Store Connect, because an enforced paywall with nothing on sale behind it is a
@@ -217,7 +217,7 @@ because the mistakes here are expensive.
   Never from a boolean in JavaScript, never from a flag in `localStorage`, and
   never from anything the web layer hands down. The web layer may be *told* the
   answer; it must not be the one that decides it.
-- **The thirty-day trial clock is in the Keychain**, which survives deleting the
+- **The fourteen-day trial clock is in the Keychain**, which survives deleting the
   app; `localStorage` does not. It was meant to be in iCloud key-value storage
   as well, so that a second device shares the clock. **That half is not built:**
   iCloud entitlements need the paid developer account. Until then, a new device
