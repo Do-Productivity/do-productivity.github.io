@@ -14,7 +14,7 @@
 
 const FEED = "https://gist.githubusercontent.com/ahmedmohsen18/" +
   "1f3e9c2d3186c395b62391c6b62f0358/raw/dia-todo.json";
-const APP_URL = "https://ahmedmohsen18.github.io/my-todo-list/";
+const APP_URL = "https://do-productivity.github.io/";
 
 // paper palette, matching the web app
 const PAPER = new Color("#f7f3e9");

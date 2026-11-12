@@ -56,9 +56,9 @@ Expect: `Success. No rows returned.`
 
 **Authentication** → **URL Configuration**:
 
-- **Site URL:** `https://ahmedmohsen18.github.io/my-todo-list/`
+- **Site URL:** `https://do-productivity.github.io/`
 - **Redirect URLs** — add both:
-  - `https://ahmedmohsen18.github.io/my-todo-list/`
+  - `https://do-productivity.github.io/`
   - `http://localhost:8642/`
 
 Skip this and sign-in completes but then refuses to return to the app.

@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6qJ4c20l1M6O31oy6SHHE9JqQyWINaa8G4OOpzCLUGg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WXw7rtp0GLqWMJn8xUDaRfOBZMjkSYlhfL3ojABcEL4=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2934,10 +2934,26 @@
   html.pill-top .toolbar .sync-dot { position: absolute; right: 2px; bottom: 2px; }
   html.pill-top body.deck-open .toolbar { opacity: 0; visibility: hidden; pointer-events: none; }
 
-  /* Between a phone and a full row of lists: two lists fill the screen, and
-     the others follow to the right, a swipe away, with the next one just
-     showing so it is clear there is more. */
-  @media (min-width: 601px) and (max-width: 760px) {
+  /* A tall screen too narrow for a row of lists (the Duo's inner screen
+     held upright): the lists are tiles, two across, in as many rows as it
+     takes. Everything is on screen at once and nothing slides sideways. An
+     odd one out takes the full width (marked .span-all in fitPanelTracks). */
+  @media (min-width: 601px) and (max-width: 760px) and (orientation: portrait) {
+    .panels {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: minmax(270px, 1fr);
+      gap: 10px;
+      overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain;
+      scrollbar-width: none;
+    }
+    .panels::-webkit-scrollbar { display: none; }
+    .panels > .panel.span-all { grid-column: 1 / -1; }
+  }
+  /* The same width lying down has no height for rows: two lists fill the
+     screen, and the others follow to the right, a swipe away, with the next
+     one just showing so it is clear there is more. */
+  @media (min-width: 601px) and (max-width: 760px) and (orientation: landscape) {
     .panels {
       grid-auto-columns: calc((100% - 28px) / 2.1);
       overflow-x: auto; overscroll-behavior-x: contain;
@@ -5345,7 +5361,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-12-1305";
+  var BUILD = "2026-11-12-1332";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -8143,9 +8159,13 @@
   function fitPanelTracks() {
     // the visible ones: the Scheduled column can be put away, and the three
     // that remain should take its width rather than leave a gap
-    var n = [].filter.call(panelsRoot.querySelectorAll(".panel"), function (p) {
+    var seen = [].filter.call(panelsRoot.querySelectorAll(".panel"), function (p) {
       return getComputedStyle(p).display !== "none";
-    }).length;
+    });
+    var n = seen.length;
+    // where the lists are tiles two across, an odd one out takes the row
+    [].forEach.call(panelsRoot.querySelectorAll(".panel.span-all"), function (p) { p.classList.remove("span-all"); });
+    if (n % 2) seen[n - 1].classList.add("span-all");
     if (!n) return;
     var w = panelsRoot.clientWidth;
     if (!w) return;
@@ -8169,6 +8189,8 @@
   }
   fitPanelTracks();
   window.addEventListener("resize", fitPanelTracks);
+  // a list added or removed changes which tile is the odd one out
+  if (window.MutationObserver) new MutationObserver(fitPanelTracks).observe(panelsRoot, { childList: true });
 
   function panelEl(id) {
     return panelsRoot.querySelector(".panel." + id);
@@ -10865,7 +10887,7 @@
   // Where the same app lives on the web. One address for everybody: a
   // browser becomes one of your devices by joining with a one-time code,
   // never by a link that carries the key.
-  var WEB_URL = "https://ahmedmohsen18.github.io/my-todo-list/";
+  var WEB_URL = "https://do-productivity.github.io/";
   var VAULT_KEY = "dia_todo_vault_v1";
   var vaultKeysCache = null;
   var utf8 = new TextEncoder();
