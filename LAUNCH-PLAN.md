@@ -338,7 +338,7 @@ subscriber-months.
 You asked whether the App Store is the only route. It is not, and the answer
 shapes the beta.
 
-**The web link — today, free, anyone.** `do-productivity.github.io`
+**The web link — today, free, anyone.** `do-productivity.github.io/app`
 is public. Open in Safari, Share → Add to Home Screen, and it behaves like an
 app: icon, full screen, offline, data private to that browser. They get the
 lists, the calendar panel and the whole fold layout. They do **not** get the

@@ -139,7 +139,7 @@ then the browser harness on a local copy if anything behavioural or visual
 changed, then commit and push. Confirm the deploy actually landed:
 
 ```bash
-curl -s "https://do-productivity.github.io/version.json?cb=$RANDOM"
+curl -s "https://do-productivity.github.io/app/version.json?cb=$RANDOM"
 ```
 
 and put the same build on the phone, which the push does not do for you:

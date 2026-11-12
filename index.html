@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sGR0Enee2CeK2YKVxufEvqQC3uAmw05sbLN8JN13ybo=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LpP6F3WyzEqQkrZyal/2qHpftH6eoH1sxgOhS1UYu5A=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1202,6 +1202,7 @@
     -webkit-overflow-scrolling: touch;
   }
   .cal-grid { position: relative; }
+  .empty-state.cal-free { font-size: 13px; padding: 8px 2px 10px; }
   .cal-hours, .cal-items { position: absolute; inset: 0; }
   .cal-items { left: 52px; right: 2px; }
 
@@ -5391,7 +5392,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-12-1541";
+  var BUILD = "2026-11-12-1647";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -7469,8 +7470,11 @@
     var week = el("div", "cal-week");
     panel.appendChild(week);
 
-    var empty = el("div", "empty-state", "Nothing on this day.");
-    panel.appendChild(empty);
+    // On a free day this is a line above the hours, not a replacement for
+    // them: the hours are the only thing there is to tap to add something,
+    // and hiding them made an empty day the one day nothing could be added.
+    var empty = el("div", "empty-state cal-free", "Nothing on this day.");
+    panel.insertBefore(empty, scroller);
 
     var footer = el("div", "panel-footer");
     var countLabel = el("span", null, "");
@@ -7601,6 +7605,10 @@
         var to = Math.floor((Math.max(it.end, it.start + it.slot) - day - 1) / 3600000);
         for (var x = Math.max(0, from); x <= Math.min(23, to); x++) busy[x] = true;
       });
+      // A day with nothing in it would be twenty-four slivers, too small to
+      // aim at. Its waking hours open up instead, so any of them can be
+      // tapped to put something there.
+      if (!list.length) for (h = 7; h < 22; h++) busy[h] = true;
       // The hour you are in is never shrunk: the now line needs somewhere
       // to sit, and the current hour is the one most likely to be read.
       if (isSameDay(Date.now(), day)) busy[new Date().getHours()] = true;
@@ -7707,6 +7715,11 @@
       ensureExternalEvents(day, 1, render);
       var list = itemsFor(day);
       lanes(list);                     // sets .slot, which the layout needs
+      // before the day is measured, because the line takes room from it
+      empty.style.display = list.length ? "none" : "";
+      empty.textContent = (isSameDay(day, Date.now())
+        ? "Nothing with a time on it today."
+        : "Nothing on " + dayTitle(day).toLowerCase() + ".") + " Tap an hour to add something.";
 
       allDay.textContent = "";
       var whole = msEventsFor(day).filter(function (e) { return e.allDay; });
@@ -7773,11 +7786,6 @@
       });
 
       placeNow(s);
-      scroller.style.display = list.length ? "" : "none";
-      empty.style.display = list.length ? "none" : "";
-      empty.textContent = isSameDay(day, Date.now())
-        ? "Nothing with a time on it today."
-        : "Nothing on " + dayTitle(day).toLowerCase() + ".";
       paintSource();
       paintStrip();
       dayBtn.textContent = dayTitle(day);
@@ -11043,7 +11051,7 @@
   // Where the same app lives on the web. One address for everybody: a
   // browser becomes one of your devices by joining with a one-time code,
   // never by a link that carries the key.
-  var WEB_URL = "https://do-productivity.github.io/";
+  var WEB_URL = "https://do-productivity.github.io/app/";
   var VAULT_KEY = "dia_todo_vault_v1";
   var vaultKeysCache = null;
   var utf8 = new TextEncoder();
