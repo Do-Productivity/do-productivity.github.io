@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, last checked against build `2026-11-12-1724`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-12-1801`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -345,6 +345,29 @@ Worth re-checking by hand whenever the calendar or sync code is touched:
   either be a URL the app built itself, or go through `safeLink()`.
 - `grep -rniE "ghp_|github_pat_|BEGIN .*PRIVATE KEY" .` — the repository is
   public. Nothing may match except the placeholder in the token input.
+
+## Founding members and invitations
+
+A founding seat is a row on the server: a seat number, an invitation code, a
+count of uses, two dates, and the SHA-256 hash of a key that is made on the
+device and kept with the other secrets (the Keychain on iPhone). There is no
+name, email address or device identifier in it. The key travels between a
+person's own devices only inside the encrypted sync document, never in the
+gist or the older account sync.
+
+Three things this must never become:
+
+- **A way to unlock the app.** The App Store forbids an app unlocking itself
+  with its own codes (guideline 3.1.1), and the rule here is the same as for
+  plans: entitlement is decided in Swift from verified StoreKit transactions.
+  Free-for-life and the invited discount are delivered as Apple offer codes,
+  redeemed in the App Store. The badge is decoration.
+- **A link to anywhere but Apple.** The redemption address comes from the
+  server, so the app opens it only if it starts with
+  `https://apps.apple.com/redeem`.
+- **A register of people.** With no accounts, one person can take more than
+  one seat; the server only slows that down (120 seats an hour). The real
+  limit is Apple's: one offer code per Apple Account.
 
 ## If a token leaks
 

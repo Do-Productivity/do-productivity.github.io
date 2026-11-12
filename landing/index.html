@@ -78,6 +78,24 @@
     .film video { aspect-ratio: 720 / 1280; }
   }
 
+  /* ── founding members ── */
+  .founding { padding-top: clamp(40px, 6vw, 72px); }
+  .fcard {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: clamp(22px, 5vw, 60px); align-items: center;
+    border: 1.5px solid #b8893a; border-radius: 26px; padding: clamp(24px, 4.5vw, 48px);
+    background: linear-gradient(135deg, #fcf5e2 0%, #f1dfb4 100%); color: #4a3511;
+  }
+  .fcard .eyebrow { color: #8a5f12; }
+  .fcard .sub, .fcard .fine { color: #6b4f1c; }
+  .fcard .fine { font-size: 14px; margin: 14px 0 0; }
+  .fcard .cta { justify-content: flex-start; margin-top: 22px; }
+  .seats { text-align: center; }
+  .seats-n b { display: block; font: 700 clamp(56px, 8vw, 84px)/1 var(--serif); }
+  .seats-n span { font-size: 15px; }
+  .seats .bar { height: 10px; border-radius: 999px; background: rgba(74, 53, 17, .16); margin-top: 16px; overflow: hidden; }
+  .seats .bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: #b8893a; transition: width .6s ease; }
+  @media (max-width: 760px) { .fcard { grid-template-columns: 1fr; } .fcard .cta { justify-content: center; } .fcard { text-align: center; } }
+
   /* ── sections ── */
   section { padding: clamp(56px, 9vw, 112px) 0 0; }
   h2 { font: 700 clamp(30px, 4.6vw, 52px)/1.08 var(--serif); letter-spacing: -.01em; margin: 0; text-wrap: balance; }
@@ -210,6 +228,23 @@
     <p>An animation of the real app, with invented tasks. Tap the film to pause it.</p>
   </div>
 
+  <!-- Shown only once the server has said how many seats are left. -->
+  <section class="wrap founding" id="founding" hidden>
+    <div class="fcard">
+      <div>
+        <p class="eyebrow">Founding members</p>
+        <h2>The first 1,000 get it free, for life<i class="dot">.</i></h2>
+        <p class="sub">Take a seat in the app. No name and no email address: your seat is a number. You get Do. on iPhone free for life, and an invitation code that gives your friends 25% off.</p>
+        <div class="cta"><a class="btn" href="app/#founder">Take a founding seat</a></div>
+        <p class="fine">Free for life arrives as your own App Store code once the iPhone app is approved.</p>
+      </div>
+      <div class="seats" aria-live="polite">
+        <div class="seats-n"><b id="seats-left">&nbsp;</b><span>seats left of <span id="seats-all">1,000</span></span></div>
+        <div class="bar"><i id="seats-bar"></i></div>
+      </div>
+    </div>
+  </section>
+
   <section id="fold" class="wrap center">
     <p class="eyebrow">One app, three shapes</p>
     <h2>It follows the phone<i class="dot">.</i></h2>
@@ -309,5 +344,25 @@
   </div>
 </footer>
 
+<script>
+  // How many founding seats are left. One request, with nothing about the
+  // visitor in it; if it fails the section simply stays hidden.
+  (function () {
+    var URL = "https://mxlbafuzdbnypexhgptw.supabase.co/rest/v1/rpc/founder_seats";
+    var KEY = "sb_publishable_vG0EHaoQQAXvZ6i1cOJXlQ_OkIKML6A";
+    if (!window.fetch) return;
+    fetch(URL, { method: "POST", cache: "no-store", headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" }, body: "{}" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        if (!s || s.open === false || !(+s.seats > 0) || +s.taken >= +s.seats) return;
+        var left = +s.seats - +s.taken;
+        document.getElementById("seats-left").textContent = left.toLocaleString("en-US");
+        document.getElementById("seats-all").textContent = (+s.seats).toLocaleString("en-US");
+        document.getElementById("founding").hidden = false;
+        setTimeout(function () { document.getElementById("seats-bar").style.width = Math.max(2, Math.round(100 * +s.taken / +s.seats)) + "%"; }, 60);
+      })
+      .catch(function () {});
+  })();
+</script>
 </body>
 </html>

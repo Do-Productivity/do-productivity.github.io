@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Vb2lJ2O14ClRpaZfDLfEKcDLaFGcG565w0KbBdt1krg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8Y1g0K6HN7qpGKnz4v7RJm0VMgGyNACMQa7wJDH+mq4=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1866,6 +1866,26 @@
   .modal-x:active { transform: scale(.94); }
   .modal-top + h2 { padding-right: 30px; }
   #membership { border-top: 1px solid var(--rule); margin-top: 16px; padding-top: 14px; }
+  /* ── Founding members ── */
+  #member-box { border-top: 1px solid var(--rule); margin-top: 16px; padding-top: 14px; }
+  .founder-card {
+    border: 1.5px solid #b8893a; border-radius: 14px; padding: 14px 16px 13px; margin: 10px 0 14px;
+    background: linear-gradient(135deg, #fcf5e2 0%, #f1dfb4 100%); color: #4a3511;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .founder-card .fc-mark { font-size: 30px; line-height: 1; color: #b8893a; flex: none; }
+  .founder-card .fc-top { font-family: var(--sans); font-size: 10px; font-weight: 700; letter-spacing: 2.2px; text-transform: uppercase; }
+  .founder-card .fc-no { font-family: var(--serif); font-size: 28px; font-weight: 700; line-height: 1.15; }
+  .founder-card .fc-of { font-family: var(--sans); font-size: 12px; opacity: .8; }
+  /* The badge beside the title: a mark, not a button-shaped thing, so the
+     toolbar keeps its shape. Where the title is put away (the column of
+     controls on iPhone Duo) the badge lives in the Sync sheet only. */
+  .founder-seal {
+    flex: none; border: 0; background: none; padding: 0 4px; margin: 0 0 0 -6px; cursor: pointer;
+    font-size: 15px; line-height: 1; color: #b8893a; -webkit-tap-highlight-color: transparent;
+  }
+  .founder-seal[hidden] { display: none; }
+  html.has-pill .founder-seal { display: none; }
   .member-h {
     font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: 1.6px;
     text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px;
@@ -3019,6 +3039,7 @@
 
   <div class="toolbar">
     <h1>My Lists</h1>
+    <button class="founder-seal" id="founder-seal" hidden aria-label="Founding member">✦</button>
     <span class="build-stamp" id="build-stamp" title="Which version this device is running"></span>
     <button class="err-dot" id="err-dot" hidden title="Something went wrong on this device — tap to read it">!</button>
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
@@ -3181,6 +3202,46 @@
           <p class="modal-hint" id="cloud-delete-msg" role="status"></p>
         </details>
       </div>
+      <div id="member-box" style="display:none">
+        <h3 class="member-h">Founding members</h3>
+        <div id="founder-none">
+          <p><b>The first 1,000 people get Do. on iPhone free for life,</b> and a code that gives their friends 25% off. No name and no email address: your seat is a number.</p>
+          <p class="modal-hint" id="founder-count"></p>
+          <button class="modal-btn primary" id="founder-claim-btn">Take a founding seat</button>
+          <p class="modal-hint" id="founder-msg" role="status"></p>
+        </div>
+        <div id="founder-on" style="display:none">
+          <div class="founder-card">
+            <div class="fc-mark" aria-hidden="true">✦</div>
+            <div><div class="fc-top">Founding member</div><div class="fc-no">No. <span id="founder-no"></span></div><div class="fc-of">one of the first 1,000</div></div>
+          </div>
+          <p><b>Your invitation code.</b> Anyone who uses it gets 25% off the monthly or lifetime plan.</p>
+          <div class="vault-code" id="founder-invite"></div>
+          <button class="modal-btn" id="founder-share-btn">Share my invitation</button>
+          <p class="modal-hint" id="founder-uses"></p>
+          <p class="modal-hint" id="founder-gift-line"></p>
+          <button class="modal-btn primary" id="founder-gift-btn" style="display:none">Get Do. free for life in the App Store</button>
+          <details class="modal-details" id="founder-leave">
+            <summary>Give up this seat</summary>
+            <p class="modal-hint">This removes your seat, your number and your invitation code from the server, and frees the seat for someone else. It cannot be undone. Your lists are not touched.</p>
+            <button class="modal-btn danger" id="founder-leave-btn">Give up my founding seat</button>
+            <p class="modal-hint" id="founder-leave-msg" role="status"></p>
+          </details>
+        </div>
+        <div id="invite-none">
+          <div class="cloud-or" id="invite-or">or</div>
+          <input class="sync-token" id="invite-input" placeholder="Invitation code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="modal-btn" id="invite-btn">Use this invitation</button>
+          <p class="modal-hint" id="invite-msg" role="status"></p>
+        </div>
+        <div id="invite-on" style="display:none">
+          <p><b>Invited by a founding member.</b> You get 25% off the monthly or lifetime plan.</p>
+          <p class="modal-hint" id="invite-line"></p>
+          <button class="modal-btn primary" id="invite-life-btn" style="display:none">25% off the lifetime plan</button>
+          <button class="modal-btn" id="invite-month-btn" style="display:none">25% off the monthly plan</button>
+          <button class="modal-btn quiet" id="invite-forget-btn">Forget this invitation</button>
+        </div>
+      </div>
       <details class="modal-details" id="cloud-leaves">
         <summary>What leaves this device</summary>
         <ul class="leaves">
@@ -3188,6 +3249,7 @@
           <li><b>With sync:</b> a scrambled copy of your lists goes to the app's server, so your devices can share it. The key stays on your devices. Nobody else can read the copy, and that includes the people who run the server.</li>
           <li><b>Never:</b> no email address, no name, no counting of who opens the app, no advertising, no tracking.</li>
           <li><b>Your calendar</b> is read on this device and is never sent.</li>
+          <li><b>A founding seat or an invitation,</b> only if you take one: a random code, your seat number, and how many times your invitation was used. No name and no email address.</li>
         </ul>
       </details>
       <p class="modal-hint" id="cloud-unconfigured" style="display:none">Syncing between devices isn't switched on yet. Everything you write is saved on this device in the meantime, and works offline.</p>
@@ -3434,7 +3496,8 @@
   // silently stopped.
   var secrets = (function () {
     var KEYS = ["dia_todo_sync_v1", "dia_todo_cloud_session_v1",
-                "dia_todo_feed_token", "dia_todo_ms_v1", "dia_todo_vault_v1"];
+                "dia_todo_feed_token", "dia_todo_ms_v1", "dia_todo_vault_v1",
+                "dia_todo_member_v1"];
     var store = plug("SecureStore");
     var vault = {};
     var ready = !store;
@@ -5403,7 +5466,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-12-1724";
+  var BUILD = "2026-11-12-1801";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -11249,6 +11312,7 @@
           if (!vaultIs(v)) return;
           var doc = JSON.parse(text);
           var weHaveMore = mergeRemoteIntoLocal(doc);
+          if (adoptMember(doc)) weHaveMore = true;
           syncState.vaultAt = j.at;
           syncState.lastRemote = text;
           syncState.lastApplied = doc.updatedAt || Date.now();
@@ -11276,12 +11340,14 @@
         // Merge before overwriting: another device may have uploaded since
         // this one last looked.
         return unseal(keys.enc, j.blob).then(function (text) {
-          mergeRemoteIntoLocal(JSON.parse(text));
+          var theirs = JSON.parse(text);
+          mergeRemoteIntoLocal(theirs);
+          adoptMember(theirs);
           return true;
         });
       }).then(function (goOn) {
         if (!goOn || !vaultIs(v)) return;
-        var doc = buildSyncDoc();
+        var doc = buildVaultDoc();
         var json = JSON.stringify(doc);
         return seal(keys.enc, json).then(function (blob) {
           return vaultRpc("vault_put", { v: v.id, auth: keys.auth, body: blob });
@@ -11315,7 +11381,7 @@
     var v = loadVault(), keys = vaultKeysCache;
     if (!v || !keys || keys.k !== v.k || !syncState.dirty) return;
     clearTimeout(syncState.pushTimer);
-    seal(keys.enc, JSON.stringify(buildSyncDoc())).then(function (blob) {
+    seal(keys.enc, JSON.stringify(buildVaultDoc())).then(function (blob) {
       return vaultRpc("vault_put", { v: v.id, auth: keys.auth, body: blob }, true);
     }).catch(function () { /* the next launch retries */ });
   }
@@ -11579,6 +11645,358 @@
     if (on) setCloudStatusLine();
   }
 
+  // ── Founding members ─────────────────────────────────────
+  // The first 1,000 people hold a founding seat. A seat is a number and a
+  // code to give to friends; an invited person holds a record that they
+  // were invited. Neither has a name or an email address behind it.
+  //
+  // What proves a seat is yours is a key made here and kept with the other
+  // secrets (the Keychain on iPhone). The server is sent only its hash, so
+  // nobody who reads the server can take the seat. The invitation code is
+  // the public half and is meant to be passed on.
+  //
+  // None of this decides what the app lets you do. Free-for-life and the
+  // invited discount both arrive as Apple offer codes, redeemed in the App
+  // Store, because that is the only kind of code the store allows to unlock
+  // anything. Until those exist this is a seat, a badge and a code.
+  var MEMBER_KEY = "dia_todo_member_v1";
+  var memberSeen = { ok: false, seats: null, at: 0 };
+
+  function loadMember() {
+    try {
+      var m = JSON.parse(secrets.getItem(MEMBER_KEY) || "null");
+      return (m && typeof m === "object") ? m : {};
+    } catch (e) { return {}; }
+  }
+  function saveMember(m) { secrets.setItem(MEMBER_KEY, JSON.stringify(m)); }
+  function founderSeat() { var f = loadMember().founder; return (f && f.k && +f.no > 0) ? f : null; }
+  function invitedHere() { var i = loadMember().invited; return (i && i.t) ? i : null; }
+
+  function hexOf(bytes) {
+    var out = "";
+    for (var i = 0; i < bytes.length; i++) out += ("0" + bytes[i].toString(16)).slice(-2);
+    return out;
+  }
+  function randomHex() {
+    var b = new Uint8Array(32);
+    crypto.getRandomValues(b);
+    return hexOf(b);
+  }
+  function sha256Hex(text) {
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)).then(function (buf) {
+      return hexOf(new Uint8Array(buf));
+    });
+  }
+  function showInviteCode(code) { return String(code || "").slice(0, 4) + "-" + String(code || "").slice(4, 8); }
+
+  function memberRpc(name, body) {
+    return vaultRpc(name, body || {}).then(function (res) {
+      if (res.status === 404) { var gone = new Error("not installed"); gone.missing = true; throw gone; }
+      if (!res.ok) throw new Error("the server answered " + res.status);
+      return res.text().then(function (t) { return t ? JSON.parse(t) : null; });
+    });
+  }
+
+  // The synced copy carries the seat only when it is the scrambled kind:
+  // the key in it would be readable in the older kinds of sync.
+  function memberForSync() {
+    var m = loadMember(), out = {};
+    if (founderSeat()) out.founder = m.founder;
+    if (invitedHere()) out.invited = m.invited;
+    if (m.gone && m.gone.length) out.gone = m.gone;
+    return out;
+  }
+  // A seat given up, or an invitation forgotten, on one device has to stay
+  // gone on the others: without a note of it, the device that still held
+  // it would hand it straight back through sync.
+  function noteGone(m, id) {
+    if (!id) return;
+    m.gone = (m.gone || []).filter(function (x) { return x !== id; }).concat(id).slice(-12);
+  }
+  // Returns true if this device holds something the synced copy lacks.
+  function adoptMember(remoteDoc) {
+    var r = (remoteDoc && remoteDoc.member) || {}, m = loadMember();
+    var changed = false, ahead = false;
+    var theirGone = (r.gone && r.gone.slice) ? r.gone.filter(function (x) { return typeof x === "string"; }) : [];
+    var myGone = m.gone || [];
+    theirGone.forEach(function (id) {
+      if (myGone.indexOf(id) < 0) { noteGone(m, id); changed = true; }
+      if (m.founder && m.founder.id === id) { delete m.founder; changed = true; }
+      if (m.invited && m.invited.id === id) { delete m.invited; changed = true; }
+    });
+    if (myGone.some(function (id) { return theirGone.indexOf(id) < 0; })) ahead = true;
+    var isGone = function (x) { return !!(x && x.id && (m.gone || []).indexOf(x.id) >= 0); };
+
+    var mine = (m.founder && m.founder.k && +m.founder.no > 0) ? m.founder : null;
+    var theirs = (r.founder && typeof r.founder.k === "string" && +r.founder.no > 0 && !isGone(r.founder)) ? r.founder : null;
+    if (theirs && (!mine || +theirs.no < +mine.no)) { m.founder = theirs; changed = true; }
+    else if (mine && (!theirs || +mine.no < +theirs.no)) ahead = true;
+    var myInvite = (m.invited && m.invited.t) ? m.invited : null;
+    var theirInvite = (r.invited && typeof r.invited.t === "string" && !isGone(r.invited)) ? r.invited : null;
+    if (theirInvite && !myInvite) { m.invited = theirInvite; changed = true; }
+    else if (myInvite && !theirInvite) ahead = true;
+    if (changed) { saveMember(m); refreshMemberBox(); }
+    return ahead;
+  }
+
+  function memberSay(id, text) { var e = document.getElementById(id); if (e) e.textContent = text || ""; }
+  function appleRedeemLink(url) {
+    return (typeof url === "string" && url.indexOf("https://apps.apple.com/redeem") === 0) ? url : "";
+  }
+
+  function refreshMemberBox() {
+    var box = document.getElementById("member-box");
+    if (!box) return;
+    var f = founderSeat(), inv = invitedHere();
+    var seal = document.getElementById("founder-seal");
+    if (seal) {
+      seal.hidden = !f;
+      if (f) seal.title = "Founding member No. " + f.no;
+    }
+    // Shown once the server has answered, or straight away to someone who
+    // already holds a seat or an invitation.
+    box.style.display = (memberSeen.ok || f || inv) ? "" : "none";
+    document.getElementById("founder-none").style.display = f ? "none" : "";
+    document.getElementById("founder-on").style.display = f ? "" : "none";
+    document.getElementById("invite-none").style.display = (f || inv) ? "none" : "";
+    document.getElementById("invite-on").style.display = (!f && inv) ? "" : "none";
+
+    var st = memberSeen.seats;
+    if (!f) {
+      var full = st && +st.taken >= +st.seats, closed = st && st.open === false;
+      document.getElementById("founder-claim-btn").style.display = (full || closed) ? "none" : "";
+      document.getElementById("invite-or").style.display = (full || closed) ? "none" : "";
+      memberSay("founder-count", !st ? "" :
+        full ? "All " + (+st.seats).toLocaleString() + " founding seats are taken." :
+        closed ? "Founding seats are closed." :
+        (+st.taken).toLocaleString() + " of " + (+st.seats).toLocaleString() + " seats taken.");
+    } else {
+      memberSay("founder-no", String(f.no));
+      memberSay("founder-invite", showInviteCode(f.invite));
+      var n = +f.uses || 0;
+      memberSay("founder-uses", n === 0 ? "Nobody has used your invitation yet."
+        : n === 1 ? "1 person has joined with your invitation."
+        : n + " people have joined with your invitation.");
+      var gift = appleRedeemLink(f.gift);
+      document.getElementById("founder-gift-btn").style.display = gift ? "" : "none";
+      memberSay("founder-gift-line", gift
+        ? "Your App Store code is ready. It is yours alone and works once, so redeem it on your own iPhone."
+        : "Free for life: when Do. reaches the App Store, your own App Store code appears here. Redeeming it makes the lifetime plan free.");
+    }
+    if (!f && inv) {
+      var life = appleRedeemLink(inv.lifetime), month = appleRedeemLink(inv.monthly);
+      document.getElementById("invite-life-btn").style.display = life ? "" : "none";
+      document.getElementById("invite-month-btn").style.display = month ? "" : "none";
+      memberSay("invite-line", (life || month)
+        ? "Choose a plan. The discount is applied by the App Store."
+        : "The discount is applied through the App Store when the plans open. It will appear here.");
+    }
+  }
+
+  // Asks the server how things stand. Only when the Sync sheet is opened,
+  // or for someone who already holds a seat or an invitation: a person who
+  // has nothing to do with any of this is not announced to the server.
+  function refreshMember(force) {
+    var f = founderSeat(), inv = invitedHere();
+    if (!force && !f && !inv) return;
+    if (!force && Date.now() - memberSeen.at < 60000) return;
+    memberSeen.at = Date.now();
+    memberRpc("founder_seats").then(function (st) {
+      memberSeen.ok = true;
+      memberSeen.seats = st;
+      refreshMemberBox();
+    }).catch(function (err) {
+      if (err && err.missing) memberSeen.ok = false;
+      refreshMemberBox();
+    });
+    if (f) {
+      sha256Hex(f.k).then(function (h) { return memberRpc("founder_status", { k: h }); }).then(function (r) {
+        var m = loadMember();
+        if (!m.founder || m.founder.k !== f.k) return;
+        if (r && r.found) {
+          m.founder.no = r.no; m.founder.invite = r.invite; m.founder.uses = r.uses;
+          m.founder.gift = appleRedeemLink(r.gift) || "";
+        } else if (r && r.found === false) {
+          noteGone(m, m.founder.id);   // the seat was given back
+          delete m.founder;
+        }
+        saveMember(m);
+        refreshMemberBox();
+      }).catch(function () { /* the badge is still true offline */ });
+    } else if (inv) {
+      sha256Hex(inv.t).then(function (h) { return memberRpc("invite_status", { t: h }); }).then(function (r) {
+        var m = loadMember();
+        if (!m.invited || m.invited.t !== inv.t || !r || !r.found) return;
+        m.invited.lifetime = appleRedeemLink(r.lifetime) || "";
+        m.invited.monthly = appleRedeemLink(r.monthly) || "";
+        saveMember(m);
+        refreshMemberBox();
+      }).catch(function () {});
+    }
+  }
+
+  function claimFounderSeat() {
+    var btn = document.getElementById("founder-claim-btn");
+    var m = loadMember();
+    // The key is kept before it is sent, so asking twice gives the same seat.
+    if (!m.founder || !m.founder.k) { m.founder = { k: randomHex() }; saveMember(m); }
+    var key = m.founder.k;
+    btn.disabled = true;
+    memberSay("founder-msg", "Taking a seat…");
+    var seatId = "";
+    sha256Hex(key).then(function (h) { seatId = h.slice(0, 16); return memberRpc("founder_claim", { k: h }); }).then(function (r) {
+      btn.disabled = false;
+      if (r && r.ok) {
+        var now = loadMember();
+        now.founder = { k: key, id: seatId, no: r.no, invite: r.invite, uses: r.uses || 0, at: Date.now() };
+        saveMember(now);
+        memberSay("founder-msg", "");
+        if (memberSeen.seats) memberSeen.seats.taken = Math.max(+memberSeen.seats.taken || 0, +r.no);
+        refreshMemberBox();
+        if (vaultActive()) scheduleSyncPush();
+        flashStatus("You are founding member No. " + r.no + ".");
+        return;
+      }
+      var why = r && r.reason;
+      memberSay("founder-msg", why === "full" ? "All the founding seats are taken."
+        : why === "closed" ? "Founding seats are closed."
+        : why === "busy" ? "Seats are going quickly. Try again in a few minutes."
+        : "That did not work. Try again.");
+      if (why === "full" && memberSeen.seats) { memberSeen.seats.taken = memberSeen.seats.seats; refreshMemberBox(); }
+    }).catch(function () {
+      btn.disabled = false;
+      memberSay("founder-msg", "Could not reach the server. Check the connection and try again.");
+    });
+  }
+
+  function useInvitation() {
+    var box = document.getElementById("invite-input"), btn = document.getElementById("invite-btn");
+    var code = readPairCode(box.value);
+    if (code.length !== 8) { memberSay("invite-msg", "An invitation code is 8 letters and numbers."); return; }
+    var m = loadMember();
+    if (!m.invitePending) { m.invitePending = randomHex(); saveMember(m); }
+    var token = m.invitePending;
+    btn.disabled = true;
+    memberSay("invite-msg", "Checking…");
+    var inviteId = "";
+    sha256Hex(token).then(function (h) { inviteId = h.slice(0, 16); return memberRpc("invite_use", { c: code, t: h }); }).then(function (r) {
+      btn.disabled = false;
+      if (r && r.ok) {
+        var now = loadMember();
+        now.invited = { t: token, id: inviteId, code: code, at: Date.now() };
+        delete now.invitePending;
+        saveMember(now);
+        box.value = "";
+        memberSay("invite-msg", "");
+        refreshMemberBox();
+        refreshMember(true);
+        if (vaultActive()) scheduleSyncPush();
+        flashStatus("Invitation accepted: 25% off.");
+        return;
+      }
+      memberSay("invite-msg", (r && r.reason) === "busy"
+        ? "A lot of invitations are being used. Try again in a few minutes."
+        : "That is not a founding member's invitation. Check the code and try again.");
+    }).catch(function () {
+      btn.disabled = false;
+      memberSay("invite-msg", "Could not reach the server. Check the connection and try again.");
+    });
+  }
+
+  function leaveFounderSeat() {
+    var f = founderSeat();
+    if (!f) return;
+    if (!confirm("Give up founding seat No. " + f.no + "? This cannot be undone.")) return;
+    memberSay("founder-leave-msg", "Removing\u2026");
+    sha256Hex(f.k).then(function (h) { return memberRpc("founder_leave", { k: h }); }).then(function () {
+      var m = loadMember();
+      noteGone(m, m.founder && m.founder.id);
+      delete m.founder;
+      saveMember(m);
+      memberSay("founder-leave-msg", "");
+      refreshMemberBox();
+      refreshMember(true);
+      if (vaultActive()) scheduleSyncPush();
+      flashStatus("Your founding seat was given up.");
+    }).catch(function () {
+      memberSay("founder-leave-msg", "Could not reach the server. Nothing was changed.");
+    });
+  }
+
+  function forgetInvitation() {
+    var inv = invitedHere();
+    if (!inv) return;
+    sha256Hex(inv.t).then(function (h) { return memberRpc("invite_forget", { t: h }); }).then(function () {
+      var m = loadMember();
+      noteGone(m, m.invited && m.invited.id);
+      delete m.invited;
+      saveMember(m);
+      refreshMemberBox();
+      if (vaultActive()) scheduleSyncPush();
+      flashStatus("The invitation was forgotten.");
+    }).catch(function () { flashStatus("Could not reach the server. Nothing was changed."); });
+  }
+
+  function shareInvitation() {
+    var f = founderSeat();
+    if (!f) return;
+    var code = showInviteCode(f.invite);
+    var link = WEB_URL + "#invite=" + code;
+    var text = "I am a founding member of Do., the to-do list for iPhone. My invitation gives you 25% off: " + code;
+    if (navigator.share) {
+      navigator.share({ title: "Do.", text: text, url: link }).catch(function () { /* closed without sharing */ });
+      return;
+    }
+    var all = text + "\n" + link;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(all).then(function () { flashStatus("Invitation copied."); },
+        function () { flashStatus("Copy the code shown above."); });
+    } else flashStatus("Copy the code shown above.");
+  }
+
+  function openMemberBox() {
+    var modal = document.getElementById("sync-modal");
+    if (!modal.classList.contains("show")) document.getElementById("sync-btn").click();
+    refreshMember(true);
+    setTimeout(function () {
+      var box = document.getElementById("member-box");
+      if (box && box.scrollIntoView) box.scrollIntoView({ block: "start" });
+    }, 350);
+  }
+
+  (function () {
+    function on(id, fn) { var e = document.getElementById(id); if (e) e.addEventListener("click", fn); }
+    on("founder-claim-btn", claimFounderSeat);
+    on("founder-share-btn", shareInvitation);
+    on("invite-btn", useInvitation);
+    on("founder-seal", openMemberBox);
+    on("founder-leave-btn", leaveFounderSeat);
+    on("invite-forget-btn", forgetInvitation);
+    on("sync-btn", function () { refreshMember(true); });
+    on("founder-gift-btn", function () { var f = founderSeat(), u = f && appleRedeemLink(f.gift); if (u) openExternal(u); });
+    on("invite-life-btn", function () { var i = invitedHere(), u = i && appleRedeemLink(i.lifetime); if (u) openExternal(u); });
+    on("invite-month-btn", function () { var i = invitedHere(), u = i && appleRedeemLink(i.monthly); if (u) openExternal(u); });
+    var input = document.getElementById("invite-input");
+    if (input) input.addEventListener("keydown", function (e) { if (e.key === "Enter") useInvitation(); });
+
+    // A link someone was sent: #invite=CODE opens the sheet with the code
+    // filled in, #founder opens it at the seats. The fragment is then
+    // removed so a refresh does not do it again.
+    function fromLink() {
+      var frag = location.hash || "";
+      var mt = /^#invite=([A-Za-z0-9-]{8,12})$/.exec(frag);
+      if (!mt && frag !== "#founder") return;
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+      openMemberBox();
+      if (mt && input && !founderSeat() && !invitedHere()) input.value = mt[1].toUpperCase();
+    }
+    secrets.whenReady(function () {
+      refreshMemberBox();
+      refreshMember(false);
+      setTimeout(fromLink, 600);
+    });
+  })();
+
   // ── Backend dispatch ─────────────────────────────────────
 
   function syncPushNow() {
@@ -11668,6 +12086,14 @@
       runs: loadScheduled(),
       feed: feedChoice()
     };
+  }
+  // The scrambled copy also carries a founding seat or an invitation, so a
+  // second device of the same person shows the same badge.
+  function buildVaultDoc() {
+    var doc = buildSyncDoc();
+    var member = memberForSync();
+    if (member.founder || member.invited || member.gone) doc.member = member;
+    return doc;
   }
 
   // { listId: tasks } across every live list
