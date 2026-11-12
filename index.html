@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WXw7rtp0GLqWMJn8xUDaRfOBZMjkSYlhfL3ojABcEL4=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Alo0bZTyeiPpWSyymZG/KeKMUp8hJn1w8xf70685Vl0=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -3017,6 +3017,7 @@
           <button class="modal-btn primary" id="vault-start-btn">Start syncing from this device</button>
           <div class="cloud-or">or</div>
           <input class="sync-token" id="vault-code-input" placeholder="Code from your other device" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <p class="modal-hint" id="vault-code-hint">The code is not case sensitive: capital or small letters both work, with or without the dashes.</p>
           <button class="modal-btn" id="vault-join-btn">Join with this code</button>
           <div id="vault-number" style="display:none">
             <input class="sync-token" id="vault-number-input" placeholder="4-digit number from your other device" autocomplete="off" inputmode="numeric" maxlength="4">
@@ -3038,7 +3039,7 @@
           <button class="modal-btn" id="vault-pair-btn">Show a one-time code</button>
           <div id="vault-code-out" style="display:none">
             <div class="vault-code" id="vault-code-text"></div>
-            <p class="modal-hint" id="vault-wait">It works once, for 10 minutes. Waiting for the other device…</p>
+            <p class="modal-hint" id="vault-wait">It works once, for 10 minutes, and is not case sensitive: capital or small letters both work. Waiting for the other device…</p>
             <div id="vault-ask" style="display:none">
               <p><b>A device is asking to join.</b> Approve only if you have just typed this code on your own device.</p>
               <button class="modal-btn primary" id="vault-approve-btn">Approve this device</button>
@@ -5361,7 +5362,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-12-1332";
+  var BUILD = "2026-11-12-1359";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
