@@ -59,6 +59,11 @@ self.addEventListener("fetch", function (event) {
      sync document would be merged in as if it were real remote state. */
   if (url.origin !== self.location.origin) return;
 
+  /* The support and privacy pages live at this address but are not the app.
+     Left to the browser: handled here, they would be saved as the app's own
+     page and shown in its place the next time it opened offline. */
+  if (/\/(support|privacy)(\/|$)/.test(url.pathname)) return;
+
   /* The update probe is the one thing that must always hit the network — a
      cached answer would tell the app it is already up to date forever. */
   if (url.pathname.indexOf("version.json") >= 0) {

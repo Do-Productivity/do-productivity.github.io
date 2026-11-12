@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="description" content="What Do. keeps on your device, what it sends, and what it never does.">
+<title>Do. Privacy Policy</title>
+<link rel="icon" href="../apple-touch-icon.png">
+<style>
+  :root { --paper: #f7f3e9; --card: #fffdf7; --ink: #2b2620; --soft: #6b6259; --rule: #d9d2c2; --rust: #b6462f;
+    --serif: "Iowan Old Style", "Palatino", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: var(--paper); color: var(--ink); font: 17px/1.6 var(--sans); padding: 0 20px 64px; }
+  main { max-width: 680px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 16px; padding: 40px 0 28px; border-bottom: 1px solid var(--rule); }
+  header img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 4px 12px rgba(43,38,32,.18); }
+  header h1 { font: 700 34px/1.1 var(--serif); letter-spacing: -.015em; }
+  header h1 i, h2 i { font-style: normal; color: var(--rust); }
+  header p { color: var(--soft); font-size: 15px; margin-top: 2px; }
+  h2 { font: 700 24px/1.2 var(--serif); letter-spacing: -.01em; margin: 40px 0 12px; }
+  h3 { font: 600 17px/1.4 var(--sans); margin: 22px 0 4px; }
+  p + p { margin-top: 12px; }
+  a { color: var(--rust); text-underline-offset: 3px; }
+  ul { margin: 10px 0 0 22px; }
+  li + li { margin-top: 6px; }
+  .short { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px 20px; margin-top: 28px; }
+  .short b { display: block; font: 700 12px/1 var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--rust); margin-bottom: 10px; }
+  .when { color: var(--soft); font-size: 15px; }
+  .scroll { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; min-width: 460px; font-size: 16px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rule); }
+  th { font-weight: 600; color: var(--soft); font-size: 14px; }
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--soft); font-size: 15px; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="../apple-touch-icon.png" alt="Do. app icon">
+    <div><h1>Privacy Policy<i>.</i></h1><p>Do. for iPhone, iPhone Duo and the web · Effective 12 November 2026</p></div>
+  </header>
+
+  <div class="short"><b>The short version</b>
+    <p>Your lists stay on your device. Do. has no accounts and never asks for your name or email address. If you turn on sync, your lists are scrambled on your device before they leave it, and the key stays on your devices. We cannot read them. There is no usage counting, no advertising and no tracking.</p></div>
+
+  <h2>Who is responsible<i>.</i></h2>
+  <p>Do. is published by Ahmed Mohsen. For anything in this policy, write to us through the <a href="../support/">support page</a>.</p>
+
+  <h2>What stays on your device<i>.</i></h2>
+  <ul>
+    <li><b>Your lists, tasks, notes and scheduled tasks.</b> They are saved on the device you wrote them on.</li>
+    <li><b>Your calendar.</b> If you allow it, Do. reads the calendar on your iPhone so your meetings appear beside your tasks. It is read on the device, never changed, and never sent to us.</li>
+    <li><b>Widgets.</b> They show what the app hands them on the same device.</li>
+    <li><b>The key to your synced lists.</b> It is made on your device and never sent to us. On iPhone it is kept in the Keychain, not in a backup.</li>
+    <li><b>Sign-in details for calendars you connect.</b> On iPhone they are kept in the Keychain too.</li>
+    <li><b>The start date of your free days.</b> Kept in the Keychain on your iPhone.</li>
+  </ul>
+
+  <h2>What is sent, and when<i>.</i></h2>
+
+  <h3>Nothing, unless you turn on sync <span class="when">· the default</span></h3>
+  <p>Without sync, Do. sends nothing to us. It does not count who opens it, and it does not make an identifier for your device.</p>
+
+  <h3>A scrambled copy of your lists <span class="when">· only if you turn on sync</span></h3>
+  <p>Sync has no account. Your device makes a random key and encrypts your lists with it (AES-256) before sending them. Our server keeps only that encrypted copy, under a random number. It never receives the key, so neither we nor anyone who broke into the server could read your lists. We hold no name, no email address and no password, because the app never asks for them.</p>
+  <p>To add a second device, the first device shows a one-time code. You type it on the new device, approve that device on the first one, and then type the number the first device shows back on the new one. Until both are done, nothing is handed over.</p>
+  <p>If you lose every device that holds the key, the synced copy can no longer be opened by anyone, including us.</p>
+
+  <h3>Calendars you connect yourself <span class="when">· only if you connect one</span></h3>
+  <p>If you add a calendar subscription link, your device downloads it straight from that address. If you connect a Microsoft account, you sign in with Microsoft and your events travel from Microsoft to your device. In both cases the events do not pass through us.</p>
+
+  <h3>Sync through your own GitHub account <span class="when">· only if you set this up</span></h3>
+  <p>An advanced option saves your lists to an unlisted gist in your own GitHub account. Unlisted is not private: anyone who has the gist's address can read it. GitHub's own privacy policy applies to what is stored there.</p>
+
+  <h3>Purchases <span class="when">· only if you buy a plan</span></h3>
+  <p>Apple takes the payment. We never see your card or your Apple Account details. The app learns from Apple only whether a plan is active on your device.</p>
+
+  <h2>What Do. never does<i>.</i></h2>
+  <ul>
+    <li>No advertising, and no advertising or analytics code from other companies.</li>
+    <li>No accounts, and no names or email addresses.</li>
+    <li>No counting of who opens the app, and no device identifiers.</li>
+    <li>No tracking across other apps or websites.</li>
+    <li>No selling, renting or trading of your data.</li>
+    <li>No reading of your contacts, photos, location or microphone.</li>
+  </ul>
+
+  <h2>Who else handles data<i>.</i></h2>
+  <div class="scroll"><table>
+    <tr><th>Company</th><th>What for</th><th>When</th></tr>
+    <tr><td>Supabase</td><td>Hosts the database that holds the encrypted copy of synced lists</td><td>Only if you turn on sync</td></tr>
+    <tr><td>Apple</td><td>App Store and payments</td><td>When you download or buy</td></tr>
+    <tr><td>GitHub</td><td>Hosts this website and the web version of Do.</td><td>When you use the web version, or its gist sync</td></tr>
+    <tr><td>Microsoft</td><td>Your Microsoft calendar</td><td>Only if you connect one</td></tr>
+  </table></div>
+  <p>These companies may process data in countries other than your own. Like any internet service, they keep short-lived technical logs, such as IP addresses, when your device contacts them.</p>
+
+  <h2>How long it is kept<i>.</i></h2>
+  <ul>
+    <li><b>On your device:</b> until you delete the item or the app.</li>
+    <li><b>The encrypted copy of synced lists:</b> until you erase it in the app.</li>
+  </ul>
+
+  <h2>Your choices<i>.</i></h2>
+  <ul>
+    <li>Use Do. without sync. It is optional, and there is no account either way.</li>
+    <li>Turn calendar access off at any time in Settings on your iPhone.</li>
+    <li>Erase the synced copy yourself. Open Sync, then Erase the synced copy. It is removed from the server straight away, and sync stops on every device. The lists on each device stay.</li>
+    <li>Stop syncing on one device at any time. Its lists stay on it.</li>
+  </ul>
+  <p>If you live in the European Union or the United Kingdom, you also have the right to object to our use of your data and to complain to your data protection authority. Sync runs only because you asked for it. Because the copy is encrypted with a key we never receive, we cannot look up, read or hand over what is in it; erasing it in the app is how you remove it.</p>
+
+  <h2>Children<i>.</i></h2>
+  <p>Do. is not aimed at children under 13, and we do not knowingly collect data from them. The app has no accounts, so there is nothing of a child's for us to hold.</p>
+
+  <h2>Changes<i>.</i></h2>
+  <p>If this policy changes, the new version appears on this page with a new date. If the change affects what is sent from your device, we will say so in the app's update notes as well.</p>
+
+  <footer>
+    <a href="../support/">Support and contact</a>
+    <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">Terms of use (Apple's standard licence)</a>
+  </footer>
+</main>
+</body>
+</html>
