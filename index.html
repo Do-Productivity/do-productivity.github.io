@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Alo0bZTyeiPpWSyymZG/KeKMUp8hJn1w8xf70685Vl0=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sGR0Enee2CeK2YKVxufEvqQC3uAmw05sbLN8JN13ybo=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -668,6 +668,35 @@
   .today-later {
     font-family: var(--sans); font-size: 11px; color: var(--ink-faint);
     padding: 10px 2px 4px; border-top: 1px solid var(--rule);
+  }
+  /* Meetings on the Today screen. A task is something to do and has a
+     circle to tick; a meeting is somewhere to be and has a bar instead, in
+     the calendar's colour, and quieter type. */
+  .today-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .today-switch {
+    flex: none; margin-top: 4px; cursor: pointer; white-space: nowrap;
+    font-family: var(--sans); font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--ink-soft);
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 999px; padding: 9px 14px;
+  }
+  .today-head .m { letter-spacing: 1.2px; margin-left: 8px; color: var(--violet, #735a99); }
+  .today-meet { cursor: pointer; }
+  .today-meet-bar {
+    flex: none; width: 4px; align-self: stretch; border-radius: 2px;
+    margin: 2px 9px 2px 9px; background: var(--violet, #735a99); opacity: .75;
+  }
+  .today-meet .today-text { color: var(--ink-soft); }
+  .today-when.is-now { color: var(--violet, #735a99); font-weight: 700; }
+  .today-allday {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px 2px; border-bottom: 1px solid var(--rule);
+  }
+  .today-group .today-allday:last-child { border-bottom: none; }
+  .today-allchip {
+    font-family: var(--sans); font-size: 11px; cursor: pointer;
+    color: var(--violet, #735a99); border: 0; border-radius: 999px; padding: 5px 11px;
+    background: color-mix(in srgb, var(--violet, #735a99) 12%, transparent);
   }
 
   /* ── Due dates ───────────────────────────── */
@@ -5362,7 +5391,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-12-1359";
+  var BUILD = "2026-11-12-1541";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6377,6 +6406,7 @@
   // writing is what you see.
   var calReloaders = [];
   function refreshCalendar() { calReloaders.forEach(function (fn) { fn(); }); }
+  calReloaders.push(function () { if (typeof renderToday === "function") renderToday(); });
 
   // ── Reading the real calendar ────────────────────────────
   // The connection already exists and the scope already allows this.
@@ -8723,12 +8753,118 @@
     return row;
   }
 
-  function todayGroup(title, items, now, overdue) {
+  // ── Meetings on the Today screen ──
+  // The day is tasks and meetings together; showing only the tasks left the
+  // merge to be done in your head, which is what this screen exists to
+  // stop. Meetings are read from wherever the Calendar column already
+  // reads them, shown and never changed, and never asked for from here:
+  // if the calendar has not been allowed, this screen stays tasks only.
+  var TODAY_MEET_KEY = "dia_todo_today_meet_v1";     // "0" is tasks only
+  function todayMeetingsOn() {
+    try { return localStorage.getItem(TODAY_MEET_KEY) !== "0"; } catch (e) { return true; }
+  }
+  // Same test as the widget's: reading must need no new permission.
+  function calendarFetchAllowed() {
+    try {
+      return icsFeeds().length > 0 ||
+        (calBridge() ? localStorage.getItem(CAL_PERM_KEY) === "1" : msConnected());
+    } catch (e) { return false; }
+  }
+  function calendarReadable() {
+    try { return calendarFetchAllowed() || !!importedEvents(); } catch (e) { return false; }
+  }
+
+  function meetingsFor(dayStart) {
+    var dayEnd = startOfDay(dayStart, 1), out = [];
+    var imported = importedEvents();
+    if (imported) {
+      imported.events.forEach(function (ev) {
+        if (ev.allDay) return;
+        if (isOwnEcho(ev.summary, imported.name) || isCancelled(ev.summary)) return;
+        icsExpand(ev, dayStart, dayEnd).forEach(function (ts) {
+          var span = ((ev.end || ev.start) - ev.start) || 1800000;
+          out.push({ kind: "event", text: ev.summary || "(no title)",
+                     start: ts, end: ts + span, where: ev.where || imported.name,
+                     ev: { subject: ev.summary, start: ts, end: ts + span,
+                           where: ev.where, calendar: imported.name,
+                           account: "Imported file", editable: false } });
+        });
+      });
+    }
+    msEventsFor(dayStart).forEach(function (ev) {
+      if (!ev.allDay && (ev.end <= dayStart || ev.start >= dayEnd)) return;
+      out.push({ kind: "event", allDay: !!ev.allDay, text: ev.subject || "(no title)",
+                 start: ev.start, end: ev.end,
+                 where: ev.where || ev.calendar || "", ev: ev });
+    });
+    out.sort(function (a, b) { return (a.start - b.start) || (a.end - b.end); });
+    return dedupeEvents(out);
+  }
+
+  function todayMeetings(now) {
+    var m = { on: false, today: [], tomorrow: [], allToday: [], allTomorrow: [] };
+    if (!calendarReadable() || !todayMeetingsOn()) return m;
+    m.on = true;
+    var d0 = startOfDay(now, 0), d1 = startOfDay(now, 1);
+    if (calendarFetchAllowed()) ensureExternalEvents(d0, 2, renderToday);
+    meetingsFor(d0).forEach(function (e) {
+      if (e.allDay) m.allToday.push(e);
+      else if (e.end > now) m.today.push(e);      // one that has ended is history
+    });
+    meetingsFor(d1).forEach(function (e) {
+      if (e.allDay) m.allTomorrow.push(e);
+      else if (e.start >= d1) m.tomorrow.push(e); // one running over midnight is already under Today
+    });
+    return m;
+  }
+
+  function meetingRow(m, now) {
+    var row = el("div", "today-row today-meet");
+    row.setAttribute("role", "button");
+    row.tabIndex = 0;
+    row.title = "Meeting details";
+    row.appendChild(el("span", "today-meet-bar"));
+    var body = el("div", "today-body");
+    body.appendChild(el("div", "today-text", m.text));
+    var meta = el("div", "today-meta");
+    var running = m.start <= now && m.end > now;
+    meta.appendChild(el("span", "today-when" + (running ? " is-now" : ""),
+      running ? "Now, until " + evClock(m.end)
+              : evClock(m.start) + " \u2013 " + evClock(m.end)));
+    if (m.where) meta.appendChild(el("span", null, m.where));
+    body.appendChild(meta);
+    row.appendChild(body);
+    function open() { showEvent(m.ev); }
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", function (e) { if (e.key === "Enter") open(); });
+    return row;
+  }
+
+  function todayGroup(title, items, now, overdue, meetings, allDay) {
+    meetings = meetings || []; allDay = allDay || [];
     var wrap = el("div", "today-group");
     var head = el("div", "today-head" + (overdue ? " is-overdue" : ""), title);
-    head.appendChild(el("span", "n", String(items.length)));
+    var nMeet = meetings.length + allDay.length;
+    if (nMeet) head.appendChild(el("span", "m", nMeet + (nMeet === 1 ? " meeting" : " meetings")));
+    if (items.length || !nMeet) head.appendChild(el("span", "n", String(items.length)));
     wrap.appendChild(head);
-    items.forEach(function (item) { wrap.appendChild(todayRow(item, now)); });
+    if (allDay.length) {
+      var strip = el("div", "today-allday");
+      allDay.forEach(function (m) {
+        var chip = el("button", "today-allchip", "All day \u00b7 " + m.text);
+        chip.type = "button";
+        chip.addEventListener("click", function () { showEvent(m.ev); });
+        strip.appendChild(chip);
+      });
+      wrap.appendChild(strip);
+    }
+    // One timeline: a task at the time it is due, a meeting at the time it starts.
+    var line = items.map(function (it) { return { at: it.task.due, task: it }; })
+      .concat(meetings.map(function (m) { return { at: m.start, meet: m }; }));
+    line.sort(function (a, b) { return a.at - b.at; });
+    line.forEach(function (x) {
+      wrap.appendChild(x.meet ? meetingRow(x.meet, now) : todayRow(x.task, now));
+    });
     return wrap;
   }
 
@@ -8738,21 +8874,40 @@
     var g = todayGroups(now);
 
     todayRoot.textContent = "";
+    var mt = todayMeetings(now);
     var card = el("div", "today-card");
+    var top = el("div", "today-top"), heading = el("div");
     var title = el("div", "today-title", "Today");
     title.appendChild(el("span", "dot", "."));
-    card.appendChild(title);
-    card.appendChild(el("div", "today-sub",
+    heading.appendChild(title);
+    heading.appendChild(el("div", "today-sub",
       new Date(now).toLocaleDateString(undefined,
         { weekday: "long", day: "numeric", month: "long" })));
+    top.appendChild(heading);
+    // Only where there is a calendar to show: a switch for something that
+    // cannot be switched on is a button that does nothing.
+    if (calendarReadable()) {
+      var sw = el("button", "today-switch", mt.on ? "Tasks only" : "Show meetings");
+      sw.type = "button";
+      sw.id = "today-meet-switch";
+      sw.title = mt.on ? "Hide meetings on this screen" : "Show meetings between the tasks";
+      sw.addEventListener("click", function () {
+        try { localStorage.setItem(TODAY_MEET_KEY, mt.on ? "0" : "1"); } catch (e) {}
+        renderToday();
+      });
+      top.appendChild(sw);
+    }
+    card.appendChild(top);
 
     var scroll = el("div", "today-scroll");
+    var anyToday = g.today.length || mt.today.length || mt.allToday.length;
+    var anyTomorrow = g.tomorrow.length || mt.tomorrow.length || mt.allTomorrow.length;
     if (g.overdue.length) scroll.appendChild(todayGroup("Overdue", g.overdue, now, true));
-    if (g.today.length) scroll.appendChild(todayGroup("Today", g.today, now));
-    if (g.tomorrow.length) scroll.appendChild(todayGroup("Tomorrow", g.tomorrow, now));
+    if (anyToday) scroll.appendChild(todayGroup("Today", g.today, now, false, mt.today, mt.allToday));
+    if (anyTomorrow) scroll.appendChild(todayGroup("Tomorrow", g.tomorrow, now, false, mt.tomorrow, mt.allTomorrow));
     if (g.underway.length) scroll.appendChild(todayGroup("Underway", g.underway, now));
 
-    if (!g.overdue.length && !g.today.length && !g.tomorrow.length && !g.underway.length) {
+    if (!g.overdue.length && !anyToday && !anyTomorrow && !g.underway.length) {
       scroll.appendChild(el("div", "today-empty", g.later
         ? "Nothing until later in the week."
         : "Nothing due. Give a task a date and it turns up here."));
