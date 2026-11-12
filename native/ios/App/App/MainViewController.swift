@@ -49,7 +49,7 @@ class MainViewController: CAPBridgeViewController {
         super.viewDidAppear(animated)
         // The page can finish loading after the first layout, and would then
         // never hear. Say it again a few times while it settles.
-        for delay in [0.5, 1.5, 3.0, 6.0] {
+        for delay in [0.1, 0.5, 1.5, 3.0, 6.0] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 self?.reportOcclusion(force: true)
             }

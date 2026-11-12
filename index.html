@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-J5uno7F+T36BVe+qEpPZEkm0nomUZWTuwJ86iW8G++M=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6qJ4c20l1M6O31oy6SHHE9JqQyWINaa8G4OOpzCLUGg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -332,7 +332,7 @@
     70%  { background: #f6e6a8; }
     100% { background: transparent; }
   }
-  @media (max-width: 720px) {
+  @media (max-width: 600px) {
     .search-sheet { margin: 0; max-width: none; border-radius: 0;
                     max-height: 100dvh; height: 100dvh; }
     .search-head { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
@@ -1876,6 +1876,12 @@
   .modal-btn:disabled { opacity: 0.55; cursor: default; }
   .modal-details ul.leaves { margin: 8px 0 4px 18px; padding: 0; font-size: 12.5px; line-height: 1.5; }
   .modal-details ul.leaves li { margin: 0 0 6px; }
+  /* The older, technical routes (a GitHub token, raw calendar links,
+     Outlook set-up) are not something a person using the app needs to see.
+     They stay in the file for the one device that already uses them: five
+     quick taps on the sheet's title bring them back there. */
+  #advanced-sync { display: none; }
+  html.show-advanced #advanced-sync { display: block; }
   .vault-code {
     font: 700 25px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
     letter-spacing: 2px; text-align: center; color: var(--ink);
@@ -1991,7 +1997,7 @@
      Inputs stay at 16px so iOS Safari doesn't zoom-jump when they're focused.
      Small running text switches to the system sans (SF on iPhone) — the serif
      stays for panel titles, where it carries the paper look best. */
-  @media (max-width: 720px) {
+  @media (max-width: 600px) {
     /* The side insets exist to dodge the camera and the status glyphs, but
        those sit in the TOP strip only — paying the full inset down the whole
        column surrendered about a fifth of the Duo's screen to empty paper.
@@ -2404,7 +2410,7 @@
     /* Folded Duo: Done sits to the left of the status pill. The spread
        cards run up beside the pill; the script keeps them left of it. */
     html.has-pill .deck-head { padding-right: calc(var(--occl-w, 0px) + 6px); }
-    @media (max-width: 720px) {
+    @media (max-width: 600px) {
       /* the card is only a way to change list here; the list is the point */
       html.has-pill .fan-card,
       html.has-pill .card-fan.theme-ios27 .fan-card { height: 112px; padding: 14px 16px; }
@@ -2550,7 +2556,7 @@
      (overflow:hidden + 100dvh) took the wheel away entirely, which is what
      broke a half-screen window today. pointer:fine is the test, so phones
      and tablets (coarse) keep the layout built for them. */
-  @media (max-width: 720px) and (pointer: fine) {
+  @media (max-width: 600px) and (pointer: fine) {
     html, body { height: auto; overflow: visible; }
     .layout { height: auto; min-height: 100vh; min-height: 100dvh; }
     .card-fan, .fan-more { display: none; }
@@ -2596,7 +2602,7 @@
      shows "What nee" with the date field squeezed to "dd/mm/...". The cut is
      really about column width — under ~280px the compact set reads better —
      and with four panels that lands at about 1200px of window. */
-  @media (min-width: 721px) and (max-width: 1200px) and (min-height: 340px),
+  @media (min-width: 601px) and (max-width: 1200px) and (min-height: 340px),
          (min-width: 1201px) and (min-height: 340px) and (max-height: 519px) {
     html, body { height: 100%; }
     .layout {
@@ -2714,7 +2720,7 @@
      row) and the running text steps down a point. The Scheduled column can
      be put away with its toolbar button on top of that, which hands about
      70px to each of the three columns that remain. */
-  @media (min-width: 721px) and (max-width: 980px) {
+  @media (min-width: 601px) and (max-width: 980px) {
     .layout { padding-left: clamp(12px, env(safe-area-inset-left, 0px), 20px);
               padding-right: clamp(12px, env(safe-area-inset-right, 0px), 20px); }
     .panels { gap: 8px; }
@@ -2743,12 +2749,12 @@
 
   /* The Scheduled column, put away. Phones never hide it — there it is one
      tap on the tab row or the card fan, and nothing is competing for width. */
-  @media (min-width: 721px) {
+  @media (min-width: 601px) {
     body.hide-runs .panels > .panel.runs { display: none; }
   }
   /* Same for the Calendar column. Five columns is a lot of width to ask
      for; this is how you ask for four. */
-  @media (min-width: 721px) {
+  @media (min-width: 601px) {
     body.hide-cal .panels > .panel.cal { display: none; }
     /* Solo: the calendar alone, with the whole window. */
     body.cal-solo .panels > .panel:not(.cal) { display: none; }
@@ -2763,7 +2769,7 @@
        columns. Columns are kept readable by --track-min, not by this. */
     .task-body { min-width: 0; }
   }
-  @media (max-width: 720px) {
+  @media (max-width: 600px) {
     #runs-btn, #cal-btn { display: none; }
   }
   .toolbar-btn.on { color: var(--ink); border-color: var(--ink-faint); }
@@ -2782,7 +2788,7 @@
   /* Phone held sideways: width is plentiful, height is the scarce resource,
      so spend the savings vertically — drop the subtitle line, thin the
      toolbar and tighten the paddings. */
-  @media (min-width: 721px) and (max-height: 460px) {
+  @media (min-width: 601px) and (max-height: 460px) {
     /* height, not min-height: on a 390px-tall window the page must not be
        allowed to grow at all, or the add-row leaves the screen. */
     .layout { height: 100dvh;
@@ -2825,7 +2831,7 @@
      Fonts are left alone apart from a hair off the fan's title: 15px body
      text on a phone is already the floor, and shrinking it to fit one more
      row trades a thing you read all day for a thing you notice once. */
-  @media (max-width: 720px) and (max-height: 720px) {
+  @media (max-width: 600px) and (max-height: 720px) {
     .fan-card {
       height: clamp(98px, 28vw, 124px);
       padding: clamp(11px, 3.4vw, 15px) clamp(13px, 4vw, 18px);
@@ -2842,7 +2848,7 @@
 
   /* Landscape / short screens: don't force a full-height card that pushes the
      list below the fold. */
-  @media (max-width: 720px) and (max-height: 500px) {
+  @media (max-width: 600px) and (max-height: 500px) {
     .layout { min-height: 0; display: block; }
     .panel { height: auto; }
   }
@@ -2877,19 +2883,26 @@
     }
     html.has-pill .toolbar h1,
     html.has-pill .toolbar .build-stamp { display: none; }
-    html.has-pill .toolbar .toolbar-btn {
+    html.has-pill .toolbar .toolbar-btn,
+    html.pill-top .toolbar .toolbar-btn {
       flex: none; width: 52px; height: 52px; min-height: 0; padding: 0;
       border-radius: 50%; font-size: 0; letter-spacing: 0; color: transparent;
       background-color: var(--card); background-position: center;
       background-repeat: no-repeat; background-size: 23px;
     }
-    html.has-pill .toolbar .toolbar-btn.off { opacity: .5; }
-    html.has-pill #search-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2711%27%20cy%3D%2711%27%20r%3D%276.5%27%2F%3E%3Cpath%20d%3D%27M16%2016l4.5%204.5%27%2F%3E%3C%2Fsvg%3E"); }
-    html.has-pill #today-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Crect%20x%3D%274%27%20y%3D%275%27%20width%3D%2716%27%20height%3D%2715%27%20rx%3D%273%27%2F%3E%3Cpath%20d%3D%27M4%2010h16M8%203v4M16%203v4%27%2F%3E%3C%2Fsvg%3E"); }
-    html.has-pill #runs-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M5%206h14M5%2012h14M5%2018h9%27%2F%3E%3Ccircle%20cx%3D%2718.5%27%20cy%3D%2718%27%20r%3D%272.2%27%2F%3E%3C%2Fsvg%3E"); }
-    html.has-pill #cal-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%278%27%2F%3E%3Cpath%20d%3D%27M12%207.5V12l3%202%27%2F%3E%3C%2Fsvg%3E"); }
-    html.has-pill #sync-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M20%2012a8%208%200%200%201-14.3%204.9M4%2012a8%208%200%200%201%2014.3-4.9%27%2F%3E%3Cpath%20d%3D%27M18.6%203.4v3.9h-3.9M5.4%2020.6v-3.9h3.9%27%2F%3E%3C%2Fsvg%3E"); }
-    html.has-pill #undo-drawer { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M9%2014L4%209l5-5%27%2F%3E%3Cpath%20d%3D%27M4%209h10a6%206%200%200%201%200%2012h-3%27%2F%3E%3C%2Fsvg%3E"); }
+    /* Scheduled and Calendar switch a column on and off. Off is the plain
+       button, like the others; on is filled, so the state reads at a
+       glance and "off" does not look like "unavailable". */
+    html.has-pill .toolbar .toolbar-btn.off,
+    html.pill-top .toolbar .toolbar-btn.off { opacity: 1; }
+    html.has-pill #runs-btn:not(.off), html.has-pill #cal-btn:not(.off),
+    html.pill-top #runs-btn:not(.off), html.pill-top #cal-btn:not(.off) { filter: invert(1) hue-rotate(180deg); }
+    html.has-pill #search-btn, html.pill-top #search-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2711%27%20cy%3D%2711%27%20r%3D%276.5%27%2F%3E%3Cpath%20d%3D%27M16%2016l4.5%204.5%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #today-btn, html.pill-top #today-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Crect%20x%3D%274%27%20y%3D%275%27%20width%3D%2716%27%20height%3D%2715%27%20rx%3D%273%27%2F%3E%3Cpath%20d%3D%27M4%2010h16M8%203v4M16%203v4%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #runs-btn, html.pill-top #runs-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M5%206h14M5%2012h14M5%2018h9%27%2F%3E%3Ccircle%20cx%3D%2718.5%27%20cy%3D%2718%27%20r%3D%272.2%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #cal-btn, html.pill-top #cal-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%278%27%2F%3E%3Cpath%20d%3D%27M12%207.5V12l3%202%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #sync-btn, html.pill-top #sync-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M20%2012a8%208%200%200%201-14.3%204.9M4%2012a8%208%200%200%201%2014.3-4.9%27%2F%3E%3Cpath%20d%3D%27M18.6%203.4v3.9h-3.9M5.4%2020.6v-3.9h3.9%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #undo-drawer, html.pill-top #undo-drawer { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M9%2014L4%209l5-5%27%2F%3E%3Cpath%20d%3D%27M4%209h10a6%206%200%200%201%200%2012h-3%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill .toolbar .sync-dot { position: absolute; right: 2px; bottom: 2px; }
     html.has-pill .toolbar .err-dot { position: absolute; right: -6px; top: -12px; flex: none; }
     /* The status line was the spacer that pushed the buttons right. In a
@@ -2904,6 +2917,36 @@
        is the control. */
     html.has-pill body.deck-open .toolbar { opacity: 0; visibility: hidden; pointer-events: none; }
 
+
+  /* The inner screen held upright: the status area is a bar across the top
+     right, so Apple's pattern is an ordinary row of controls at the top. */
+  html.pill-top .layout { padding-top: calc(var(--occl-b, 0px) + 14px); }
+  html.pill-top .modal-overlay { padding-top: calc(var(--occl-b, 0px) + 14px); }
+  html.pill-top .toolbar {
+    position: fixed; z-index: 9;
+    top: calc(var(--occl-b, 0px) / 2 - 20px);
+    left: 24px; right: calc(var(--occl-w, 0px) + 10px);
+    display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 12px;
+    margin: 0; padding: 0;
+  }
+  html.pill-top .toolbar .build-stamp { display: none; }
+  html.pill-top .toolbar .toolbar-btn { width: 46px; height: 46px; background-size: 21px; }
+  html.pill-top .toolbar .sync-dot { position: absolute; right: 2px; bottom: 2px; }
+  html.pill-top body.deck-open .toolbar { opacity: 0; visibility: hidden; pointer-events: none; }
+
+  /* Between a phone and a full row of lists: two lists fill the screen, and
+     the others follow to the right, a swipe away, with the next one just
+     showing so it is clear there is more. */
+  @media (min-width: 601px) and (max-width: 760px) {
+    .panels {
+      grid-auto-columns: calc((100% - 28px) / 2.1);
+      overflow-x: auto; overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .panels::-webkit-scrollbar { display: none; }
+    .panels > .panel { scroll-snap-align: start; }
+  }
   /* ── Print ───────────────────────────────── */
   @media print {
     html, body { background: #fff; }
@@ -2975,6 +3018,7 @@
           </div>
           <hr class="cloud-rule">
           <p><b>Add another device.</b> Get a one-time code here and type it on the other device, under Sync. Approve it here, then type the number this device shows back on the other one. Nothing can be opened until both are done.</p>
+          <p class="modal-hint">On a computer, or a phone without the app, open <b id="vault-web-url"></b> in a browser, tap Sync, and join with the code. Everyone uses that same address. What makes the lists yours is the key on your devices, not the link.</p>
           <button class="modal-btn" id="vault-pair-btn">Show a one-time code</button>
           <div id="vault-code-out" style="display:none">
             <div class="vault-code" id="vault-code-text"></div>
@@ -3086,7 +3130,6 @@
           <li><b>With sync:</b> a scrambled copy of your lists goes to the app's server, so your devices can share it. The key stays on your devices. Nobody else can read the copy, and that includes the people who run the server.</li>
           <li><b>Never:</b> no email address, no name, no counting of who opens the app, no advertising, no tracking.</li>
           <li><b>Your calendar</b> is read on this device and is never sent.</li>
-          <li><b>Advanced options</b> you set up yourself, such as your own GitHub or a calendar link, talk to those services directly.</li>
         </ul>
       </details>
       <p class="modal-hint" id="cloud-unconfigured" style="display:none">Syncing between devices isn't switched on yet. Everything you write is saved on this device in the meantime, and works offline.</p>
@@ -3274,6 +3317,22 @@
 </div>
 
 <script>
+// Before anything is measured or drawn: put back the status area this
+// screen had last time. Without this the page is laid out as if nothing
+// covered it, and then every card moves when the shell reports the pill,
+// half a second after each launch.
+(function () {
+  try {
+    var seen = JSON.parse(localStorage.getItem("dia_todo_pill_v1") || "{}");
+    var was = seen[window.innerWidth + "x" + window.innerHeight];
+    if (was && was.w > 0) {
+      var rootStyle = document.documentElement.style;
+      rootStyle.setProperty("--occl-w", was.w + "px");
+      rootStyle.setProperty("--occl-b", was.b + "px");
+      document.documentElement.classList.add(was.b >= was.w ? "has-pill" : "pill-top");
+    }
+  } catch (e) { /* nothing remembered: it is found out the slow way */ }
+})();
 (function () {
   "use strict";
 
@@ -5286,7 +5345,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-11-2310";
+  var BUILD = "2026-11-12-1305";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5475,7 +5534,7 @@
   // jump to Notes filtered to one task (used by the badge on a task row)
   function showNotesForTask(taskId) {
     noteFilterTaskId = taskId;
-    if (window.matchMedia("(max-width: 720px)").matches) setMobileTab("notes");
+    if (window.matchMedia("(max-width: 600px)").matches) setMobileTab("notes");
     refreshNotesUI();
     var panel = document.querySelector(".panel.notes");
     if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -8235,7 +8294,7 @@
     var sel = 0;
 
     function phoneLayout() {
-      return window.matchMedia("(max-width: 720px)").matches;
+      return window.matchMedia("(max-width: 600px)").matches;
     }
 
     function gather() {
@@ -9523,7 +9582,10 @@
         if (cards.length < 2) return;
         if (car) {
           // taken hold of wherever it had got to, moving or not
-          if (!g.grab) { g.grab = true; g.pos0 = pos; ticking = true; tickAt = Math.round(pos); }
+          // pt0 is where the deck was heading when the finger landed. A
+          // second swipe that arrives before the first has settled is
+          // measured from there, not from wherever the spring had got to.
+          if (!g.grab) { g.grab = true; g.pos0 = pos; g.pt0 = pt; ticking = true; tickAt = Math.round(pos); }
           var to = g.pos0 - (dx - g.sx) / STEP;
           if (!ring()) {
             var end = cards.length - 1;
@@ -9588,14 +9650,24 @@
       if (was.axis === "x" && car) {
         if (!was.grab) return;
         var n = cards.length;
-        var from = Math.round(was.pos0);
+        // Everything is counted from the card the deck was already going
+        // to. Counting from where the spring happened to be meant a swipe
+        // made while the last one was still settling could be swallowed:
+        // the card moved under the finger and then went back.
+        var from = Math.round(was.pt0);
+        var moved = pos - was.pos0;                                // cards, by the finger alone
         var v = cancelled ? 0 : clamp(-was.vx / STEP, -14, 14);    // cards a second
         // let go, it carries on by what it was doing and stops on a card;
         // thrown hard enough, that is more than one card along
-        var to = cancelled ? from : Math.round(pos + v * 0.17);
+        var to = cancelled ? from : Math.round(from + moved + v * 0.17);
         if (!cancelled && to === from && Math.abs(was.vx) > 380 &&
-            Math.abs(pos - was.pos0) * STEP > 12 && (v > 0) === (pos > was.pos0)) {
+            Math.abs(moved) * STEP > 12 && (v > 0) === (moved > 0)) {
           to = from + (v > 0 ? 1 : -1);       // a quick flick counts even when it is short
+        }
+        // and so does a slow, deliberate drag of a third of the way: the
+        // finger has said which card it wants, however gently
+        if (!cancelled && to === from && Math.abs(moved) >= 0.33) {
+          to = from + (moved > 0 ? 1 : -1);
         }
         to = clamp(to, from - 3, from + 3);
         if (!ring()) to = clamp(to, 0, n - 1);
@@ -9700,7 +9772,7 @@
     // pointer:coarse as well as width: a narrow laptop window shows the
     // tab row instead of the deck, and has nothing to condense.
     function isPhone() {
-      return window.matchMedia("(max-width: 720px) and (pointer: coarse)").matches;
+      return window.matchMedia("(max-width: 600px) and (pointer: coarse)").matches;
     }
 
     function listFrom(node) {
@@ -9946,7 +10018,7 @@
     if (!header) return;
     header.addEventListener("click", function () {
       // only acts as an accordion on phones; harmless elsewhere
-      if (!window.matchMedia("(max-width: 720px)").matches) return;
+      if (!window.matchMedia("(max-width: 600px)").matches) return;
       if (panel.classList.contains("expanded")) {
         openCardPicker();        // already open — show them all to choose from
         return;
@@ -10224,7 +10296,7 @@
   // The deck reads its own fingers (see the deck, above). This is the other
   // place a sideways flick can start: on the list itself.
   (function () {
-    var isPhone = function () { return window.matchMedia("(max-width: 720px)").matches; };
+    var isPhone = function () { return window.matchMedia("(max-width: 600px)").matches; };
 
     // a decisive flick changes list, without the deck's finger-tracking —
     // you are usually scrolling here, not swiping
@@ -10790,6 +10862,10 @@
   // A second device joins with a one-time code. The code is stretched into
   // a key that wraps the real one; the wrapped key waits on the server for
   // ten minutes and is deleted the first time it is fetched.
+  // Where the same app lives on the web. One address for everybody: a
+  // browser becomes one of your devices by joining with a one-time code,
+  // never by a link that carries the key.
+  var WEB_URL = "https://ahmedmohsen18.github.io/my-todo-list/";
   var VAULT_KEY = "dia_todo_vault_v1";
   var vaultKeysCache = null;
   var utf8 = new TextEncoder();
@@ -11074,7 +11150,8 @@
   function pairTake(slot) {
     return vaultRpc("pair_take", { p: slot }).then(function (res) {
       if (!res.ok) throw new Error(vaultProblem(res));
-      return res.json();
+      // nothing waiting comes back as "null", or as no body at all
+      return res.text().then(function (body) { return body ? JSON.parse(body) : null; });
     });
   }
 
@@ -11274,6 +11351,8 @@
       document.getElementById("vault-code-out").style.display = "none";
       document.getElementById("vault-code-text").textContent = "";
     }
+    var web = document.getElementById("vault-web-url");
+    if (web) web.textContent = WEB_URL.replace(/^https:\/\//, "").replace(/\/$/, "");
     if (on) setCloudStatusLine();
   }
 
@@ -12571,6 +12650,23 @@
       });
     });
 
+    // The Advanced section is hidden unless this device asked for it.
+    (function () {
+      var KEY = "dia_todo_advanced", root = document.documentElement;
+      try { if (localStorage.getItem(KEY) === "1") root.classList.add("show-advanced"); } catch (e) {}
+      var title = document.querySelector("#sync-modal h2"), taps = [];
+      if (title) title.addEventListener("click", function () {
+        var now = Date.now();
+        taps = taps.filter(function (t) { return now - t < 2500; });
+        taps.push(now);
+        if (taps.length < 5) return;
+        taps = [];
+        var on = !root.classList.contains("show-advanced");
+        root.classList.toggle("show-advanced", on);
+        try { if (on) localStorage.setItem(KEY, "1"); else localStorage.removeItem(KEY); } catch (e) {}
+      });
+    })();
+
     // ── Private sync ──
     function el(id) { return document.getElementById(id); }
     function say(id, text) { var n = el(id); if (n) n.textContent = text || ""; }
@@ -12788,8 +12884,24 @@
         root.style.setProperty("--occl-b", "168px");
         root.setAttribute("data-pill", "measured");
       }
-      var had = root.classList.contains("has-pill"), has = px("--occl-w") > 0;
+      // A status area taller than it is wide is the pill down the side
+      // (closed, or open in landscape): the controls go under it. Wider
+      // than tall is the bar across the top (open and upright): the
+      // controls go in a row beside it.
+      var reach = px("--occl-w"), depth = px("--occl-b");
+      var had = root.classList.contains("has-pill"), has = reach > 0 && depth >= reach;
+      var hadTop = root.classList.contains("pill-top"), top = reach > 0 && depth < reach;
       root.classList.toggle("has-pill", has);
+      root.classList.toggle("pill-top", top);
+      if (hadTop !== top) setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 0);
+      // remembered per screen size, so the next launch starts in the right
+      // layout instead of moving into it
+      try {
+        var seen = JSON.parse(localStorage.getItem("dia_todo_pill_v1") || "{}");
+        var key = innerWidth + "x" + innerHeight, old = JSON.stringify(seen[key] || null);
+        if (reach > 0) seen[key] = { w: reach, b: depth }; else delete seen[key];
+        if (JSON.stringify(seen[key] || null) !== old) localStorage.setItem("dia_todo_pill_v1", JSON.stringify(seen));
+      } catch (e) { /* storage blocked: it just is not remembered */ }
       // the deck measures its cards on resize; their height just changed
       if (had !== has) setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 0);
       var layout = document.querySelector(".layout");
@@ -12819,7 +12931,7 @@
       var box = grid.getBoundingClientRect();
       var n = shown.length, gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
       var left = fl - box.left, right = box.right - fr;
-      if (!(fr > fl) || innerWidth <= 720 || n < 2 || left < 120 || right < 120) {
+      if (!(fr > fl) || innerWidth <= 600 || n < 2 || left < 120 || right < 120) {
         grid.style.gridTemplateColumns = "";
         root.classList.remove("has-fold");
         return;
