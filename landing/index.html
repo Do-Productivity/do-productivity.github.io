@@ -89,6 +89,7 @@
   .fcard .sub, .fcard .fine { color: #6b4f1c; }
   .fcard .fine { font-size: 14px; margin: 14px 0 0; }
   .fcard .cta { justify-content: flex-start; margin-top: 22px; }
+  .fcard .cta[hidden] { display: none; }
   .seats { text-align: center; }
   .seats-n b { display: block; font: 700 clamp(56px, 8vw, 84px)/1 var(--serif); }
   .seats-n span { font-size: 15px; }
@@ -235,7 +236,8 @@
         <p class="eyebrow">Founding members</p>
         <h2>The first 1,000 get it free, for life<i class="dot">.</i></h2>
         <p class="sub">Take a seat in the app. No name and no email address: your seat is a number. You get Do. on iPhone free for life, and an invitation code that gives your friends 25% off.</p>
-        <div class="cta"><a class="btn" href="app/#founder">Take a founding seat</a></div>
+        <div class="cta" id="founding-cta"><a class="btn" href="app/#founder">Take a founding seat</a></div>
+        <p class="fine" id="founding-soon" hidden><b>Seats open the day Do. arrives on the App Store.</b></p>
         <p class="fine">Free for life arrives as your own App Store code once the iPhone app is approved.</p>
       </div>
       <div class="seats" aria-live="polite">
@@ -354,7 +356,12 @@
     fetch(URL, { method: "POST", cache: "no-store", headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" }, body: "{}" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (s) {
-        if (!s || s.open === false || !(+s.seats > 0) || +s.taken >= +s.seats) return;
+        if (!s || !(+s.seats > 0) || +s.taken >= +s.seats) return;
+        // Before the launch the seats are held back: the section says when they open, with no button.
+        if (s.open === false) {
+          document.getElementById("founding-cta").hidden = true;
+          document.getElementById("founding-soon").hidden = false;
+        }
         var left = +s.seats - +s.taken;
         document.getElementById("seats-left").textContent = left.toLocaleString("en-US");
         document.getElementById("seats-all").textContent = (+s.seats).toLocaleString("en-US");
