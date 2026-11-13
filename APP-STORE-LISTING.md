@@ -9,7 +9,7 @@ Where something is your decision, it says so.
 | Field | Value |
 |---|---|
 | Platform | iOS |
-| Name | `Do.` first. If Apple says it is taken: `Do. Lists & Calendar`, then `Do. To-Do, Notes & Plans` |
+| Name | `Do. To-Do List & Calendar` (`Do.` was taken). The Home Screen still shows `Do.` |
 | Primary language | English (U.S.) |
 | Bundle ID | `io.github.do-productivity.do` (appears in the list after the first upload or once registered) |
 | SKU | `do-ios-1` |
@@ -24,7 +24,7 @@ allow it to be removed once released.
 |---|---|---|
 | Subtitle | 30 | `Lists that follow the fold` |
 | Promotional text | 170 | `Closed, one list. Open, all of them. Tasks, notes, plans and your calendar in one calm place. No account, no sign-up, and your lists stay on your device.` |
-| Keywords | 100 | `todo,tasks,list,planner,calendar,reminders,notes,widget,checklist,agenda,foldable,private,schedule` |
+| Keywords | 100 | `tasks,planner,reminders,notes,widget,checklist,agenda,foldable,duo,private,schedule,organizer,routine` (no words already in the name: Apple counts those anyway) |
 | Support URL | | `https://do-productivity.github.io/support/` |
 | Support email (App Review contact, and anywhere Apple asks) | | `hello.doproductivity@gmail.com` |
 | Marketing URL | | `https://do-productivity.github.io/` |
