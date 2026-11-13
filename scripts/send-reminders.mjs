@@ -69,7 +69,7 @@ if (dueEvents.length === 0) {
   process.exit(0);
 }
 
-webpush.setVapidDetails("mailto:ahmedmohsen18@gmail.com", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+webpush.setVapidDetails("mailto:hello.doproductivity@gmail.com", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 const fmt = (ts) =>
   new Intl.DateTimeFormat("en-US", {

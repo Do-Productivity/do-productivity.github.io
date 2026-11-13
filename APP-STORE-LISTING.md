@@ -26,6 +26,7 @@ allow it to be removed once released.
 | Promotional text | 170 | `Closed, one list. Open, all of them. Tasks, notes, plans and your calendar in one calm place. No account, no sign-up, and your lists stay on your device.` |
 | Keywords | 100 | `todo,tasks,list,planner,calendar,reminders,notes,widget,checklist,agenda,foldable,private,schedule` |
 | Support URL | | `https://do-productivity.github.io/support/` |
+| Support email (App Review contact, and anywhere Apple asks) | | `hello.doproductivity@gmail.com` |
 | Marketing URL | | `https://do-productivity.github.io/` |
 | Privacy Policy URL | | `https://do-productivity.github.io/privacy/` |
 | Copyright | | `2026 Ahmed Hassaan` |
@@ -172,7 +173,7 @@ Founding members (in Sync): this does not unlock anything in the app. It records
 Sync: optional. "Start syncing from this device" needs no account. Data is encrypted on the device before upload.
 ```
 
-Contact details for review (name, phone, email) are yours to enter.
+Contact details for review: your name and phone number, and `hello.doproductivity@gmail.com` as the email.
 
 ## 8. What is left, in order
 
@@ -182,16 +183,14 @@ Yours:
    Certificates, IDs & Profiles → Devices). Until then I cannot install on it.
 2. **App Store Connect → Business:** accept the Paid Apps Agreement, fill in
    tax and bank details. Then enrol in the Small Business Program.
-3. **Create the app record** (section 1) and the two products (section 4).
+3. **Create the app record** (section 1) and the three products (section 4).
 4. **Decide the privacy label** (section 5).
-5. **Send me the support email** for the support and privacy pages.
 
 Mine, when you say go:
 
-1. Put the email on the pages and publish.
-2. Switch the paywall on (it must stay off until the products exist), test
+1. Switch the paywall on (it must stay off until the products exist), test
    both purchases and Restore in the sandbox, and align the privacy file.
-3. Upload the build to App Store Connect.
-4. Retake any screenshot that changed.
+2. Upload the build to App Store Connect.
+3. Retake any screenshot that changed.
 
 Then you press Submit for Review.
