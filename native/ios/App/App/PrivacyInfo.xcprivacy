@@ -8,16 +8,32 @@
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 	<!--
-	  Nothing is collected. Sync has no account: a device encrypts its lists
-	  with a key that stays on the person's devices, and the server keeps
-	  only that encrypted copy under a random id. It cannot be read by the
-	  developer, which is Apple's test for "collected". No email address, no
-	  name, no identifier, no usage data.
+	  One thing is collected, and only from people who choose it: a founding
+	  seat or an invitation. The server keeps a seat number, an invitation
+	  code and the SHA-256 of a random key made on the device. Apple's word
+	  for that is a User ID. It is not linked to a name or an email (there are
+	  none) and it is not used for tracking.
+	  Lists are not collected. Sync has no account: a device encrypts its
+	  lists with a key that stays on the person's devices, and the server
+	  keeps only that encrypted copy, which the developer cannot read.
 	  This has to say the same thing as the App Privacy answers in
 	  App Store Connect; if one changes, change the other.
 	-->
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array/>
+	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
 	<!--
 	  UserDefaults is a "required reason" API. Two honest reasons:
 	  CA92.1 - the app reads back settings it wrote itself (the Preferences

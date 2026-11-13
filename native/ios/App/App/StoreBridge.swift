@@ -135,7 +135,7 @@ final class Store: ObservableObject {
     /// nothing. It becomes true in the release that ships with the products
     /// live in App Store Connect, and not before — an enforced paywall with
     /// nothing purchasable behind it is a locked door with no key.
-    static let enforced = false
+    static let enforced = true
 
     enum Load { case loading, ready, unavailable }
 
@@ -201,7 +201,7 @@ final class Store: ObservableObject {
         note = nil
         defer { busy = nil }
         do {
-            switch try await product.purchase() {
+            switch try await purchase(product) {
             case .success(let result):
                 if case .verified(let t) = result {
                     await t.finish()
@@ -219,6 +219,19 @@ final class Store: ObservableObject {
         } catch {
             note = "The purchase did not go through. Nothing was charged."
         }
+    }
+
+    /// The purchase sheet is shown over the window the person is looking at.
+    /// Since iOS 17 StoreKit wants to be told which one; without it the call
+    /// can wait for a sheet that never appears.
+    private func purchase(_ product: Product) async throws -> Product.PurchaseResult {
+        if #available(iOS 17.0, *) {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            if let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first {
+                return try await product.purchase(confirmIn: scene)
+            }
+        }
+        return try await product.purchase()
     }
 
     func restore() async {

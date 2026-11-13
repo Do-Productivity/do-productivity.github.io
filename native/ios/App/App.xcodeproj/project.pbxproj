@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		0387469383CEAB96629E48BC /* TodoWidget/TodoWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA6F462595032EF3219DBC63 /* TodoWidget/TodoWidget.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		307747AEAF2A08350C9BA46F /* Do.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 4B7A488CB87B53B003C1A662 /* Do.storekit */; };
+		3EE645DC8D941AE4AC8AE0D1 /* StoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21642BBAF39DC94C99FCB60 /* StoreTests.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -16,16 +18,16 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		570BE0B1D6E0A1B2C3D4E502 /* StoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */; };
+		5EC0DE5701A1B2C3D4E5F602 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */; };
 		878E452288A3814894AE87A9 /* TodoWidget/CalendarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C1040D18EC5C85358874D05 /* TodoWidget/CalendarWidget.swift */; };
 		8CBB478C8B1CD112CCAD9A91 /* TodoWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9F454433BCD18ADCB2E47FE5 /* TodoWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		9817AC1E0A1B2C3D4E5F7002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */; };
+		9817AC1E0A1B2C3D4E5F7012 /* TodoWidget/PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9817AC1E0A1B2C3D4E5F7011 /* TodoWidget/PrivacyInfo.xcprivacy */; };
 		AF134E0FAB2ACDC35966F17A /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606544C19AFA6C2082FC8ED4 /* MainViewController.swift */; };
 		BEB3437DA7BADD696D6F7CBA /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE74B1B9EFDD5E0C051C6FB /* WidgetBridge.swift */; };
 		E0E14591ACD647C90EEA438C /* CalendarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05304E939BFF4EEF78ED524F /* CalendarBridge.swift */; };
-		570BE0B1D6E0A1B2C3D4E502 /* StoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */; };
-		5EC0DE5701A1B2C3D4E5F602 /* SecureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */; };
-		9817AC1E0A1B2C3D4E5F7002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */; };
-		9817AC1E0A1B2C3D4E5F7012 /* TodoWidget/PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9817AC1E0A1B2C3D4E5F7011 /* TodoWidget/PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +37,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = A30D4D1B918124405D9F784E;
 			remoteInfo = TodoWidget;
+		};
+		9A8A43F9BEFC11061897C4EE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 504EC3031FED79650016851F;
+			remoteInfo = App;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -54,12 +63,9 @@
 
 /* Begin PBXFileReference section */
 		05304E939BFF4EEF78ED524F /* CalendarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarBridge.swift; sourceTree = "<group>"; };
-		570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreBridge.swift; sourceTree = "<group>"; };
-		5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
-		9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		9817AC1E0A1B2C3D4E5F7011 /* TodoWidget/PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = TodoWidget/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		3D554B27B1B7760C46E77233 /* TodoWidget/TodoWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TodoWidget/TodoWidget.entitlements; sourceTree = "<group>"; };
+		4B7A488CB87B53B003C1A662 /* Do.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Do.storekit; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -68,14 +74,20 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		570BE0B1D6E0A1B2C3D4E501 /* StoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreBridge.swift; sourceTree = "<group>"; };
+		5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStore.swift; sourceTree = "<group>"; };
 		606544C19AFA6C2082FC8ED4 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		9817AC1E0A1B2C3D4E5F7011 /* TodoWidget/PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = TodoWidget/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		9C1040D18EC5C85358874D05 /* TodoWidget/CalendarWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoWidget/CalendarWidget.swift; sourceTree = "<group>"; };
 		9F454433BCD18ADCB2E47FE5 /* TodoWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TodoWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA6F462595032EF3219DBC63 /* TodoWidget/TodoWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoWidget/TodoWidget.swift; sourceTree = "<group>"; };
 		C9054973B9BE3AFA9A4330B4 /* TodoWidget/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = TodoWidget/Info.plist; sourceTree = "<group>"; };
 		CEE74B1B9EFDD5E0C051C6FB /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
+		D21642BBAF39DC94C99FCB60 /* StoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreTests.swift; sourceTree = "<group>"; };
+		E3714EBCB49E09D75A13CAD9 /* AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +96,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F3BF43D19C51C15058D78187 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +128,7 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				8ACF4357B5690397A5D87FDC /* AppTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -117,6 +137,7 @@
 			children = (
 				504EC3041FED79650016851F /* App.app */,
 				9F454433BCD18ADCB2E47FE5 /* TodoWidget.appex */,
+				E3714EBCB49E09D75A13CAD9 /* AppTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -139,13 +160,40 @@
 				5EC0DE5701A1B2C3D4E5F601 /* SecureStore.swift */,
 				9817AC1E0A1B2C3D4E5F7001 /* PrivacyInfo.xcprivacy */,
 				606544C19AFA6C2082FC8ED4 /* MainViewController.swift */,
+				4B7A488CB87B53B003C1A662 /* Do.storekit */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		8ACF4357B5690397A5D87FDC /* AppTests */ = {
+			isa = PBXGroup;
+			children = (
+				D21642BBAF39DC94C99FCB60 /* StoreTests.swift */,
+			);
+			path = AppTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		20D4413487599CFB8AC6DD7E /* AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E8C44DA9BF0ACAF7DCE58AA8 /* Build configuration list for PBXNativeTarget "AppTests" */;
+			buildPhases = (
+				589E45FE8E4021124602F4B2 /* Sources */,
+				F3BF43D19C51C15058D78187 /* Frameworks */,
+				52DA4468B279A410DA00CC5E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C22D486F82AE2C454621DE17 /* PBXTargetDependency */,
+			);
+			name = AppTests;
+			productName = AppTests;
+			productReference = E3714EBCB49E09D75A13CAD9 /* AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		504EC3031FED79650016851F /* App */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
@@ -218,6 +266,7 @@
 			targets = (
 				504EC3031FED79650016851F /* App */,
 				A30D4D1B918124405D9F784E /* TodoWidget */,
+				20D4413487599CFB8AC6DD7E /* AppTests */,
 			);
 		};
 /* End PBXProject section */
@@ -234,6 +283,14 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 				9817AC1E0A1B2C3D4E5F7002 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		52DA4468B279A410DA00CC5E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				307747AEAF2A08350C9BA46F /* Do.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -262,6 +319,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		589E45FE8E4021124602F4B2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3EE645DC8D941AE4AC8AE0D1 /* StoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		FBE442DEB41906714E9D6665 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -278,6 +343,11 @@
 			isa = PBXTargetDependency;
 			target = A30D4D1B918124405D9F784E /* TodoWidget */;
 			targetProxy = 87FB4146B04B1634E1F12614 /* PBXContainerItemProxy */;
+		};
+		C22D486F82AE2C454621DE17 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 504EC3031FED79650016851F /* App */;
+			targetProxy = 9A8A43F9BEFC11061897C4EE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -330,6 +400,23 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
+		};
+		38B542598DE06C153B75B9A2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6MCMG3FEW8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.do-productivity.do.AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/App";
+			};
+			name = Release;
 		};
 		504EC3141FED79650016851F /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -518,6 +605,25 @@
 			};
 			name = Release;
 		};
+		8330424A9644FEFE4106DE43 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6MCMG3FEW8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.do-productivity.do.AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/App";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -544,6 +650,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E8C44DA9BF0ACAF7DCE58AA8 /* Build configuration list for PBXNativeTarget "AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8330424A9644FEFE4106DE43 /* Debug */,
+				38B542598DE06C153B75B9A2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
