@@ -13,8 +13,8 @@ import Security
 /// that the lifetime price beside it reads as the obvious one: for good, for
 /// less than four months of renting.
 enum Plan {
-    static let monthly = "com.ahmedmohsen.todolist.monthly"     // auto-renewing: $2.99, EGP 149.99 in Egypt
-    static let lifetime = "com.ahmedmohsen.todolist.lifetime"   // non-consumable: $9.99, EGP 499 in Egypt
+    static let monthly = "io.github.doproductivity.do.monthly"     // auto-renewing: $2.99, EGP 149.99 in Egypt
+    static let lifetime = "io.github.doproductivity.do.lifetime"   // non-consumable: $9.99, EGP 499 in Egypt
     static let all: Set<String> = [monthly, lifetime]
 }
 
@@ -54,7 +54,7 @@ enum Intended {
 /// phone's date back does not wind the trial back with it.
 enum TrialClock {
     static let days = 14
-    private static let service = "com.ahmedmohsen.todolist.entitlement"
+    private static let service = "io.github.do-productivity.do.entitlement"
     private static let startedKey = "trial_started_v1"
     private static let seenKey = "latest_seen_v1"
 

@@ -33,7 +33,7 @@ public class SecureStorePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise)
     ]
 
-    static let service = "com.ahmedmohsen.todolist.secrets"
+    static let service = "io.github.do-productivity.do.secrets"
     static let prefix = "dia_todo_"
     /// A token is a few hundred bytes. Anything far past that is not a token.
     static let maxBytes = 64 * 1024

@@ -21,7 +21,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(dirname "$HERE")"
-BUNDLE_ID="com.ahmedmohsen.todolist"
+BUNDLE_ID="io.github.do-productivity.do"
 LAUNCH=1
 [ "${1:-}" = "--no-launch" ] && LAUNCH=0
 
@@ -52,16 +52,23 @@ python3 "$REPO/build-native.py"
 BUILD="$(grep -o 'var BUILD = "[^"]*"' "$REPO/index.html" | head -1 | sed 's/.*"\(.*\)"/\1/')"
 
 # ── 3. build and sign for this phone ───────────────────────────────────────
-# -allowProvisioningUpdates because free signing re-mints the profile every
-# seven days; without it the first build after expiry fails instead of
-# quietly renewing.
+# -allowProvisioningUpdates so Xcode can make or renew the signing profile
+# itself; without it the first build after a profile expires fails.
 say "Building $BUILD for $NAME"
-( cd "$HERE/ios/App" && xcodebuild \
+BUILD_LOG="$(cd "$HERE/ios/App" && xcodebuild \
     -scheme App -configuration Debug \
     -destination "id=$UDID" \
     -allowProvisioningUpdates \
     -derivedDataPath ../DerivedData \
-    build 2>&1 | grep -E 'error:|warning: .*[Ss]ign|BUILD (SUCCEEDED|FAILED)' || true )
+    build 2>&1 | grep -E 'error:|warning: .*[Ss]ign|BUILD (SUCCEEDED|FAILED)' || true)"
+echo "$BUILD_LOG"
+# A failed build leaves the previous App.app where it was. Installing that
+# and reporting the new build number would be a lie that looks like success,
+# so a build that did not succeed stops here.
+if ! echo "$BUILD_LOG" | grep -q 'BUILD SUCCEEDED'; then
+  echo "The build failed, so nothing was installed. The phone still has what it had." >&2
+  exit 1
+fi
 
 APP="$HERE/ios/DerivedData/Build/Products/Debug-iphoneos/App.app"
 [ -d "$APP" ] || { echo "the build produced no App.app — see the output above" >&2; exit 1; }

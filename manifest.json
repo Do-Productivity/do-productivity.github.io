@@ -1,6 +1,6 @@
 {
-  "name": "My To Do List",
-  "short_name": "To Do",
+  "name": "Do.",
+  "short_name": "Do.",
   "display": "standalone",
   "start_url": ".",
   "scope": ".",

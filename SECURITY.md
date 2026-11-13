@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, last checked against build `2026-11-12-1908`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-13-1833`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -266,8 +266,8 @@ because the mistakes here are expensive.
 - `Do.storekit` is a local test catalogue with the two products in it, wired to
   the shared Xcode scheme. It only takes effect when the app is run *from Xcode*;
   that path has not been exercised.
-- The product ids the code expects are `com.ahmedmohsen.todolist.monthly` and
-  `com.ahmedmohsen.todolist.lifetime`. The ones created in App Store Connect
+- The product ids the code expects are `io.github.doproductivity.do.monthly` and
+  `io.github.doproductivity.do.lifetime`. The ones created in App Store Connect
   have to match exactly.
 
 **The hole that is a business decision, not a bug:** the web version is the same

@@ -282,8 +282,8 @@ You set these yourself, in App Store Connect, once the products exist:
 
 | product ID | type | United States | Egypt |
 |---|---|---|---|
-| `com.ahmedmohsen.todolist.lifetime` | non-consumable | $9.99 | EGP 499 |
-| `com.ahmedmohsen.todolist.monthly` | auto-renewing, one month | $2.99 | EGP 149.99 |
+| `io.github.doproductivity.do.lifetime` | non-consumable | $9.99 | EGP 499 |
+| `io.github.doproductivity.do.monthly` | auto-renewing, one month | $2.99 | EGP 149.99 |
 
 Choose the United States price as the base, then override Egypt by hand —
 otherwise Apple converts from dollars at its own rate. *Unverified:* I could not

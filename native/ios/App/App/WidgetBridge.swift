@@ -24,7 +24,7 @@ import WidgetKit
 /// simply falls back to its own refresh schedule.
 @objc(WidgetBridgePlugin)
 public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
-    static let group = "group.com.ahmedmohsen.todolist.shared"
+    static let group = "group.io.github.do-productivity.do.shared"
 
     public let identifier = "WidgetBridgePlugin"
     public let jsName = "WidgetBridge"

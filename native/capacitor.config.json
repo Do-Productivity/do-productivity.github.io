@@ -1,5 +1,5 @@
 {
-  "appId": "com.ahmedmohsen.todolist",
+  "appId": "io.github.do-productivity.do",
   "appName": "My To Do List",
   "webDir": "www",
   "ios": {

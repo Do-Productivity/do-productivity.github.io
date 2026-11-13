@@ -15,7 +15,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.ahmedmohsen.todolist.lifetime",
+      "productID" : "io.github.doproductivity.do.lifetime",
       "referenceName" : "Lifetime",
       "type" : "NonConsumable"
     }
@@ -55,7 +55,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.ahmedmohsen.todolist.monthly",
+          "productID" : "io.github.doproductivity.do.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Monthly",
           "subscriptionGroupID" : "21760001",

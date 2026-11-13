@@ -37,7 +37,7 @@ except ImportError:
 
 HERE = pathlib.Path(__file__).resolve().parent
 PROJ = HERE / "ios" / "App" / "App.xcodeproj" / "project.pbxproj"
-APP_ID = "com.ahmedmohsen.todolist"
+APP_ID = "io.github.do-productivity.do"
 WIDGET = "TodoWidget"
 
 if not PROJ.exists():
@@ -146,11 +146,10 @@ for cfg in project.objects.get_configurations_on_targets("App"):
 # team — using it here cost an afternoon of "No profiles were found". The team
 # is the certificate's OU:
 #     security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
-# Z285TWPM86 is the team of the ahmedmohsen18@gmail.com Apple ID. The older
-# team (6MCMG3FEW8) cannot install on the phone: its free iPhone slots are
-# full and a free team cannot clear them. Changing this back will produce
-# "maximum number of registered iPhone devices" and nothing else.
-TEAM = os.environ.get("TEAM", "Z285TWPM86")
+# 6MCMG3FEW8 is the paid developer team the app belongs to since 13 November
+# 2026. Before that it was signed by a free personal team (Z285TWPM86), which
+# is why older notes mention seven-day signing.
+TEAM = os.environ.get("TEAM", "6MCMG3FEW8")
 
 def set_team(target_name):
     for cfg in project.objects.get_configurations_on_targets(target_name):

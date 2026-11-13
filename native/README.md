@@ -14,24 +14,28 @@ What the wrapper buys, and nothing else does:
 
 ## Building it onto your phone
 
-You need Xcode (27.2 here) and your Apple ID. **No paid account**, so the app
-is signed for 7 days and then needs the same Run again — step 5 is the whole
-re-signing routine.
+You need Xcode (27.2 here) signed in to the developer account (Xcode →
+Settings → Accounts).
 
-The signing team is already set in the project: **`Z285TWPM86`** — the personal
-team of the `ahmedmohsen18@gmail.com` Apple ID. The older team (`6MCMG3FEW8`,
-`ahmedmohsen18@hotmail.com`) cannot be used: it has filled its free iPhone
-registration slots with 23 devices from the pre-2018 era, and a free team has
-no way to clear them — disabling a device does not free a slot, and the annual
-reset is a paid-membership feature. That is why the ids below are
-`com.ahmedmohsen.todolist` and not `...mytodolist`: **bundle ids and App Group
-ids are globally unique across all Apple teams**, the old team had already
-registered the `mytodolist` ones, and a second team may not reuse them. Note that
-this is *not* the number in the certificate's name. The certificate is called
-`Apple Development: Ahmed Hassaan (6DSVWXH9GY)`, and `6DSVWXH9GY` is the
-certificate id, not a team — putting it in `DEVELOPMENT_TEAM` produces
-`No profiles for 'com.ahmedmohsen.mytodolist' were found`, which reads exactly
-like a sign-in problem and is not one. The team is the certificate's OU:
+The signing team is **`6MCMG3FEW8`**: the paid Apple Developer Program
+membership on the Hotmail Apple Account (Individual, Egypt), renewed on
+13 November 2026. Until then the project used the free personal team of the
+Gmail Apple Account (`Z285TWPM86`), and the app's ids were
+`com.ahmedmohsen.todolist`. **Bundle ids and App Group ids are globally unique
+across all Apple teams**, so the move to this team needed new ones:
+`io.github.do-productivity.do`, its widget, and the group
+`group.io.github.do-productivity.do.shared`. An install signed by the paid
+team lasts a year, not seven days.
+
+A phone has to be registered on the team before Xcode will sign for it
+(developer.apple.com → Certificates, IDs & Profiles → Devices). A device that
+is on the list but disabled gives two errors at once: "already exists on this
+team" and "isn't registered in your developer account".
+
+Note that the team is *not* the number in the certificate's name. The
+certificate is called `Apple Development: Ahmed Hassaan (6DSVWXH9GY)`, and
+`6DSVWXH9GY` is the certificate id, not a team.
+The team is the certificate's OU:
 
 ```bash
 security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
