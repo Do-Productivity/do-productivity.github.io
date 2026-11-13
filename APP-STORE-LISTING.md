@@ -170,6 +170,8 @@ Plans: the app is free for 14 days. To see the plans without waiting, open Sync,
 
 Founding members (in Sync): this does not unlock anything in the app. It records an anonymous seat number. Free access for those members is delivered later as App Store offer codes, redeemed through the App Store.
 
+The non-consumable "Founding member" (io.github.doproductivity.do.lifetime) is deliberately not offered for sale in the app. It exists only so that the 100 founding members can redeem a free App Store offer code. Once redeemed, the app treats the person as a paid member through StoreKit.
+
 Sync: optional. "Start syncing from this device" needs no account. Data is encrypted on the device before upload.
 ```
 
