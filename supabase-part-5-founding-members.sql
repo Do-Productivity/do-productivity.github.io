@@ -56,6 +56,12 @@ insert into public.member_settings (id) values (true) on conflict (id) do nothin
 alter table public.member_settings add column if not exists friend_yearly text;
 alter table public.member_settings alter column seats set default 100;
 update public.member_settings set seats = 100 where seats = 1000;
+-- An invitation outlives the seat it came from: in a database made before
+-- this, giving up a seat also deleted the invitations it had handed out.
+alter table public.invited alter column founder_no drop not null;
+alter table public.invited drop constraint if exists invited_founder_no_fkey;
+alter table public.invited add constraint invited_founder_no_fkey
+  foreign key (founder_no) references public.founders(no) on delete set null;
 
 -- Nobody reads or writes these tables directly: no policies, so only the
 -- functions below can touch them.
