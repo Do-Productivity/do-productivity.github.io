@@ -1,6 +1,6 @@
 # Founding members: how it works
 
-Written 12 November 2026. This covers what is stored, how the limit of 1,000
+Written 12 November 2026, updated 13 November (100 seats; monthly and yearly plans). This covers what is stored, how the limit of 100
 is kept, how invitations work, and the three small steps that are yours.
 
 ## 1. What a founding seat is
@@ -9,7 +9,7 @@ A seat is one row on the server. It holds:
 
 | Stored | What it is |
 |---|---|
-| Seat number | 1 to 1,000 |
+| Seat number | 1 to 100 |
 | Key fingerprint | A SHA-256 hash of a random key made on the member's device |
 | Invitation code | 8 letters and numbers, meant to be shared |
 | Uses | How many people used that invitation |
@@ -48,18 +48,18 @@ from their device, the seat number that invited them, and the time.
 4. The member sees "3 people have joined with your invitation". They never
    see who.
 
-## 4. How the limit of 1,000 is kept
+## 4. How the limit of 100 is kept
 
-**Never more than 1,000.** The server gives out seats one at a time behind a
-lock, counts the rows first, and refuses when 1,000 exist. Two people asking
+**Never more than 100.** The server gives out seats one at a time behind a
+lock, counts the rows first, and refuses when 100 exist. Two people asking
 at the same instant cannot both get the last seat or the same number. The
 app cannot override this: the count lives on the server.
 
-**Numbers stay within 1 to 1,000.** A seat that is given up goes back into
+**Numbers stay within 1 to 100.** A seat that is given up goes back into
 the pool, and the next person gets the lowest free number.
 
 **What "not fewer" can and cannot mean.** The server cannot make people
-join, so the count reaches 1,000 only when 1,000 seats are taken. What it
+join, so the count reaches 100 only when 100 seats are taken. What it
 does guarantee is that no seat is lost: none can be taken twice, and a seat
 given up is offered again.
 
@@ -70,7 +70,7 @@ an hour. Two things close the gap:
 - Keeping the seats shut until launch (section 5), so nobody can collect
   them early.
 - Apple. Free for life is delivered as an Apple code, and Apple allows one
-  code per Apple Account. You load exactly 1,000 codes, so at most 1,000
+  code per Apple Account. You load exactly 100 codes, so at most 100
   free copies can ever exist, one per Apple Account, whatever happens to the
   seats.
 
@@ -113,15 +113,15 @@ update public.member_settings set open = true;
 ```
 
 That same day, also load the Apple codes. In App Store Connect, create a free
-offer for the lifetime plan and generate one-time-use codes: two batches of
-500 give exactly 1,000. Then:
+offer for the "Founding member" lifetime product and generate one-time-use
+codes. Apple makes them 500 at a time; load only the first 100. Then:
 
 ```sql
 update public.member_settings
    set redeem_url = 'https://apps.apple.com/redeem?ctx=offercodes&id=YOUR_APP_ID&code=';
-insert into public.founder_gifts (code) values ('CODE1'), ('CODE2');  -- all 1,000
+insert into public.founder_gifts (code) values ('CODE1'), ('CODE2');  -- 100 of them
 update public.member_settings
-   set friend_lifetime = 'YOURCODE', friend_monthly = 'YOURCODE';     -- the 25% codes
+   set friend_yearly = 'YOURCODE', friend_monthly = 'YOURCODE';       -- the 25% codes
 ```
 
 No app update is needed for any of this. Each founding member's app then
@@ -130,12 +130,19 @@ shows the two discount buttons.
 
 ## 6. Three things to know about Apple's side
 
+- **The plans are monthly and yearly, so "free for life" needs its own
+  product.** A subscription cannot be given away for ever. The app keeps a
+  third product, a lifetime purchase called "Founding member", that is never
+  shown for sale. A founding member's Apple code redeems it at no charge, and
+  from then on the app treats them as paid for good.
+
 - **Apple's one-time codes expire within six months.** A member who has not
   redeemed by then needs a fresh code, which means generating a new batch and
   loading it the same way.
-- **The 25% on the monthly plan** is applied by an Apple code for a set
-  number of months, not for ever, unless you create a separate cheaper monthly
-  plan. That is decided when you set up the plans.
+- **The 25% for invited people** is applied by Apple codes on the two
+  subscriptions: the first year at 25% off on the yearly plan, and a set
+  number of months at 25% off on the monthly plan. Apple does not offer a
+  code that discounts a subscription for ever.
 - **An app may not unlock itself with its own codes** (App Review guideline
   3.1.1). That is why the seat is a badge and a place in the queue, and the
   free copy itself comes from Apple.

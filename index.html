@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-t5pLbGmnmgwMrUenbQL/Y2AYAvbWutLdA0mtzLfHTTU=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hJhdc3Phtsh87d5PnthBpJcgbG9dx3FSYYGLkITi0Jw=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -3205,7 +3205,7 @@
       <div id="member-box" style="display:none">
         <h3 class="member-h">Founding members</h3>
         <div id="founder-none">
-          <p><b>The first 1,000 people get Do. on iPhone free for life,</b> and a code that gives their friends 25% off. No name and no email address: your seat is a number.</p>
+          <p><b>The first 100 people get Do. on iPhone free for life,</b> and a code that gives their friends 25% off. No name and no email address: your seat is a number.</p>
           <p class="modal-hint" id="founder-count"></p>
           <button class="modal-btn primary" id="founder-claim-btn">Take a founding seat</button>
           <p class="modal-hint" id="founder-msg" role="status"></p>
@@ -3213,9 +3213,9 @@
         <div id="founder-on" style="display:none">
           <div class="founder-card">
             <div class="fc-mark" aria-hidden="true">✦</div>
-            <div><div class="fc-top">Founding member</div><div class="fc-no">No. <span id="founder-no"></span></div><div class="fc-of">one of the first 1,000</div></div>
+            <div><div class="fc-top">Founding member</div><div class="fc-no">No. <span id="founder-no"></span></div><div class="fc-of">one of the first <span id="founder-of">100</span></div></div>
           </div>
-          <p><b>Your invitation code.</b> Anyone who uses it gets 25% off the monthly or lifetime plan.</p>
+          <p><b>Your invitation code.</b> Anyone who uses it gets 25% off the monthly or yearly plan.</p>
           <div class="vault-code" id="founder-invite"></div>
           <button class="modal-btn" id="founder-share-btn">Share my invitation</button>
           <p class="modal-hint" id="founder-uses"></p>
@@ -3235,9 +3235,9 @@
           <p class="modal-hint" id="invite-msg" role="status"></p>
         </div>
         <div id="invite-on" style="display:none">
-          <p><b>Invited by a founding member.</b> You get 25% off the monthly or lifetime plan.</p>
+          <p><b>Invited by a founding member.</b> You get 25% off the monthly or yearly plan.</p>
           <p class="modal-hint" id="invite-line"></p>
-          <button class="modal-btn primary" id="invite-life-btn" style="display:none">25% off the lifetime plan</button>
+          <button class="modal-btn primary" id="invite-life-btn" style="display:none">25% off the yearly plan</button>
           <button class="modal-btn" id="invite-month-btn" style="display:none">25% off the monthly plan</button>
           <button class="modal-btn quiet" id="invite-forget-btn">Forget this invitation</button>
         </div>
@@ -5466,7 +5466,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-13-1833";
+  var BUILD = "2026-11-13-2036";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -11772,6 +11772,7 @@
         (+st.taken).toLocaleString() + " of " + (+st.seats).toLocaleString() + " seats taken.");
     } else {
       memberSay("founder-no", String(f.no));
+      if (st && +st.seats > 0) memberSay("founder-of", (+st.seats).toLocaleString());
       memberSay("founder-invite", showInviteCode(f.invite));
       var n = +f.uses || 0;
       memberSay("founder-uses", n === 0 ? "Nobody has used your invitation yet."
@@ -11781,7 +11782,7 @@
       document.getElementById("founder-gift-btn").style.display = gift ? "" : "none";
       memberSay("founder-gift-line", gift
         ? "Your App Store code is ready. It is yours alone and works once, so redeem it on your own iPhone."
-        : "Free for life: when Do. reaches the App Store, your own App Store code appears here. Redeeming it makes the lifetime plan free.");
+        : "Free for life: when Do. reaches the App Store, your own App Store code appears here. Redeeming it makes Do. yours for good, at no charge.");
     }
     if (!f && inv) {
       var life = appleRedeemLink(inv.lifetime), month = appleRedeemLink(inv.monthly);
@@ -11827,7 +11828,7 @@
       sha256Hex(inv.t).then(function (h) { return memberRpc("invite_status", { t: h }); }).then(function (r) {
         var m = loadMember();
         if (!m.invited || m.invited.t !== inv.t || !r || !r.found) return;
-        m.invited.lifetime = appleRedeemLink(r.lifetime) || "";
+        m.invited.lifetime = appleRedeemLink(r.yearly || r.lifetime) || "";
         m.invited.monthly = appleRedeemLink(r.monthly) || "";
         saveMember(m);
         refreshMemberBox();
@@ -12542,7 +12543,7 @@
     var d = membership.trialDaysLeft;
     var free = "your " + membership.trialDays + " free days";
     var line = {
-      lifetime: "Do. is yours for good. Thank you.",
+      lifetime: "You are a founding member. Do. is yours for good. Thank you.",
       subscribed: "You are subscribed. Thank you.",
       trial: (d === 1 ? "One day" : d + " days") + " left of " + free + ". Everything works.",
       expired: membership.enforced
@@ -12552,7 +12553,7 @@
     document.getElementById("member-line").textContent = line;
     var paid = membership.state === "lifetime" || membership.state === "subscribed";
     document.getElementById("member-plans-btn").style.display = membership.state === "lifetime" ? "none" : "";
-    document.getElementById("member-plans-btn").textContent = paid ? "See the lifetime plan" : "See the plans";
+    document.getElementById("member-plans-btn").textContent = "See the plans";
     document.getElementById("member-manage-btn").style.display = membership.state === "subscribed" ? "" : "none";
     document.getElementById("member-restore-btn").style.display = paid ? "none" : "";
   }

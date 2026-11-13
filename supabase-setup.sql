@@ -259,7 +259,7 @@ grant execute on function public.pair_take(text) to anon, authenticated;
 
 
 -- ═══ PART 5 · founding members and invitations ══════════════════════
--- The first 1,000 people get a founding seat. A seat is a number, a code to
+-- The first 100 people get a founding seat. A seat is a number, a code to
 -- give to friends, and a count of how often that code was used. There is no
 -- name, no email address and no device identifier anywhere in it.
 --
@@ -275,7 +275,7 @@ grant execute on function public.pair_take(text) to anon, authenticated;
 -- See "When the app is on the App Store" at the end of this part.
 
 create table if not exists public.founders (
-  no         integer primary key,              -- the seat number, 1 to 1000
+  no         integer primary key,              -- the seat number, 1 to 100
   key_hash   text not null unique,             -- sha256 of the member's key
   invite     text not null unique,             -- the code they give away
   uses       integer not null default 0,       -- how many people used it
@@ -300,13 +300,19 @@ create table if not exists public.founder_gifts (
 -- One row of settings.
 create table if not exists public.member_settings (
   id              boolean primary key default true check (id),
-  seats           integer not null default 1000,
+  seats           integer not null default 100,
   open            boolean not null default true,  -- false closes new seats without touching existing ones
   redeem_url      text,   -- Apple's redemption address, ending in "code="
-  friend_lifetime text,   -- Apple custom code: the lifetime plan at 25% off
-  friend_monthly  text    -- Apple custom code: the monthly plan at 25% off
+  friend_lifetime text,   -- no longer used: the lifetime plan is not for sale
+  friend_monthly  text,   -- Apple custom code: the monthly plan at 25% off
+  friend_yearly   text    -- Apple custom code: the yearly plan at 25% off
 );
 insert into public.member_settings (id) values (true) on conflict (id) do nothing;
+-- for a database set up before the plans became monthly and yearly, and
+-- before the seats became 100
+alter table public.member_settings add column if not exists friend_yearly text;
+alter table public.member_settings alter column seats set default 100;
+update public.member_settings set seats = 100 where seats = 1000;
 
 -- Nobody reads or writes these tables directly: no policies, so only the
 -- functions below can touch them.
@@ -455,8 +461,8 @@ begin
   select * into s from public.member_settings where id;
   return json_build_object(
     'found', true,
-    'lifetime', case when s.redeem_url is not null and s.friend_lifetime is not null
-                     then s.redeem_url || s.friend_lifetime end,
+    'yearly',   case when s.redeem_url is not null and s.friend_yearly is not null
+                     then s.redeem_url || s.friend_yearly end,
     'monthly',  case when s.redeem_url is not null and s.friend_monthly is not null
                      then s.redeem_url || s.friend_monthly end);
 end;
@@ -506,12 +512,14 @@ grant execute on function public.invite_forget(text) to anon, authenticated;
 --   1. The redemption address, with your app's Apple ID in place of 0000000000:
 --        update public.member_settings
 --           set redeem_url = 'https://apps.apple.com/redeem?ctx=offercodes&id=0000000000&code=';
---   2. The free lifetime codes for the founding members (one-time-use codes
---      from App Store Connect, one per line):
+--   2. The free codes for the founding members: one-time-use codes for the
+--      "Founding member" lifetime product, from App Store Connect, one per
+--      line. Apple makes them 500 at a time; load only as many as there are
+--      seats:
 --        insert into public.founder_gifts (code) values ('CODE1'), ('CODE2');
 --   3. The two custom codes for invited people (25% off):
 --        update public.member_settings
---           set friend_lifetime = 'YOURCODE', friend_monthly = 'YOURCODE';
+--           set friend_yearly = 'YOURCODE', friend_monthly = 'YOURCODE';
 --
 -- To see how the seats are going:
 --        select no, uses, created_at, seen_on, gift is not null as has_code

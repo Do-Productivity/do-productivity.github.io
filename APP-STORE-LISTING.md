@@ -34,7 +34,7 @@ allow it to be removed once released.
 
 The promotional text can be changed at any time without a new review, so it is
 the place for the founding-members line once the seats open:
-`The first 1,000 founding members get Do. free for life. Take a seat in the app.`
+`The first 100 founding members get Do. free for life. Take a seat in the app.`
 
 ### Description
 
@@ -66,31 +66,38 @@ Do. has no accounts. It never asks for your name or your email address.
 - No advertising and no tracking.
 
 PLANS
-Everything works free for 14 days. After that, choose a one-time lifetime purchase or a monthly plan. Whatever you choose, the lists you wrote stay yours to read and export.
+Everything works free for 14 days. After that, choose the monthly or the yearly plan. Both renew until you cancel. Whatever you choose, the lists you wrote stay yours to read and export.
 
 Questions: https://do-productivity.github.io/support/
 ```
 
-## 3. Screenshots (ready, in `brand/app-store/screenshots/`)
+## 3. Pictures and video (ready, in `brand/app-store/`)
 
-All are real captures from Apple's simulators with invented tasks, the clock
-at 9:41, and no transparency.
+All pictures are real captures from Apple's simulators with invented tasks,
+the clock at 9:41, and no transparency. There are two versions of each set;
+upload one or the other, not both.
 
-| Folder | Size | Count | Where it goes |
+| Folder | What | Size | Count |
 |---|---|---|---|
-| `iphone-6.9/` | 1320 × 2868 | 6 | iPhone 6.9" Display (required) |
-| `iphone-duo-outer/` | 1398 × 2034 | 6 | iPhone Duo, closed |
-| `iphone-duo-inner/` | 2853 × 2007 | 2 | iPhone Duo, open |
+| `screenshots-captioned/iphone-6.9/` | With a headline (recommended) | 1320 × 2868 | 6 |
+| `screenshots-captioned/iphone-duo-outer/` | With a headline | 1398 × 2034 | 6 |
+| `screenshots-captioned/iphone-duo-inner/` | With a headline | 2853 × 2007 | 2 |
+| `screenshots/iphone-6.9/`, `iphone-duo-outer/`, `iphone-duo-inner/` | The same, plain | same sizes | 6, 6, 2 |
 
-Order in each set: lists, Today, calendar, typing a date, scheduled steps,
-privacy. A third open-Duo picture (the calendar) needs the simulator set to
-Open in Device Hub; ask me and click Open when I say.
+The iPhone 6.9" set is the required one. Order in each: lists, Today,
+calendar, typing a date, scheduled steps, privacy.
 
-The older captioned pictures are in `screenshots/_old-2026-11-11/`. They show
-the old design and names. Do not upload them.
+| File | What | Use |
+|---|---|---|
+| `video/app-preview-iphone-886x1920.mp4` | A real recording of the app, 28 seconds | App Preview for iPhone 6.9" |
+| `video/app-preview-iphone-duo-1920x886.mp4`, `video/iphone-duo-fold-vertical-1080x1920.mp4` | Animations of the phone folding | Website and social only. Apple asks for captured footage, so these are not App Previews |
 
-The two iPhone Duo films in `brand/app-store/video/` are animations, not
-captured footage. Use them on the website and social, not as App Previews.
+Still to take: a third open-Duo picture (the calendar) and an open-Duo
+recording. Both need the simulator set to Open in Device Hub; tell me when
+you are at the Mac and click Open when I ask.
+
+The older pictures are in `screenshots/_old-2026-11-11/`. They show the old
+design and names. Do not upload them.
 
 ## 4. In-app purchases (after the Paid Apps Agreement is active)
 
@@ -99,18 +106,24 @@ Subscription group: `Do. Plans`
 | Product ID | Type | Reference name | Display name | Description | Price (US) |
 |---|---|---|---|---|---|
 | `io.github.doproductivity.do.monthly` | Auto-renewable, 1 month | Do. Monthly | Monthly | Everything in Do., month by month. | $2.99 |
-| `io.github.doproductivity.do.lifetime` | Non-consumable | Do. Lifetime | Lifetime | Everything in Do., paid once. | $9.99 |
+| `io.github.doproductivity.do.yearly` | Auto-renewable, 1 year | Do. Yearly | Yearly | Everything in Do., a year at a time. | $9.99 |
+| `io.github.doproductivity.do.lifetime` | Non-consumable | Do. Founding member | Founding member | For founding members. Do. is yours for good. | $29.99 (never shown for sale; see below) |
 
 These IDs are already in the app. Type them exactly.
 
 Your decisions when you create them:
 
-- **Egypt price.** Leave Apple's automatic price for Egypt (it follows the US
-  price), or set your own. You told me to show dollar pricing in the guide, so
-  I have assumed automatic.
-- **Family Sharing** for the lifetime plan: on or off.
+- **Prices are the same everywhere,** as you asked: set the US price and leave
+  every other country on Apple's automatic equivalent. Do not override Egypt.
+- **Family Sharing** for the two plans: on or off.
+- **The price of the Founding member product.** Nobody is offered it; founding
+  members redeem it free with an Apple code. It still needs a price in App
+  Store Connect. I suggest $29.99, well above a year of the yearly plan, so it
+  can never undercut it.
 
-Later, once both are approved: the free lifetime offer codes for founding
+In the subscription group, put Yearly above Monthly (level 1 and level 2).
+
+Later, once all three are approved: the free offer codes for founding
 members and the two 25% codes for invited people. The steps are at the end of
 `FOUNDING-MEMBERS.md`.
 

@@ -6,16 +6,26 @@ import Security
 
 // MARK: - What is for sale
 
-/// The two things Do. sells. The identifiers are the contract with App Store
-/// Connect: the products created there must carry exactly these.
+/// What Do. sells, and what it gives away. The identifiers are the contract
+/// with App Store Connect: the products created there must carry exactly
+/// these.
 ///
-/// The monthly plan is deliberately the worse deal. It is on the screen so
-/// that the lifetime price beside it reads as the obvious one: for good, for
-/// less than four months of renting.
+/// Two plans are for sale, both subscriptions in one group. The monthly plan
+/// is deliberately the worse deal: it is on the screen so that the yearly
+/// price beside it reads as the obvious one, a year for less than four months
+/// of paying by the month.
+///
+/// The lifetime product is not for sale and never appears as something to
+/// buy. It exists so that a founding member's free Apple offer code has
+/// something to redeem: the code is entered in the App Store, Apple records a
+/// real purchase at no charge, and the entitlement below sees it like any
+/// other.
 enum Plan {
-    static let monthly = "io.github.doproductivity.do.monthly"     // auto-renewing: $2.99, EGP 149.99 in Egypt
-    static let lifetime = "io.github.doproductivity.do.lifetime"   // non-consumable: $9.99, EGP 499 in Egypt
-    static let all: Set<String> = [monthly, lifetime]
+    static let monthly = "io.github.doproductivity.do.monthly"     // auto-renewing, one month: $2.99
+    static let yearly = "io.github.doproductivity.do.yearly"       // auto-renewing, one year: $9.99
+    static let lifetime = "io.github.doproductivity.do.lifetime"   // non-consumable, founding members only, by Apple offer code
+    static let forSale: Set<String> = [monthly, yearly]
+    static let all: Set<String> = [monthly, yearly, lifetime]
 }
 
 /// What the two plans are meant to cost, for the one moment the App Store
@@ -24,22 +34,20 @@ enum Plan {
 /// `Store.enforced` is switched on. A price anybody can pay always comes from
 /// StoreKit, in the buyer's own currency.
 enum Intended {
-    static var egypt: Bool {
-        if #available(iOS 16, *) { return Locale.current.region?.identifier == "EG" }
-        return (Locale.current as NSLocale).countryCode == "EG"
-    }
-    static var monthly: (text: String, value: Double) { egypt ? ("EGP 149.99", 149.99) : ("$2.99", 2.99) }
-    static var lifetime: (text: String, value: Double) { egypt ? ("EGP 499", 499) : ("$9.99", 9.99) }
+    // The same two figures everywhere: Apple turns them into each country's
+    // own currency, and no country has a price of its own.
+    static let monthly: (text: String, value: Double) = ("$2.99", 2.99)
+    static let yearly: (text: String, value: Double) = ("$9.99", 9.99)
 
-    /// "Less than 4 months of the monthly plan", worked out from the two
-    /// prices on the screen — so it is true in every currency, or it is not
-    /// said at all.
-    static func worth(lifetime: Double, monthly: Double) -> String? {
-        guard monthly > 0, lifetime > monthly else { return nil }
-        let ratio = lifetime / monthly
+    /// "A year for less than 4 months of the monthly plan", worked out from
+    /// the two prices on the screen — so it is true in every currency, or it
+    /// is not said at all.
+    static func worth(yearly: Double, monthly: Double) -> String? {
+        guard monthly > 0, yearly > monthly, yearly < monthly * 12 else { return nil }
+        let ratio = yearly / monthly
         let whole = ratio.rounded(.up)
-        return whole == ratio ? "The price of \(Int(whole)) months of the monthly plan"
-                              : "Less than \(Int(whole)) months of the monthly plan"
+        return whole == ratio ? "A year for the price of \(Int(whole)) months"
+                              : "A year for less than \(Int(whole)) months of the monthly plan"
     }
 }
 
@@ -116,8 +124,8 @@ enum TrialClock {
 /// so nothing in `index.html` is ever the source of this.
 ///
 /// "Paid" means StoreKit 2 handed over a transaction it has verified against
-/// Apple's signature, for one of our two products, that has not been refunded
-/// or revoked and — for the subscription — has not lapsed.
+/// Apple's signature, for one of our products, that has not been refunded
+/// or revoked and — for a subscription — has not lapsed.
 @MainActor
 final class Store: ObservableObject {
     static let shared = Store()
@@ -174,9 +182,11 @@ final class Store: ObservableObject {
     func loadProducts() async {
         load = .loading
         do {
-            let found = try await Product.products(for: Plan.all)
-            // lifetime first: it is the one most people should take
-            products = found.sorted { a, _ in a.id == Plan.lifetime }
+            // Only the two plans are asked for: the founding members' product
+            // is not for sale, so it is never put on the screen.
+            let found = try await Product.products(for: Plan.forSale)
+            // yearly first: it is the one most people should take
+            products = found.sorted { a, _ in a.id == Plan.yearly }
             load = found.isEmpty ? .unavailable : .ready
         } catch {
             products = []
@@ -232,11 +242,12 @@ final class Store: ObservableObject {
         let left = max(0, Int(ceil(ends.timeIntervalSince(now) / 86_400)))
         let state: String
         if owned.contains(Plan.lifetime) { state = "lifetime" }
-        else if owned.contains(Plan.monthly) { state = "subscribed" }
+        else if owned.contains(Plan.yearly) || owned.contains(Plan.monthly) { state = "subscribed" }
         else if now < ends { state = "trial" }
         else { state = "expired" }
         return [
             "state": state,
+            "plan": owned.contains(Plan.lifetime) ? "founding" : owned.contains(Plan.yearly) ? "yearly" : owned.contains(Plan.monthly) ? "monthly" : "",
             "entitled": state != "expired" || !Store.enforced,
             "enforced": Store.enforced,
             "trialDaysLeft": left,
@@ -400,12 +411,21 @@ struct PlansView: View {
                 .padding(.top, 10)
                 .disabled(store.busy != nil)
 
-                Text("Your lists are yours either way. If you never pay, everything you have written stays readable and can be exported. The monthly plan renews until you cancel, which you can do at any time in Settings › Apple ID › Subscriptions. Payment is taken by Apple; Do. never sees a card.")
+                Text("Your lists are yours either way. If you never pay, everything you have written stays readable and can be exported. Both plans renew automatically, each month or each year, until you cancel, which you can do at any time in Settings › Apple Account › Subscriptions. Payment is taken by Apple; Do. never sees a card.")
                     .font(.system(size: 12))
                     .foregroundColor(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
-                    .padding(.bottom, 30)
+
+                // A subscription screen has to carry these two, where they can be opened.
+                HStack(spacing: 18) {
+                    Link("Terms of Use", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+                    Link("Privacy Policy", destination: URL(string: "https://do-productivity.github.io/privacy/")!)
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .tint(Palette.ink)
+                .padding(.top, 10)
+                .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
         }
@@ -414,7 +434,7 @@ struct PlansView: View {
 
     private var headline: String {
         switch state {
-        case "lifetime": return "Yours for good. Thank you."
+        case "lifetime": return "Founding member. Yours for good. Thank you."
         case "subscribed": return "You are subscribed. Thank you."
         case "expired": return "Your \(TrialClock.days) free days have ended."
         default:
@@ -446,10 +466,10 @@ struct PlansView: View {
                 // Before the products exist in App Store Connect: the two
                 // plans as they will be, to look at and not to tap.
                 VStack(alignment: .leading, spacing: 12) {
-                    card(lifetime: true, price: Intended.lifetime.text,
-                         worth: Intended.worth(lifetime: Intended.lifetime.value, monthly: Intended.monthly.value),
+                    card(yearly: true, price: Intended.yearly.text,
+                         worth: Intended.worth(yearly: Intended.yearly.value, monthly: Intended.monthly.value),
                          mine: false, busy: false, action: nil)
-                    card(lifetime: false, price: Intended.monthly.text, worth: nil,
+                    card(yearly: false, price: Intended.monthly.text, worth: nil,
                          mine: false, busy: false, action: nil)
                     Text("These open with the App Store release. Until then nothing is locked and nothing can be bought.")
                         .font(.system(size: 13))
@@ -458,26 +478,31 @@ struct PlansView: View {
                 }
             }
         case .ready:
-            VStack(spacing: 12) {
-                ForEach(store.products, id: \.id) { product in
-                    card(lifetime: product.id == Plan.lifetime,
-                         price: product.displayPrice,
-                         worth: product.id == Plan.lifetime ? worth : nil,
-                         mine: store.owned.contains(product.id),
-                         busy: store.busy == product.id) {
-                        Task { await store.buy(product) }
+            if store.owned.contains(Plan.lifetime) {
+                notice("You are a founding member.",
+                       "Do. is yours for good, so there is nothing here to buy.")
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(store.products, id: \.id) { product in
+                        card(yearly: product.id == Plan.yearly,
+                             price: product.displayPrice,
+                             worth: product.id == Plan.yearly ? worth : nil,
+                             mine: store.owned.contains(product.id),
+                             busy: store.busy == product.id) {
+                            Task { await store.buy(product) }
+                        }
                     }
                 }
             }
         }
     }
 
-    /// The lifetime price measured in months of the monthly one, from the
+    /// The yearly price measured in months of the monthly one, from the
     /// prices StoreKit gave for this storefront.
     private var worth: String? {
-        guard let once = store.products.first(where: { $0.id == Plan.lifetime }),
+        guard let year = store.products.first(where: { $0.id == Plan.yearly }),
               let month = store.products.first(where: { $0.id == Plan.monthly }) else { return nil }
-        return Intended.worth(lifetime: NSDecimalNumber(decimal: once.price).doubleValue,
+        return Intended.worth(yearly: NSDecimalNumber(decimal: year.price).doubleValue,
                               monthly: NSDecimalNumber(decimal: month.price).doubleValue)
     }
 
@@ -500,7 +525,7 @@ struct PlansView: View {
     /// One plan. With an action it is a button that hands over to Apple's
     /// payment sheet; without one it is a picture of a plan and nothing more.
     @ViewBuilder
-    private func card(lifetime: Bool, price: String, worth: String?, mine: Bool, busy: Bool,
+    private func card(yearly: Bool, price: String, worth: String?, mine: Bool, busy: Bool,
                       action: (() -> Void)?) -> some View {
         let face = HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -513,10 +538,10 @@ struct PlansView: View {
                         .background(Capsule().fill(Palette.red))
                         .padding(.bottom, 3)
                 }
-                Text(lifetime ? "Once, for good" : "Monthly")
+                Text(yearly ? "Yearly" : "Monthly")
                     .font(.system(size: 19, weight: .bold, design: .serif))
-                Text(lifetime ? "Pay once. No renewals, ever."
-                              : "Renews each month. Cancel any time.")
+                Text(yearly ? "Renews each year. Cancel any time."
+                            : "Renews each month. Cancel any time.")
                     .font(.system(size: 13))
                     .opacity(0.8)
                 if let worth {
@@ -527,7 +552,7 @@ struct PlansView: View {
             }
             Spacer(minLength: 8)
             if busy {
-                ProgressView().tint(lifetime ? Palette.card : Palette.ink)
+                ProgressView().tint(yearly ? Palette.card : Palette.ink)
             } else if mine {
                 Text("Yours").font(.system(size: 15, weight: .bold))
             } else {
@@ -536,20 +561,20 @@ struct PlansView: View {
                         .font(.system(size: 21, weight: .bold, design: .rounded))
                         .lineLimit(1)
                         .fixedSize()
-                    Text(lifetime ? "once" : "a month").font(.system(size: 11)).opacity(0.75)
+                    Text(yearly ? "a year" : "a month").font(.system(size: 11)).opacity(0.75)
                 }
             }
         }
-        .foregroundColor(lifetime ? Palette.card : Palette.ink)
+        .foregroundColor(yearly ? Palette.card : Palette.ink)
         .padding(.horizontal, 18).padding(.vertical, 17)
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 18)
-                .fill(lifetime ? Palette.ink : Palette.card)
+                .fill(yearly ? Palette.ink : Palette.card)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(lifetime ? Color.clear : Palette.rule)
+                .stroke(yearly ? Color.clear : Palette.rule)
         )
         if let action {
             Button(action: action) { face }

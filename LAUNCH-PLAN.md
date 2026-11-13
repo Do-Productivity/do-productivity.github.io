@@ -1,5 +1,17 @@
 # Do. — taking it to the App Store
 
+> **Update, 13 November 2026.** Three decisions made after this plan was
+> written replace what it says below wherever they differ:
+>
+> 1. **Plans:** $2.99 a month or $9.99 a year, the same in every country
+>    (Apple converts; no separate Egypt price). There is no lifetime plan for
+>    sale.
+> 2. **Founding members:** the first 100 people get Do. free for life and an
+>    invitation code that gives friends 25% off. See `FOUNDING-MEMBERS.md`.
+> 3. **Account:** the app is on the renewed developer team `6MCMG3FEW8`, with
+>    new identifiers. See `APP-STORE-LISTING.md` for the listing and
+>    `LAUNCH-MESSAGES.md` for what to post.
+
 > **The full plan, with screenshots, hosting options and the complete cost
 > model, is [Do-launch-plan.pdf](Do-launch-plan.pdf).** Rebuild it with
 > `python3 brand/launch-plan/make_pdf.py`, and rebuild its screenshots with
