@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Y2xZdhPNDNh/NzlGwra96UHl4DQwKonDmOAfataslTs=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xefKPd9fLvKQjUmYaRBYIlvuFoSPeyV4IhiDIGV16Po=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1242,6 +1242,14 @@
   /* Away from today the label stops being a statement and becomes the way
      back, so it says so. */
   .cal-day.away { color: var(--tint, var(--ink-soft)); text-decoration: underline dotted; }
+  .cal-today {
+    flex: none;
+    font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: .6px;
+    color: #fff; background: var(--tint, var(--red)); border: none;
+    padding: 7px 12px; margin-left: 2px; border-radius: 999px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .cal-today[hidden] { display: none; }
 
   .cal-scroll {
     flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
@@ -5506,7 +5514,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-15-1004";
+  var BUILD = "2026-11-15-1245";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -7285,6 +7293,13 @@
     nav.appendChild(prev);
     nav.appendChild(dayBtn);
     nav.appendChild(next);
+    // Tapping the date already went back to today, but nothing said so:
+    // moved to the middle of February, people stepped back one day at a
+    // time. A button that says Today, there only while you are away.
+    var todayBtn = el("button", "cal-today", "Today");
+    todayBtn.title = "Back to today";
+    todayBtn.hidden = true;
+    nav.appendChild(todayBtn);
     panel.appendChild(nav);
 
     // Day or week. A week of seven columns needs about 90px each before the
@@ -7905,6 +7920,7 @@
       paintStrip();
       dayBtn.textContent = dayTitle(day);
       dayBtn.classList.toggle("away", !isSameDay(day, Date.now()));
+      todayBtn.hidden = isSameDay(day, Date.now());
       headCount.textContent = String(list.length);
       countLabel.textContent = list.length
         ? list.length + (list.length === 1 ? " thing" : " things")
@@ -7974,6 +7990,7 @@
         " \u2013 " + new Date(startOfDay(from, 6)).toLocaleDateString(undefined, { day: "numeric", month: "short" });
       dayBtn.textContent = isSameDay(startOfWeek(Date.now()), from) ? "This week" : label;
       dayBtn.classList.toggle("away", !isSameDay(startOfWeek(Date.now()), from));
+      todayBtn.hidden = isSameDay(startOfWeek(Date.now()), from);
       paintSource();
       paintStrip();
       headCount.textContent = String(total);
@@ -8268,11 +8285,13 @@
     }
     prev.addEventListener("click", function () { go(-1); });
     next.addEventListener("click", function () { go(1); });
-    dayBtn.addEventListener("click", function () {
+    function backToToday() {
       day = startOfDay(Date.now());
       render();
       scrollToNow();
-    });
+    }
+    dayBtn.addEventListener("click", backToToday);
+    todayBtn.addEventListener("click", backToToday);
 
     // Opening on 8am when it is four in the afternoon is a calendar showing
     // you the part of the day you cannot change.
