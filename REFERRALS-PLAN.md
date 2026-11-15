@@ -78,3 +78,20 @@ policy gets a paragraph saying exactly the table above.
 1. 1.0 approved and released (with build 1.0 (3)).
 2. Founder codes loaded (unchanged plan, without the 25% codes).
 3. Build referrals, test, then submit 1.1.
+
+## Also in 1.1: dated tasks in Apple Calendar (agreed 15 November 2026)
+
+- A switch, off by default: "Add my dated tasks to Apple Calendar". iPhone asks
+  once for permission to change calendars.
+- Do. writes only inside its own calendar called "Do." (iCloud when
+  available, so it reaches the Mac and iPad). It never touches any other
+  calendar; the Swift side enforces that.
+- One entry per dated task, tagged with the task's id: moved, renamed or
+  removed with the task; repeating tasks show their next time only.
+- **One alert, not two:** the calendar entries carry no alarm. Do. rings
+  from the phone as it does now.
+- Do.'s own Calendar screen hides the "Do." calendar, so nothing appears twice.
+- Turning the switch off deletes the "Do." calendar, and nothing else.
+- The permission text changes from "only read, never changed" to say Do. adds
+  dated tasks to its own Do. calendar and changes no other.
+- Nothing passes through the server; the privacy label is unchanged.
