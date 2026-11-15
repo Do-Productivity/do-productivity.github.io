@@ -11,3 +11,4 @@ brand/demo/
 _site/
 native/ios/DerivedData-duo/
 native/ios/build/
+native/ios/DerivedData-test/
