@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hJhdc3Phtsh87d5PnthBpJcgbG9dx3FSYYGLkITi0Jw=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-aimk+rrhky8n4PY0aQ5dRCfV+B27PP/FwN2TcFNRm6g=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1135,6 +1135,41 @@
     display: flex; flex-direction: column; gap: 5px;
   }
   .cal-newhead { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .cal-newfoot { display: flex; align-items: center; gap: 8px; }
+  .cal-newhint { flex: 1; font-family: var(--sans); font-size: 11px; color: var(--ink-faint); }
+  .cal-newbtn {
+    -webkit-appearance: none; appearance: none; margin: 0; cursor: pointer;
+    font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .3px;
+    padding: 6px 12px; border-radius: 999px;
+    color: var(--ink); background: var(--paper); border: 1px solid var(--rule);
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  .cal-newbtn.save { color: #fff; background: var(--item, var(--ink)); border-color: var(--item, var(--ink)); }
+  .cal-newbtn.save:disabled { opacity: .35; cursor: default; }
+  /* On a touch screen: a sheet above the keyboard, sized for a thumb, and a
+     line in the grid where the task will land. */
+  .cal-new.docked {
+    position: fixed; top: auto; bottom: 10px; z-index: 55;
+    left: 10px; right: calc(var(--side, 0px) + 10px);
+    max-width: 620px; margin: 0 auto;
+    padding: 14px 16px 12px; gap: 10px;
+    border-radius: 16px; border-left-width: 4px;
+    box-shadow: 0 -4px 26px rgba(43, 38, 32, .20);
+  }
+  .cal-new.docked .cal-newinput { font-size: 18px; padding: 8px 2px; }
+  .cal-newday {
+    font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--item, var(--ink-soft));
+  }
+  .cal-new.docked .cal-chip { font-size: 11px; padding: 6px 11px; }
+  .cal-new.docked .cal-newhint { font-size: 12px; }
+  .cal-new.docked .cal-newbtn { font-size: 14px; padding: 10px 18px; min-height: 42px; }
+  .cal-newmark {
+    position: absolute; left: 0; right: 2px; height: 0; z-index: 5; pointer-events: none;
+    border-top: 2px solid var(--item, var(--ink-soft));
+    font-family: var(--sans); font-size: 11px; font-weight: 700; line-height: 1;
+    color: var(--item, var(--ink-soft)); padding: 4px 0 0 6px; white-space: nowrap;
+  }
   .cal-timebox { display: inline-flex; align-items: center; gap: 6px; }
   .cal-new .cal-timebox .cal-newtime { min-width: 64px; text-align: center; font-size: 13px; color: var(--ink); }
   /* named apart from .cal-step, which is the day arrows at the top */
@@ -5466,7 +5501,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-13-2036";
+  var BUILD = "2026-11-15-0943";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -7770,6 +7805,7 @@
 
     var lastSpan = null;
     function render() {
+      if (composer && +composer.getAttribute("data-day") !== +day) closeComposer();
       if (mode === "week") {
         week.style.display = "";
         scroller.style.display = "none";
@@ -7958,10 +7994,16 @@
     // date, exactly as typing it into that list would. The only thing the
     // calendar contributes is the time you pointed at.
     var CAL_LIST_KEY = "dia_todo_callist_v1";
-    var composer = null;
+    var composer = null, composerMark = null, composerFit = null;
 
     function closeComposer() {
       if (composer) { composer.remove(); composer = null; }
+      if (composerMark) { composerMark.remove(); composerMark = null; }
+      if (composerFit && window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", composerFit);
+        window.visualViewport.removeEventListener("scroll", composerFit);
+      }
+      composerFit = null;
     }
 
     function defaultList() {
@@ -7977,10 +8019,36 @@
       var chosen = defaultList();
       if (!chosen) return;
 
-      composer = el("div", "cal-new");
-      composer.style.top = Math.round(yFor(ts, lastSpan)) + "px";
+      // On a touch screen the keyboard covers the lower half of the screen,
+      // and a box drawn at the hour you tapped was usually under it: you
+      // could not see what you were typing. There the box is a sheet held
+      // just above the keyboard, and the grid keeps a line at the chosen
+      // time. With a mouse and a real keyboard it stays in the grid.
+      var docked = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+      composer = el("div", "cal-new" + (docked ? " docked" : ""));
+      composer.setAttribute("data-day", String(+day));
       composer.style.setProperty("--item", tint(chosen.tint || "amber").solid);
+      if (docked) {
+        composerMark = el("div", "cal-newmark");
+        composerMark.style.setProperty("--item", tint(chosen.tint || "amber").solid);
+        itemsLayer.appendChild(composerMark);
+      }
+      function placeAt() {
+        var y = Math.round(yFor(ts, lastSpan));
+        if (composerMark) {
+          composerMark.style.top = y + "px";
+          composerMark.textContent = "+ " + clock(ts);
+        } else {
+          composer.style.top = y + "px";
+        }
+      }
+      function keepTyping() {
+        try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+      }
 
+      // With the keyboard up on a phone the sheet covers the grid, so it
+      // says itself which day the task goes on.
+      if (docked) composer.appendChild(el("div", "cal-newday", "New task \u00b7 " + dayTitle(day)));
       var head = el("div", "cal-newhead");
       // The tap chose the hour; these choose the quarter. A slot on a phone
       // is too small to aim at 4:15 rather than 4:00, so the time is nudged
@@ -7992,7 +8060,8 @@
         ts = next;
         timeLab.textContent = clock(ts);
         input.placeholder = "What happens at " + clock(ts) + "?";
-        input.focus();
+        placeAt();
+        keepTyping();
       }
       function stepper(label, mins, title) {
         var b = el("button", "cal-nudge", label);
@@ -8020,9 +8089,10 @@
           chosen = l;
           localStorage.setItem(CAL_LIST_KEY, l.id);
           composer.style.setProperty("--item", tint(l.tint || "amber").solid);
+          if (composerMark) composerMark.style.setProperty("--item", tint(l.tint || "amber").solid);
           [].forEach.call(chips.children, function (c) { c.classList.remove("on"); });
           chip.classList.add("on");
-          input.focus();
+          keepTyping();
         });
         chips.appendChild(chip);
       });
@@ -8032,12 +8102,31 @@
       var input = el("input", "cal-newinput");
       input.type = "text";
       input.placeholder = "What happens at " + clock(ts) + "?";
+      input.setAttribute("enterkeyhint", "done");
       composer.appendChild(input);
+
+      // Saying how it is saved, and a button that does it: Return was the
+      // only way, and nothing on the screen said so.
+      var foot = el("div", "cal-newfoot");
+      foot.appendChild(el("span", "cal-newhint", "Return saves"));
+      function action(label, cls, fn) {
+        var b = el("button", "cal-newbtn" + (cls ? " " + cls : ""), label);
+        b.type = "button";
+        b.addEventListener("mousedown", function (e) { e.preventDefault(); });
+        b.addEventListener("click", fn);
+        foot.appendChild(b);
+        return b;
+      }
+      action("Cancel", "", function () { closeComposer(); });
+      var okBtn = action("Save", "save", function () { save(); });
+      okBtn.disabled = true;
+      input.addEventListener("input", function () { okBtn.disabled = !input.value.trim(); });
+      composer.appendChild(foot);
 
       function save() {
         var text = input.value.trim();
+        if (!text) { keepTyping(); return; }   // nothing to save yet: stay open
         closeComposer();
-        if (!text) return;
         var key = chosen.storageKey;
         var arr = loadTasks(key);
         arr.push({
@@ -8057,16 +8146,39 @@
         if (e.key === "Enter") { e.preventDefault(); save(); }
         else if (e.key === "Escape") { e.preventDefault(); closeComposer(); }
       });
-      // A tap elsewhere is a change of mind, not a save: an accidental slot
-      // tap should cost nothing, and a half-typed line is not a task.
+      // A tap elsewhere on an empty box is a change of mind, and costs
+      // nothing. Once something is typed it stays, even if the keyboard is
+      // put away, until it is saved or cancelled: losing a half-written
+      // line to a stray tap is worse than a box left open.
       input.addEventListener("blur", function () {
         setTimeout(function () {
-          if (composer && !composer.contains(document.activeElement)) closeComposer();
+          if (composer && !composer.contains(document.activeElement) && !input.value.trim()) closeComposer();
         }, 120);
       });
 
-      itemsLayer.appendChild(composer);
-      input.focus();
+      if (docked) {
+        document.body.appendChild(composer);
+        // held above the keyboard: the visible part of the page shrinks
+        // when it opens, and the sheet follows it
+        composerFit = function () {
+          if (!composer) return;
+          var vv = window.visualViewport;
+          var hidden = vv ? Math.max(0, window.innerHeight - (vv.offsetTop + vv.height)) : 0;
+          composer.style.bottom = Math.round(hidden + 10) + "px";
+        };
+        composerFit();
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("resize", composerFit);
+          window.visualViewport.addEventListener("scroll", composerFit);
+        }
+        // the line at the chosen time near the top of the grid, where it is
+        // seen once the keyboard is put away
+        scroller.scrollTop = Math.max(0, yFor(ts, lastSpan) - 6);
+      } else {
+        itemsLayer.appendChild(composer);
+      }
+      placeAt();
+      keepTyping();
     }
 
     itemsLayer.addEventListener("click", function (e) {
