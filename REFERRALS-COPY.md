@@ -143,9 +143,15 @@ Full version (support page and the "How it works" link in the app):
 | "renews at its usual price unless cancelled" | leaving the renewal out |
 | "App Store codes" | "we add a month to your account" (there is no account) |
 
-## Open question for you
+## Founding members (decided 15 November 2026)
 
-**Founding members already have Do. free for life.** What should they get for
-referrals? Options: nothing for themselves (their friends still get the free
-month), or the right to pass their free months on to someone else as a gift.
-The words above assume the first.
+Founders already have Do. free for life, so their referrals give nothing to
+themselves: **their friends still get the free month.** Their card in Sync:
+
+| Where | Text |
+|---|---|
+| Title | Give your friends a free month |
+| Body | Do. is already free for you for life. Share your code: when a friend subscribes with it, they get their first month free. |
+| Tally | 4 friends have a free month from you. |
+
+Pictures of every screen: `brand/referrals-preview/` (design previews, not built yet).
