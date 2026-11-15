@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Z18TcINjRFDX2TnPHcKaDQh2PbjK49ataLPtpxGY5EY=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WpaQNzksZu9ULTLvTaed/ZTLW4M/1TPExFJmHb9eRn4=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -5542,7 +5542,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-15-1259";
+  var BUILD = "2026-11-15-1450";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6593,6 +6593,11 @@
   // knows what the app last told it, and "the calendar just arrived" is
   // exactly the moment it has to be told again.
   var onCalendarCached = null;
+  // Told when tasks arrive from another device. Those are written straight
+  // into storage, past saveTasks, so without this the phone only heard about
+  // them the next time the app was reopened: a task added on the laptop got
+  // no reminder and no place in the Do. calendar until then.
+  var onSyncApplied = null;
   function saveMsCache() {
     try {
       localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
@@ -12463,6 +12468,7 @@
     noteReloaders.forEach(function (r) { r(); });
     refreshScheduled();
     renderToday();
+    if (onSyncApplied) { try { onSyncApplied(); } catch (e) {} }
   }
 
   function setSyncStatusLine(override) {
@@ -14222,6 +14228,7 @@
     // Every task write goes through these two, so this is the whole set of
     // places the device needs to hear about.
     onCalendarCached = function () { sync(); };
+    onSyncApplied = function () { sync(); };
     var _saveTasks = saveTasks, _saveScheduled = saveScheduled;
     saveTasks = function (key, arr) { _saveTasks(key, arr); sync(); };
     saveScheduled = function (arr) { _saveScheduled(arr); sync(); };
