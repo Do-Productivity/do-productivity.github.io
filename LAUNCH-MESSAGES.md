@@ -40,7 +40,7 @@ Two things I care about most:
 
 2. It's private by design. No account. No email. No ads, no tracking. Your lists stay on your device, and if you sync, they are encrypted before they leave it. Only your own devices hold the key, so I can't read them.
 
-The first 100 people are founding members: Do. is free for life, and you get a code that gives your friends 25% off. For everyone else it's free for 14 days, then $2.99 a month or $9.99 a year.
+The first 100 people are founding members: Do. is free for life. For everyone else it's free for 14 days, then $2.99 a month or $9.99 a year.
 
 If your day lives in five apps, try living in one.
 
@@ -140,7 +140,7 @@ Tell me what you think, good or bad. And send it to anyone who lives in their to
 If someone asks "is it free?":
 
 ```
-Free for life if you're one of the first 100, and you get a code that gives your friends 25% off. After those are gone: free for 14 days, then $2.99 a month or $9.99 a year.
+Free for life if you're one of the first 100. After those are gone: free for 14 days, then $2.99 a month or $9.99 a year.
 ```
 
 If someone asks "what about my data?":

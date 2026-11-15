@@ -130,7 +130,7 @@ Your decisions when you create them:
 In the subscription group, put Yearly above Monthly (level 1 and level 2).
 
 Later, once all three are approved: the free offer codes for founding
-members and the two 25% codes for invited people. The steps are at the end of
+members. (The 25% discount for invited people was cancelled on 15 November 2026; referrals replace it in version 1.1.) The steps are at the end of
 `FOUNDING-MEMBERS.md`.
 
 ## 5. App Privacy answers (App Store Connect → App Privacy)

@@ -1,5 +1,12 @@
 # Founding members: how it works
 
+> **Update, 15 November 2026.** The 25% discount for people invited by a
+> founding member is cancelled. Version 1.0 has founding seats only: free for
+> life and a badge. Invitation codes are hidden in the app. Version 1.1 brings
+> referrals for everyone instead: a free month for both when a friend
+> subscribes, and a free year for every ten. Sections below about the 25%
+> codes no longer apply.
+
 Written 12 November 2026, updated 13 November (100 seats; monthly and yearly plans). This covers what is stored, how the limit of 100
 is kept, how invitations work, and the three small steps that are yours.
 

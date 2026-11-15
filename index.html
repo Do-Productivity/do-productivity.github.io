@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-aimk+rrhky8n4PY0aQ5dRCfV+B27PP/FwN2TcFNRm6g=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Y2xZdhPNDNh/NzlGwra96UHl4DQwKonDmOAfataslTs=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1902,6 +1902,9 @@
   .modal-top + h2 { padding-right: 30px; }
   #membership { border-top: 1px solid var(--rule); margin-top: 16px; padding-top: 14px; }
   /* ── Founding members ── */
+  /* Invitations are put away in version 1.0: the 25% discount was cancelled,
+     and referrals (a free month for both) replace them in the next update. */
+  #founder-invite-block, #invite-none, #invite-on { display: none !important; }
   #member-box { border-top: 1px solid var(--rule); margin-top: 16px; padding-top: 14px; }
   .founder-card {
     border: 1.5px solid #b8893a; border-radius: 14px; padding: 14px 16px 13px; margin: 10px 0 14px;
@@ -3240,7 +3243,7 @@
       <div id="member-box" style="display:none">
         <h3 class="member-h">Founding members</h3>
         <div id="founder-none">
-          <p><b>The first 100 people get Do. on iPhone free for life,</b> and a code that gives their friends 25% off. No name and no email address: your seat is a number.</p>
+          <p><b>The first 100 people get Do. on iPhone free for life.</b> No name and no email address: your seat is a number.</p>
           <p class="modal-hint" id="founder-count"></p>
           <button class="modal-btn primary" id="founder-claim-btn">Take a founding seat</button>
           <p class="modal-hint" id="founder-msg" role="status"></p>
@@ -3250,15 +3253,17 @@
             <div class="fc-mark" aria-hidden="true">✦</div>
             <div><div class="fc-top">Founding member</div><div class="fc-no">No. <span id="founder-no"></span></div><div class="fc-of">one of the first <span id="founder-of">100</span></div></div>
           </div>
-          <p><b>Your invitation code.</b> Anyone who uses it gets 25% off the monthly or yearly plan.</p>
+          <div id="founder-invite-block">
+          <p><b>Your invitation code.</b> Share it with friends.</p>
           <div class="vault-code" id="founder-invite"></div>
           <button class="modal-btn" id="founder-share-btn">Share my invitation</button>
           <p class="modal-hint" id="founder-uses"></p>
+          </div>
           <p class="modal-hint" id="founder-gift-line"></p>
           <button class="modal-btn primary" id="founder-gift-btn" style="display:none">Get Do. free for life in the App Store</button>
           <details class="modal-details" id="founder-leave">
             <summary>Give up this seat</summary>
-            <p class="modal-hint">This removes your seat, your number and your invitation code from the server, and frees the seat for someone else. It cannot be undone. Your lists are not touched.</p>
+            <p class="modal-hint">This removes your seat and your number from the server, and frees the seat for someone else. It cannot be undone. Your lists are not touched.</p>
             <button class="modal-btn danger" id="founder-leave-btn">Give up my founding seat</button>
             <p class="modal-hint" id="founder-leave-msg" role="status"></p>
           </details>
@@ -3270,7 +3275,7 @@
           <p class="modal-hint" id="invite-msg" role="status"></p>
         </div>
         <div id="invite-on" style="display:none">
-          <p><b>Invited by a founding member.</b> You get 25% off the monthly or yearly plan.</p>
+          <p><b>Invited by a founding member.</b></p>
           <p class="modal-hint" id="invite-line"></p>
           <button class="modal-btn primary" id="invite-life-btn" style="display:none">25% off the yearly plan</button>
           <button class="modal-btn" id="invite-month-btn" style="display:none">25% off the monthly plan</button>
@@ -3284,7 +3289,7 @@
           <li><b>With sync:</b> a scrambled copy of your lists goes to the app's server, so your devices can share it. The key stays on your devices. Nobody else can read the copy, and that includes the people who run the server.</li>
           <li><b>Never:</b> no email address, no name, no counting of who opens the app, no advertising, no tracking.</li>
           <li><b>Your calendar</b> is read on this device and is never sent.</li>
-          <li><b>A founding seat or an invitation,</b> only if you take one: a random code, your seat number, and how many times your invitation was used. No name and no email address.</li>
+          <li><b>A founding seat,</b> only if you take one: a random code and your seat number. No name and no email address.</li>
         </ul>
       </details>
       <p class="modal-hint" id="cloud-unconfigured" style="display:none">Syncing between devices isn't switched on yet. Everything you write is saved on this device in the meantime, and works offline.</p>
@@ -5501,7 +5506,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-15-0943";
+  var BUILD = "2026-11-15-1004";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -12004,7 +12009,7 @@
         refreshMemberBox();
         refreshMember(true);
         if (vaultActive()) scheduleSyncPush();
-        flashStatus("Invitation accepted: 25% off.");
+        flashStatus("Invitation accepted.");
         return;
       }
       memberSay("invite-msg", (r && r.reason) === "busy"
@@ -12055,7 +12060,7 @@
     if (!f) return;
     var code = showInviteCode(f.invite);
     var link = WEB_URL + "#invite=" + code;
-    var text = "I am a founding member of Do., the to-do list for iPhone. My invitation gives you 25% off: " + code;
+    var text = "I am a founding member of Do., the to-do list for iPhone. My invitation code: " + code;
     if (navigator.share) {
       navigator.share({ title: "Do.", text: text, url: link }).catch(function () { /* closed without sharing */ });
       return;
