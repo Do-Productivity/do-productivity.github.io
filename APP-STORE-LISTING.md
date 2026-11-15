@@ -20,6 +20,19 @@ allow it to be removed once released.
 
 ## 2. Version 1.0 page
 
+> **For 1.1 (decided 15 November 2026): Do. is for every iPhone, with iPhone
+> Duo as the highlight.** 1.0 went to review with the Duo-first wording below;
+> those fields are locked while it is in review. With 1.1, change them to:
+>
+> | Field | Text |
+> |---|---|
+> | Subtitle (27/30) | `Every iPhone. Made for Duo.` |
+> | Promotional text (156/170) | `Your lists and your day in one calm place, on any iPhone. On iPhone Duo it follows the fold: closed, one list; open, all of them. No account and no sign-up.` |
+> | Keywords | unchanged: `foldable` and `duo` stay, the Duo is still the hook |
+>
+> The promotional text can be changed as soon as 1.0 is live, without waiting
+> for 1.1. The description below is already the 1.1 version.
+
 | Field | Limit | Text |
 |---|---|---|
 | Subtitle | 30 | `Lists that follow the fold` |
@@ -40,9 +53,10 @@ the place for the founding-members line once the seats open:
 ### Description
 
 ```
-Do. is a to-do list that follows your phone.
+Do. is a calm to-do list and calendar for iPhone: tasks, notes, plans and your meetings in one place, kept on your device.
 
-On iPhone Duo, closed shows one list at a time. Open it and your lists sit side by side, with room for your plans and your calendar. Turn it upright and every list is still on screen. Nothing to set up and nothing to drag into place. On any other iPhone it is a calm, quick list app.
+MADE FOR IPHONE DUO
+Closed, Do. shows one list at a time. Open it and your lists sit side by side, with room for your plans and your calendar. Turn it upright and every list is still on screen. Nothing to set up and nothing to drag into place.
 
 YOUR DAY, IN ONE TIMELINE
 The Today screen shows the tasks that have a time and the meetings in your calendar, in the order they happen. One tap hides the meetings when you only want the work.
