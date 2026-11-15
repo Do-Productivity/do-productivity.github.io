@@ -69,8 +69,13 @@ Do. has no accounts. It never asks for your name or your email address.
 PLANS
 Everything works free for 14 days. After that, choose the monthly or the yearly plan. Both renew until you cancel. Whatever you choose, the lists you wrote stay yours to read and export.
 
-Questions: https://do-productivity.github.io/support/
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://do-productivity.github.io/privacy/
+Support: https://do-productivity.github.io/support/
 ```
+
+The Terms of Use link in the description is required for apps that sell subscriptions
+(guideline 3.1.2; the first submission was held back for it on 15 November 2026).
 
 ## 3. Pictures and video (ready, in `brand/app-store/`)
 
