@@ -54,7 +54,7 @@ BIG JOBS, STEP BY STEP
 Some work is not one tick. Give it a start, a deadline and the steps in between.
 
 YOUR CALENDAR, BESIDE YOUR TASKS
-Do. reads the calendar on your iPhone so you can plan around it. It never changes it. Tap an empty hour to add a task at that time.
+Do. reads the calendar on your iPhone so you can plan around it, and never changes it. Switch on Add my dated tasks to Apple Calendar and your tasks also appear in a calendar of their own, on your iPhone, iPad and Mac. Tap an empty hour to add a task at that time.
 
 WIDGETS
 What is next on your Lock Screen. Your week on your Home Screen.
@@ -169,7 +169,7 @@ on export compliance walks through it.
 ```
 Do. needs no account and no sign-in. All features work on first launch.
 
-Calendar: the Calendar list asks for calendar access only when the reviewer taps the line offering it. The app reads events to show them beside tasks and never modifies them.
+Calendar: the Calendar list asks for calendar access only when the reviewer taps the line offering it. The app reads events to show them beside tasks and never modifies them. Writing happens only if the person switches on "Add my dated tasks to Apple Calendar" in the Calendar settings line; the app then writes dated tasks into a calendar it creates for itself, called "Do.", and touches no other calendar. Switching it off deletes that calendar.
 
 Plans: the app is free for 14 days. To see the plans without waiting, open Sync, scroll to Membership, and tap "See the plans". Restore Purchases is on the same screen.
 

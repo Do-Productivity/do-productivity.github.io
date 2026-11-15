@@ -95,3 +95,9 @@ policy gets a paragraph saying exactly the table above.
 - The permission text changes from "only read, never changed" to say Do. adds
   dated tasks to its own Do. calendar and changes no other.
 - Nothing passes through the server; the privacy label is unchanged.
+
+**Status, 15 November 2026:** built on the `v1.1` branch and tested (34
+checks with a stand-in for the phone; on the iPhone Duo simulator against the
+real calendar store, the tasks appear in Apple's Calendar app). The privacy
+page, support page, landing page and App Store notes say what it does; they go
+live with 1.1. Pictures: `brand/calendar-preview/`.
