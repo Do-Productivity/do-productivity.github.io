@@ -153,7 +153,10 @@ members. (The 25% discount for invited people was cancelled on 15 November 2026;
 afterwards.
 
 - **Lists, notes, calendar:** not collected. They stay on the device, or leave
-  it encrypted with a key you never receive.
+  it encrypted with a key you never receive. From 1.1 this includes meetings,
+  when the person switches on "Show my meetings on my other devices": they
+  travel only inside the same end-to-end encrypted copy, so the answer for
+  Calendar stays "not collected" and the label does not change.
 - **Founding seat or invitation:** this is collected. The server keeps a seat
   number and a code for people who take one.
 
@@ -183,7 +186,7 @@ on export compliance walks through it.
 ```
 Do. needs no account and no sign-in. All features work on first launch.
 
-Calendar: the Calendar list asks for calendar access only when the reviewer taps the line offering it. The app reads events to show them beside tasks and never modifies them. Writing happens only if the person switches on "Add my dated tasks to Apple Calendar" in the Calendar settings line; the app then writes dated tasks into a calendar it creates for itself, called "Do.", and touches no other calendar. Switching it off deletes that calendar.
+Calendar: the Calendar list asks for calendar access only when the reviewer taps the line offering it. The app reads events to show them beside tasks and never modifies them. Writing happens only if the person switches on "Add my dated tasks to Apple Calendar" in the Calendar settings line; the app then writes dated tasks into a calendar it creates for itself, called "Do.", and touches no other calendar. Switching it off deletes that calendar. A second switch, "Show my meetings on my other devices", is off by default; when on, the phone adds its meetings for the next 8 weeks to the end-to-end encrypted sync copy (key only on the person's devices) so the web version can show them.
 
 Plans: the app is free for 14 days. To see the plans without waiting, open Sync, scroll to Membership, and tap "See the plans". Restore Purchases is on the same screen.
 

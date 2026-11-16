@@ -101,3 +101,31 @@ checks with a stand-in for the phone; on the iPhone Duo simulator against the
 real calendar store, the tasks appear in Apple's Calendar app). The privacy
 page, support page, landing page and App Store notes say what it does; they go
 live with 1.1. Pictures: `brand/calendar-preview/`.
+
+## Also in 1.1: your iPhone's meetings on the web (agreed 16 November 2026)
+
+Why: the web cannot read anybody's calendar, so Do. on the laptop only had a
+calendar file imported on 12 November, which never updates. A meeting added
+later (a Wednesday coffee) was on the phone and in Apple Calendar but not on
+the web.
+
+- A second switch in the phone's calendar settings: **Show my meetings on my
+  other devices**. Off by default.
+- When on, the phone adds its meetings for 2 days back and 8 weeks ahead to
+  the private sync copy, which is sealed on the phone with the key only the
+  person's devices hold. The server keeps a copy it cannot open, exactly as
+  for the lists. Nothing goes into the GitHub mirror or any other sync.
+- Only title, time, place, calendar name and colour travel. Notes, links,
+  organiser and invitees stay on the phone. Cancelled and declined meetings,
+  and calendars hidden in Do., are left out.
+- The phone reads at most every 5 minutes while Do. is open, and uploads
+  only when something changed. The web shows them in its Calendar and Today,
+  labelled "Meetings from your iPhone". A phone never shows them (it has its
+  own), so nothing appears twice.
+- Off: the other devices delete their copy at their next sync. Stopping sync
+  on a device deletes its copy too.
+- Privacy: privacy policy, in-app "What leaves this device", support page,
+  iOS permission text and SECURITY.md updated. The App Store privacy answer
+  stays "Calendar: not collected", because it travels only end-to-end
+  encrypted, like the lists.
+- Tested: `t_meetshare` (26 checks, two devices through the mock server).

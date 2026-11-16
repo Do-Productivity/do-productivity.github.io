@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, last checked against build `2026-11-15-1450`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-16-1359`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -15,7 +15,10 @@ Three things, in order of how much damage losing them does:
    here — but it reads and writes *every* gist on the account, not only Do.'s.
 2. **The tasks themselves.** A to-do list is a map of someone's life: who they
    owe money to, when the house is empty, which doctor, which lawyer.
-3. **The calendar.** Only ever read, never stored anywhere but this device —
+3. **The calendar.** Only ever read, never stored anywhere but this device
+   unless the person switches on "Show my meetings on my other devices" (1.1):
+   then title, time, place and calendar name for 8 weeks ride inside the
+   sealed vault copy only (`buildVaultDoc`), never `buildSyncDoc` / the gist —
    but while it is on screen it is the same kind of information.
 
 There is no money in the app to steal. There is no card number anywhere in it,
