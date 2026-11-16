@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-vArLe/JPHdIWnqZMNm073HxtHWDAP8ZsfK1sBrSx1Ng=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-jdsSRrdYkicxiHKfPYaWe5z6B1DU/1/0agQXOHWLj0c=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1112,6 +1112,23 @@
   .cal-feedfile {
     position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
   }
+  /* A calendar source you added yourself, as a row you can read and a
+     button that says what it does. A bare "x" at the end of a line was
+     not found by the person it was for. */
+  .cal-srccard {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border: 1px solid var(--rule); border-radius: 9px;
+    background: var(--paper);
+  }
+  .cal-srcwords { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-family: var(--sans); }
+  .cal-srcwords b { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-srcwords small { font-size: 11px; line-height: 1.35; color: var(--ink-soft); }
+  .cal-remove {
+    flex: none; cursor: pointer; font-family: var(--sans); font-size: 12px; font-weight: 700;
+    color: var(--red); background: none; border: 1.5px solid currentColor; border-radius: 999px;
+    padding: 6px 12px; min-height: 32px;
+  }
+  .cal-remove:hover, .cal-remove.sure { color: #fff; background: var(--red); border-color: var(--red); }
   .cal-importnote {
     display: flex; align-items: center; gap: 2px;
     font-family: var(--sans); font-size: 10px; color: var(--ink-soft);
@@ -5545,7 +5562,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-16-1418";
+  var BUILD = "2026-11-16-1430";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -7590,34 +7607,57 @@
     importInput.multiple = true;
     importLabel.appendChild(importInput);
     importRow.appendChild(importLabel);
-    var importNote = el("span", "cal-importnote", "");
-    importRow.appendChild(importNote);
     feedBox.appendChild(importRow);
     // In a browser: where the iPhone's meetings come from, and that a file
     // imported before is now a second, frozen copy of the same calendar.
     var meetNote = el("p", "cal-writenote", "");
     meetNote.style.display = "none";
     feedBox.insertBefore(meetNote, importRow);
+    var importCard = el("div", "cal-srccard");
+    importCard.style.display = "none";
+    feedBox.insertBefore(importCard, importRow);
+
+    // "Remove", then "Tap again to remove" for a few seconds: one tap is
+    // easy to find, and a slip does not throw a calendar away.
+    function removeButton(label, onRemove) {
+      var b = el("button", "cal-remove", label || "Remove");
+      var timer = null;
+      b.addEventListener("click", function () {
+        if (!b.classList.contains("sure")) {
+          b.classList.add("sure");
+          b.textContent = "Tap again to remove";
+          timer = setTimeout(function () { b.classList.remove("sure"); b.textContent = label || "Remove"; }, 4000);
+          return;
+        }
+        clearTimeout(timer);
+        onRemove();
+      });
+      return b;
+    }
 
     function paintImport() {
       var shared = sharedMeetings();
       meetNote.style.display = shared ? "" : "none";
       if (shared) {
         meetNote.textContent = "Meetings from your iPhone: " + shared.events.length +
-          " in the coming weeks, sealed in your synced copy. They update whenever Do. is open on the phone." +
-          (importedEvents() ? " The file you imported below is hidden meanwhile, because it is a copy from the day you imported it. You can forget it." : "");
+          " in the coming weeks, sealed in your synced copy. They update whenever Do. is open on the phone.";
       }
       var got = importedEvents();
-      if (!got) { importNote.textContent = ""; return; }
-      importNote.textContent = got.events.length + " events from " + got.name;
-      var clear = el("button", "cal-feedkill", "\u00d7");
-      clear.title = "Forget this file";
-      clear.addEventListener("click", function () {
+      importCard.textContent = "";
+      importCard.style.display = got ? "" : "none";
+      if (!got) return;
+      var words = el("span", "cal-srcwords");
+      words.appendChild(el("b", null, "Imported file \u00b7 " + got.events.length + (got.events.length === 1 ? " meeting" : " meetings")));
+      var when = got.at ? new Date(got.at).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "";
+      words.appendChild(el("small", null, "\u201c" + (got.name || "Calendar") + "\u201d" + (when ? ", imported " + when : "") +
+        ". A copy of that day: it does not update." + (shared ? " Hidden while your iPhone\u2019s meetings arrive." : "")));
+      importCard.appendChild(words);
+      importCard.appendChild(removeButton("Remove", function () {
         try { localStorage.removeItem(ICS_IMPORT_KEY); } catch (e) {}
+        flashStatus(shared ? "Imported file removed. Your iPhone\u2019s meetings are not affected." : "Imported file removed.");
         paintImport();
         render();
-      });
-      importNote.appendChild(clear);
+      }));
     }
 
     function readOne(file) {
@@ -7844,17 +7884,18 @@
     function paintFeeds() {
       feedList.textContent = "";
       icsFeeds().forEach(function (f) {
-        var row = el("div", "cal-feeditem");
-        row.appendChild(el("span", "cal-feedname", f.name || f.url.slice(0, 44)));
-        var kill = el("button", "cal-feedkill", "\u00d7");
-        kill.title = "Remove this calendar";
-        kill.addEventListener("click", function () {
+        var row = el("div", "cal-srccard");
+        var words = el("span", "cal-srcwords");
+        words.appendChild(el("b", null, "Calendar link \u00b7 " + (f.name || "Calendar")));
+        words.appendChild(el("small", null, f.url.replace(/^https?:\/\//, "").slice(0, 60) + " \u00b7 read again every few minutes"));
+        row.appendChild(words);
+        row.appendChild(removeButton("Remove", function () {
           saveIcsFeeds(icsFeeds().filter(function (x) { return x.id !== f.id; }));
           for (var k in msEventsAt) { if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k]; }
+          flashStatus("Calendar link removed.");
           paintFeeds();
           render();
-        });
-        row.appendChild(kill);
+        }));
         feedList.appendChild(row);
       });
     }
@@ -8561,8 +8602,13 @@
         return;
       }
       if (!msConnected()) {
+        var imp = importedEvents();
         source.textContent = sharedMeetings()
-          ? "Meetings from your iPhone" + (icsFeeds().length ? " and " + icsFeeds().length + " linked" : "") + " \u2014 tap to manage"
+          ? "Meetings from your iPhone" + (icsFeeds().length ? " and " + icsFeeds().length + " linked" : "") +
+            (imp ? " \u00b7 an old imported file is hidden \u2014 tap to remove it" : " \u2014 tap to manage")
+          : imp
+          ? (icsFeeds().length ? "Calendars: " + icsFeeds().length + " linked, and an imported file" : "Imported file") +
+            " from " + new Date(imp.at || Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "short" }) + ", does not update \u2014 tap to manage"
           : icsFeeds().length
           ? "Calendars: " + icsFeeds().length + " linked \u2014 tap to manage"
           : "Only your tasks \u2014 tap to add a calendar link";
