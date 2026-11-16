@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-jdsSRrdYkicxiHKfPYaWe5z6B1DU/1/0agQXOHWLj0c=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JVuSD4A0/1Mt75ZbMvbLhhQpP26h6A6VrikBCtn2uEU=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1129,6 +1129,10 @@
     padding: 6px 12px; min-height: 32px;
   }
   .cal-remove:hover, .cal-remove.sure { color: #fff; background: var(--red); border-color: var(--red); }
+  .cal-moretoggle {
+    align-self: flex-start; background: none; border: none; cursor: pointer; padding: 6px 0;
+    font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--tint, var(--ink-soft));
+  }
   .cal-importnote {
     display: flex; align-items: center; gap: 2px;
     font-family: var(--sans); font-size: 10px; color: var(--ink-soft);
@@ -5562,7 +5566,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-16-1430";
+  var BUILD = "2026-11-16-1502";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6721,7 +6725,7 @@
     return all.filter(function (ev) {
       if (isOwnEcho(ev.subject, ev.calendar || ev.where)) return false;
       if (isCancelled(ev.subject)) return false;
-      if (!calendarAllowed(ev.calendar)) return false;
+      if (!calendarAllowed(ev.calendar, ev.account)) return false;
       return true;
     });
   }
@@ -7252,9 +7256,16 @@
   function setCalendarsOff(list) {
     try { localStorage.setItem(CAL_OFF_KEY, JSON.stringify(list)); } catch (e) {}
   }
-  function calendarAllowed(name) {
+  // One calendar is its name and its account together. "Calendar" is the
+  // name of a calendar in iCloud, Exchange and Hotmail alike, and hiding
+  // one must not hide the others. Entries saved before this carry the name
+  // only and still hide every calendar of that name, until one of them is
+  // ticked or unticked, when they are spelled out one by one.
+  function calKey(name, account) { return String(name || "") + "\u0001" + String(account || ""); }
+  function calendarAllowed(name, account) {
     if (!name) return true;
-    return calendarsOff().indexOf(name) === -1;
+    var off = calendarsOff();
+    return off.indexOf(name) === -1 && off.indexOf(calKey(name, account)) === -1;
   }
 
   // ── Dated tasks, written into Apple Calendar ────────────
@@ -7703,6 +7714,20 @@
       "Nothing is uploaded.<br><b>Or a link:</b> Outlook, Google and iCloud can each publish a " +
       "calendar as a URL. The link is a secret \u2014 it stays on this device.";
     feedBox.appendChild(feedHint);
+    // On the phone the calendars listed above arrive by themselves; a link
+    // or a file is only for a calendar that is not on it, which is rare. So
+    // there it is folded away, with words for a phone rather than a tip
+    // about File > Export on a Mac.
+    if (calBridge()) {
+      feedHint.textContent = "Your iPhone\u2019s calendars appear above by themselves. A link or a file is only for a calendar that is not on this iPhone. Nothing is uploaded.";
+      var addMore = el("button", "cal-moretoggle", "Add a calendar from a link or a file \u203a");
+      feedBox.insertBefore(addMore, feedRow);
+      [feedRow, importRow, feedHint].forEach(function (n) { n.style.display = "none"; });
+      addMore.addEventListener("click", function () {
+        addMore.style.display = "none";
+        [feedRow, importRow, feedHint].forEach(function (n) { n.style.display = ""; });
+      });
+    }
     panel.appendChild(feedBox);
 
     // The tick list of calendars on this phone. Grouped by the account
@@ -7855,17 +7880,27 @@
         if (!res || !res.granted || !res.calendars || !res.calendars.length) return;
         calList.textContent = "";
         calList.appendChild(el("div", "cal-feedhint", "Calendars on this phone"));
-        var off = calendarsOff();
         res.calendars.forEach(function (c) {
           var row = el("label", "cal-calrow");
           var box = el("input", "cal-calbox");
           box.type = "checkbox";
-          box.checked = off.indexOf(c.title) === -1;
+          box.checked = calendarAllowed(c.title, c.account);
           box.addEventListener("change", function () {
             var now = calendarsOff();
-            var at = now.indexOf(c.title);
+            var legacy = now.indexOf(c.title);
+            if (legacy !== -1) {
+              // An old name-only entry: every calendar of this name was
+              // hidden. Keep them hidden, one by one, then change this one.
+              now.splice(legacy, 1);
+              res.calendars.forEach(function (o) {
+                if (o.title !== c.title) return;
+                var ok = calKey(o.title, o.account);
+                if (now.indexOf(ok) === -1) now.push(ok);
+              });
+            }
+            var k = calKey(c.title, c.account), at = now.indexOf(k);
             if (box.checked) { if (at !== -1) now.splice(at, 1); }
-            else if (at === -1) now.push(c.title);
+            else if (at === -1) now.push(k);
             setCalendarsOff(now);
             render();
           });
@@ -14456,7 +14491,7 @@
         (res.events || []).forEach(function (ev) {
           if (ev.declined) return;
           if (isOwnEcho(ev.title, ev.calendar) || isCancelled(ev.title)) return;
-          if (!calendarAllowed(ev.calendar)) return;      // hidden here, not shared either
+          if (!calendarAllowed(ev.calendar, ev.account)) return;      // hidden here, not shared either
           events.push({ s: ev.start, e: ev.end, a: !!ev.allDay, t: ev.title || "",
                         w: ev.where || "", c: ev.calendar || "", k: ev.colour || "" });
         });
