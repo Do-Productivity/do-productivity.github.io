@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xefKPd9fLvKQjUmYaRBYIlvuFoSPeyV4IhiDIGV16Po=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-lYiGWsBoPnecxa2n1+G0JwFoK058En0zHXQlwU5ELFE=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -1051,6 +1051,34 @@
     display: flex; flex-direction: column; gap: 6px;
   }
   .cal-feedlist { display: flex; flex-direction: column; gap: 3px; }
+  .cal-writebox {
+    display: flex; flex-direction: column; gap: 7px;
+    padding: 2px 2px 9px; border-bottom: 1px solid var(--rule); margin-bottom: 2px;
+  }
+  .cal-writerow { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .cal-writewords, .cal-alertwords {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+    font-family: var(--sans); font-size: 12.5px; color: var(--ink); line-height: 1.3;
+  }
+  .cal-writewords small, .cal-alertwords small { font-size: 10.5px; color: var(--ink-soft); }
+  .cal-switch {
+    -webkit-appearance: none; appearance: none; flex: none; margin: 0; cursor: pointer;
+    width: 46px; height: 28px; border-radius: 999px; position: relative;
+    background: rgba(43, 38, 32, .16); transition: background .18s ease;
+  }
+  .cal-switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .18s ease;
+  }
+  .cal-switch:checked { background: var(--tint, #358a87); }
+  .cal-switch:checked::after { transform: translateX(18px); }
+  .cal-switch:disabled { opacity: .5; }
+  .cal-writenote { font-family: var(--sans); font-size: 11px; color: var(--ink-soft); margin: 0; }
+  .cal-writenote.bad { color: var(--red); }
+  .cal-writenote.quiet { color: var(--ink-faint); font-size: 10px; }
+  .cal-alerts { display: flex; flex-direction: column; gap: 6px; }
+  .cal-alertrow { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+  .cal-alertpick { flex: none; margin: 2px 0 0; width: 17px; height: 17px; accent-color: var(--tint, #358a87); }
   .cal-feeditem {
     display: flex; align-items: center; gap: 6px;
     font-family: var(--sans); font-size: 10.5px; color: var(--ink);
@@ -3296,7 +3324,7 @@
           <li><b>Without sync: nothing.</b> Your lists stay on this device.</li>
           <li><b>With sync:</b> a scrambled copy of your lists goes to the app's server, so your devices can share it. The key stays on your devices. Nobody else can read the copy, and that includes the people who run the server.</li>
           <li><b>Never:</b> no email address, no name, no counting of who opens the app, no advertising, no tracking.</li>
-          <li><b>Your calendar</b> is read on this device and is never sent.</li>
+          <li><b>Your calendar</b> is read on this device and is not sent, unless you switch on <b>Show my meetings on my other devices</b> in the Calendar settings. Then your meetings for the next 8 weeks travel only inside the scrambled copy, which nobody else can read.</li>
           <li><b>A founding seat,</b> only if you take one: a random code and your seat number. No name and no email address.</li>
         </ul>
       </details>
@@ -5514,7 +5542,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-15-1245";
+  var BUILD = "2026-11-16-1359";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6565,6 +6593,11 @@
   // knows what the app last told it, and "the calendar just arrived" is
   // exactly the moment it has to be told again.
   var onCalendarCached = null;
+  // Told when tasks arrive from another device. Those are written straight
+  // into storage, past saveTasks, so without this the phone only heard about
+  // them the next time the app was reopened: a task added on the laptop got
+  // no reminder and no place in the Do. calendar until then.
+  var onSyncApplied = null;
   function saveMsCache() {
     try {
       localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
@@ -6579,13 +6612,92 @@
       ("0" + d.getDate()).slice(-2);
   }
 
+  // ── Your iPhone's meetings, on your other devices ────────
+  // Off unless switched on, on the phone. A browser has no way to read
+  // anybody's calendar, so when this is on the phone puts its meetings for
+  // the coming weeks into the synced copy. That copy is sealed on the phone
+  // with the key only your own devices hold, exactly like your lists, so
+  // the server keeps something it cannot open. The meetings go nowhere
+  // else: not into the GitHub mirror, not into any other sync. Only what a
+  // calendar needs to draw them travels: title, time, place and calendar
+  // name. Notes, links and who else is invited stay on the phone.
+  var MEETSHARE_KEY = "dia_todo_meetshare_v1";   // this phone: "1" when sharing
+  var MEETINGS_KEY = "dia_todo_meetings_v1";     // the latest copy: { at, off, events }
+  var MEET_BACK_DAYS = 2, MEET_AHEAD_DAYS = 56;
+  var meetShareState = { changed: null, paint: null };
+  function meetShareOn() {
+    try { return localStorage.getItem(MEETSHARE_KEY) === "1"; } catch (e) { return false; }
+  }
+  function loadMeetingsDoc() {
+    try {
+      var v = JSON.parse(localStorage.getItem(MEETINGS_KEY) || "null");
+      return (v && typeof v.at === "number") ? v : null;
+    } catch (e) { return null; }
+  }
+  // Always later than the copy it replaces, even when two writes share a
+  // millisecond or a clock has been wound back: the newest copy wins.
+  function meetingsStamp() {
+    var mine = loadMeetingsDoc();
+    return Math.max(Date.now(), mine ? mine.at + 1 : 0);
+  }
+  function saveMeetingsDoc(v) {
+    try { localStorage.setItem(MEETINGS_KEY, JSON.stringify(v)); } catch (e) {}
+  }
+  // What arrives is another device's word, so it is checked like anything
+  // else from outside: numbers are numbers, text is short, and there is a
+  // ceiling on how much of it there can be.
+  function normalizeMeetings(list) {
+    if (!list || !list.slice) return [];
+    var out = [];
+    list.slice(0, 3000).forEach(function (ev) {
+      if (!ev || typeof ev.s !== "number" || !isFinite(ev.s)) return;
+      var e = (typeof ev.e === "number" && isFinite(ev.e) && ev.e >= ev.s) ? ev.e : ev.s + 1800000;
+      out.push({ s: ev.s, e: e, a: !!ev.a,
+                 t: String(ev.t || "").slice(0, 300), w: String(ev.w || "").slice(0, 200),
+                 c: String(ev.c || "").slice(0, 100), k: /^#[0-9a-f]{3,8}$/i.test(ev.k || "") ? ev.k : "" });
+    });
+    return out;
+  }
+  // Shown only where the device has no calendar of its own to read: a
+  // phone already has these meetings and would draw every one twice.
+  function sharedMeetings() {
+    if (calBridge()) return null;
+    var v = loadMeetingsDoc();
+    return (v && !v.off && v.events && v.events.length) ? v : null;
+  }
+  function sharedEventsFor(dayStart) {
+    var v = sharedMeetings();
+    if (!v) return [];
+    var key = dayKey(dayStart), out = [];
+    v.events.forEach(function (ev) {
+      if (dayKey(ev.a ? ev.s + 60000 : ev.s) !== key) return;
+      out.push({ id: "p:" + ev.s + ":" + ev.t, subject: ev.t || "(no title)",
+                 start: ev.s, end: ev.e, allDay: ev.a, where: ev.w, colour: ev.k,
+                 calendar: ev.c, account: "From your iPhone", editable: false });
+    });
+    return out;
+  }
+  // The copy from the other devices, taken when it is newer than ours.
+  // True when ours is the newer one, so the caller knows to upload it.
+  function adoptMeetings(remoteDoc) {
+    var theirs = remoteDoc && remoteDoc.meetings;
+    var mine = loadMeetingsDoc();
+    if (!theirs || typeof theirs.at !== "number") return !!mine;
+    if (mine && mine.at >= theirs.at) return mine.at > theirs.at;
+    saveMeetingsDoc({ at: theirs.at, off: !!theirs.off,
+                      events: theirs.off ? [] : normalizeMeetings(theirs.events) });
+    if (typeof refreshCalendar === "function") refreshCalendar();
+    if (meetShareState.paint) meetShareState.paint();
+    return false;
+  }
+
   // Filtered on the way OUT, not only on the way in. Filtering at fetch
   // time leaves every echo already sitting in the cache — on a device that
   // has been running this for days, that is all of them — and they would
   // survive until each day happened to be re-read. A read-time filter
   // cleans the past as well as the future.
   function msEventsFor(dayStart) {
-    var all = msEvents[dayKey(dayStart)] || [];
+    var all = (msEvents[dayKey(dayStart)] || []).concat(sharedEventsFor(dayStart));
     return all.filter(function (ev) {
       if (isOwnEcho(ev.subject, ev.calendar || ev.where)) return false;
       if (isCancelled(ev.subject)) return false;
@@ -7117,6 +7229,31 @@
     return calendarsOff().indexOf(name) === -1;
   }
 
+  // ── Dated tasks, written into Apple Calendar ────────────
+  // On this device only, and only when switched on: the tasks go into a
+  // calendar of Do.'s own called "Do.", which iCloud then carries to the
+  // Mac and the iPad. The writing is in CalendarBridge.swift, which will
+  // touch no other calendar. Alerts come from one place, never two: from
+  // Do. on this phone (the default), or from that calendar instead.
+  var CALWRITE_KEY = "dia_todo_calwrite_v1";
+  function calWrite() {
+    try {
+      var v = JSON.parse(localStorage.getItem(CALWRITE_KEY) || "null");
+      if (v && typeof v.on === "boolean") {
+        return { on: v.on, alerts: v.alerts === "calendar" ? "calendar" : "do" };
+      }
+    } catch (e) {}
+    return { on: false, alerts: "do" };
+  }
+  // result: what the phone said after the last write; paint: the panel's
+  // redraw; changed: the native layer's "write again now".
+  var calWriteState = { result: null, busy: false, paint: null, changed: null };
+  function setCalWrite(v) {
+    try { localStorage.setItem(CALWRITE_KEY, JSON.stringify({ on: !!v.on, alerts: v.alerts === "calendar" ? "calendar" : "do" })); } catch (e) {}
+    if (calWriteState.changed) calWriteState.changed();
+    if (calWriteState.paint) calWriteState.paint();
+  }
+
   var nativeAsked = false;
   function ensureNativeEvents(fromTs, days, done) {
     var cb = calBridge();
@@ -7385,7 +7522,7 @@
       if (cb || !anyCalendarSource() || icsFeeds().length) {
         var open = feedBox.style.display === "none";
         feedBox.style.display = open ? "" : "none";
-        if (open) { paintFeeds(); paintImport(); paintCalendars(); }
+        if (open) { paintFeeds(); paintImport(); paintCalWrite(); paintMeetShare(); paintCalendars(); }
         return;
       }
       var btn = document.getElementById("sync-btn");
@@ -7408,6 +7545,12 @@
     // been told the calendar is showing half their day.
     var feedBox = el("div", "cal-feedbox");
     feedBox.style.display = "none";
+    var writeBox = el("div", "cal-writebox");
+    writeBox.style.display = "none";
+    feedBox.appendChild(writeBox);
+    var shareBox = el("div", "cal-writebox");
+    shareBox.style.display = "none";
+    feedBox.appendChild(shareBox);
     var calList = el("div", "cal-callist");
     calList.style.display = "none";
     feedBox.appendChild(calList);
@@ -7439,8 +7582,20 @@
     var importNote = el("span", "cal-importnote", "");
     importRow.appendChild(importNote);
     feedBox.appendChild(importRow);
+    // In a browser: where the iPhone's meetings come from, and that a file
+    // imported before is now a second, frozen copy of the same calendar.
+    var meetNote = el("p", "cal-writenote", "");
+    meetNote.style.display = "none";
+    feedBox.insertBefore(meetNote, importRow);
 
     function paintImport() {
+      var shared = sharedMeetings();
+      meetNote.style.display = shared ? "" : "none";
+      if (shared) {
+        meetNote.textContent = "Meetings from your iPhone: " + shared.events.length +
+          " in the coming weeks, sealed in your synced copy. They update whenever Do. is open on the phone." +
+          (importedEvents() ? " The imported file below is a copy from the day you imported it, and does not update: you can forget it." : "");
+      }
       var got = importedEvents();
       if (!got) { importNote.textContent = ""; return; }
       importNote.textContent = got.events.length + " events from " + got.name;
@@ -7502,6 +7657,146 @@
     // The tick list of calendars on this phone. Grouped by the account
     // they came from, because "Calendar" means nothing on its own when
     // three accounts each have one.
+    // The switch for writing dated tasks into Apple Calendar. Only in the
+    // app: a browser cannot write to anybody's calendar.
+    function paintCalWrite() {
+      var cb = calBridge();
+      if (!cb || !cb.writeTasks) { writeBox.style.display = "none"; return; }
+      writeBox.style.display = "";
+      writeBox.textContent = "";
+      var cw = calWrite();
+
+      var row = el("label", "cal-writerow");
+      var words = el("span", "cal-writewords");
+      words.appendChild(el("b", null, "Add my dated tasks to Apple Calendar"));
+      words.appendChild(el("small", null, "Into a calendar of their own, called Do. Do. never changes any other calendar."));
+      row.appendChild(words);
+      var sw = el("input", "cal-switch");
+      sw.type = "checkbox";
+      sw.setAttribute("role", "switch");
+      sw.checked = cw.on;
+      sw.disabled = calWriteState.busy;
+      row.appendChild(sw);
+      writeBox.appendChild(row);
+
+      sw.addEventListener("change", function () {
+        if (sw.checked) {
+          calWriteState.busy = true;
+          paintCalWrite();
+          cb.access().then(function (res) {
+            calWriteState.busy = false;
+            if (res && res.granted) {
+              try { localStorage.setItem(CAL_PERM_KEY, "1"); } catch (e) {}
+              calWriteState.result = null;
+              setCalWrite({ on: true, alerts: calWrite().alerts });
+            } else {
+              calWriteState.result = { ok: false, reason: "permission" };
+              setCalWrite({ on: false, alerts: calWrite().alerts });
+              msEvNote("no calendar permission");
+            }
+          }).catch(function () { calWriteState.busy = false; paintCalWrite(); });
+          return;
+        }
+        // Off: the Do. calendar goes, and only it. The tasks stay in Do.
+        calWriteState.busy = true;
+        paintCalWrite();
+        var done = function () {
+          calWriteState.busy = false;
+          calWriteState.result = null;
+          setCalWrite({ on: false, alerts: calWrite().alerts });
+          flashStatus("The Do. calendar was removed. Your tasks are all still here.");
+        };
+        (cb.removeCalendar ? cb.removeCalendar() : Promise.resolve()).then(done, done);
+      });
+
+      if (!cw.on) {
+        var r0 = calWriteState.result;
+        if (r0 && !r0.ok && r0.reason === "permission") {
+          writeBox.appendChild(el("p", "cal-writenote bad", "Do. is not allowed to use your calendars. Settings › Do. › Calendars › Full Access."));
+        }
+        return;
+      }
+
+      var r = calWriteState.result, note;
+      if (calWriteState.busy || !r) note = el("p", "cal-writenote", "Adding your tasks to the Do. calendar…");
+      else if (r.ok) note = el("p", "cal-writenote", "On · " + r.count + (r.count === 1 ? " task" : " tasks") + " in the Do. calendar" + (r.account ? " (" + r.account + ")" : ""));
+      else if (r.reason === "permission") note = el("p", "cal-writenote bad", "Do. is not allowed to use your calendars. Settings › Do. › Calendars › Full Access.");
+      else if (r.reason === "nowhere") note = el("p", "cal-writenote bad", "This iPhone has no iCloud or On My iPhone calendar to put them in. Turn on Calendars in Settings › your name › iCloud.");
+      else note = el("p", "cal-writenote bad", "Could not update the Do. calendar (" + String(r.reason || "unknown").slice(0, 60) + "). Do. tries again the next time a task changes.");
+      writeBox.appendChild(note);
+
+      var alerts = el("div", "cal-alerts");
+      alerts.appendChild(el("div", "cal-feedhint", "Alerts come from"));
+      [["do", "Do., on this iPhone", "As now. The calendar entries stay silent."],
+       ["calendar", "Apple Calendar, on all your devices", "Do. stops its own alert, so nothing rings twice."]].forEach(function (o) {
+        var opt = el("label", "cal-alertrow");
+        var radio = el("input", "cal-alertpick");
+        radio.type = "radio";
+        radio.name = "cal-alerts";
+        radio.checked = cw.alerts === o[0];
+        radio.addEventListener("change", function () {
+          if (radio.checked) setCalWrite({ on: true, alerts: o[0] });
+        });
+        opt.appendChild(radio);
+        var t = el("span", "cal-alertwords");
+        t.appendChild(el("b", null, o[1]));
+        t.appendChild(el("small", null, o[2]));
+        opt.appendChild(t);
+        alerts.appendChild(opt);
+      });
+      writeBox.appendChild(alerts);
+      writeBox.appendChild(el("p", "cal-writenote quiet", "Turning this off removes the Do. calendar. Your tasks stay in Do."));
+    }
+    calWriteState.paint = function () { if (feedBox.style.display !== "none") paintCalWrite(); };
+
+    // The switch for showing this phone's meetings on the other devices.
+    // Only in the app: it is the phone that has the meetings to give.
+    function paintMeetShare() {
+      var cb = calBridge();
+      if (!cb || !cb.events) { shareBox.style.display = "none"; return; }
+      shareBox.style.display = "";
+      shareBox.textContent = "";
+      var row = el("label", "cal-writerow");
+      var words = el("span", "cal-writewords");
+      words.appendChild(el("b", null, "Show my meetings on my other devices"));
+      words.appendChild(el("small", null, "For Do. on the web. Your meetings for the next 8 weeks travel inside your synced copy, sealed on this iPhone like your lists. Only your devices can read them."));
+      row.appendChild(words);
+      var sw = el("input", "cal-switch");
+      sw.type = "checkbox";
+      sw.setAttribute("role", "switch");
+      sw.checked = meetShareOn();
+      row.appendChild(sw);
+      shareBox.appendChild(row);
+
+      sw.addEventListener("change", function () {
+        var turnOn = sw.checked;
+        var ask = (!turnOn || localStorage.getItem(CAL_PERM_KEY) === "1")
+          ? Promise.resolve({ granted: true }) : cb.access();
+        ask.then(function (res) {
+          if (turnOn && !(res && res.granted)) {
+            sw.checked = false;
+            flashStatus("Do. is not allowed to read your calendars. Settings › Do. › Calendars.");
+            return;
+          }
+          if (turnOn) { try { localStorage.setItem(CAL_PERM_KEY, "1"); } catch (e) {} }
+          try { localStorage.setItem(MEETSHARE_KEY, turnOn ? "1" : "0"); } catch (e) {}
+          flashStatus(turnOn
+            ? "Your meetings will appear on your other devices after the next sync."
+            : "Your other devices will remove your meetings at their next sync.");
+          if (meetShareState.changed) meetShareState.changed();
+          paintMeetShare();
+        }, function () { sw.checked = false; });
+      });
+
+      if (!meetShareOn()) return;
+      var v = loadMeetingsDoc(), note;
+      if (!vaultActive()) note = el("p", "cal-writenote bad", "Turn on Sync first, from the Sync button at the top. Your meetings travel only inside the synced copy.");
+      else if (v && !v.off) note = el("p", "cal-writenote", "On \u00b7 " + v.events.length + (v.events.length === 1 ? " meeting" : " meetings") + " in the next 8 weeks, shared with your devices. Updated whenever Do. is open on this iPhone.");
+      else note = el("p", "cal-writenote", "Getting your meetings ready\u2026");
+      shareBox.appendChild(note);
+    }
+    meetShareState.paint = function () { if (feedBox.style.display !== "none") paintMeetShare(); };
+
     function paintCalendars() {
       var cb = calBridge();
       if (!cb || !cb.calendars) return;
@@ -8251,7 +8546,9 @@
         return;
       }
       if (!msConnected()) {
-        source.textContent = icsFeeds().length
+        source.textContent = sharedMeetings()
+          ? "Meetings from your iPhone" + (icsFeeds().length ? " and " + icsFeeds().length + " linked" : "") + " \u2014 tap to manage"
+          : icsFeeds().length
           ? "Calendars: " + icsFeeds().length + " linked \u2014 tap to manage"
           : "Only your tasks \u2014 tap to add a calendar link";
         source.className = "cal-source off";
@@ -9015,7 +9312,7 @@
     } catch (e) { return false; }
   }
   function calendarReadable() {
-    try { return calendarFetchAllowed() || !!importedEvents(); } catch (e) { return false; }
+    try { return calendarFetchAllowed() || !!importedEvents() || !!sharedMeetings(); } catch (e) { return false; }
   }
 
   function meetingsFor(dayStart) {
@@ -11310,6 +11607,8 @@
 
   function forgetVault() {
     secrets.removeItem(VAULT_KEY);
+    // Another device's meetings were only ever here because of sync.
+    try { localStorage.removeItem(MEETINGS_KEY); } catch (e) {}
     vaultKeysCache = null;
     clearTimeout(syncState.pushTimer);
     syncState.vaultAt = null;
@@ -11449,6 +11748,7 @@
           var doc = JSON.parse(text);
           var weHaveMore = mergeRemoteIntoLocal(doc);
           if (adoptMember(doc)) weHaveMore = true;
+          if (adoptMeetings(doc)) weHaveMore = true;
           syncState.vaultAt = j.at;
           syncState.lastRemote = text;
           syncState.lastApplied = doc.updatedAt || Date.now();
@@ -11479,6 +11779,7 @@
           var theirs = JSON.parse(text);
           mergeRemoteIntoLocal(theirs);
           adoptMember(theirs);
+          adoptMeetings(theirs);
           return true;
         });
       }).then(function (goOn) {
@@ -12230,6 +12531,10 @@
     var doc = buildSyncDoc();
     var member = memberForSync();
     if (member.founder || member.invited || member.gone) doc.member = member;
+    // Only here, in the sealed copy. buildSyncDoc, which the GitHub mirror
+    // writes out as it is, never carries them.
+    var meet = loadMeetingsDoc();
+    if (meet) doc.meetings = meet;
     return doc;
   }
 
@@ -12315,6 +12620,7 @@
     noteReloaders.forEach(function (r) { r(); });
     refreshScheduled();
     renderToday();
+    if (onSyncApplied) { try { onSyncApplied(); } catch (e) {} }
   }
 
   function setSyncStatusLine(override) {
@@ -13855,12 +14161,23 @@
 
     var lastPlan = "";
 
+    // When the person chose Apple Calendar's alerts and the last write to
+    // the Do. calendar worked, the phone's own reminders stand down, so a
+    // task rings once. If that write did not work they stay: no alert at
+    // all is the one outcome worse than two.
+    function calendarRings() {
+      var cw = calWrite();
+      return cw.on && cw.alerts === "calendar" && !!(calWriteState.result && calWriteState.result.ok);
+    }
+
     function reschedule() {
       if (!LN) return Promise.resolve();
-      var items = dueItems();
+      var standDown = calendarRings();
+      var items = standDown ? [] : dueItems();
       // Rescheduling identical work on every resume would ask iOS to churn
       // through 48 notifications for nothing.
-      var plan = items.map(function (i) { return i.id + "@" + i.due; }).join("|");
+      var plan = (standDown ? "calendar|" : "") +
+        items.map(function (i) { return i.id + "@" + i.due; }).join("|");
       if (plan === lastPlan) return Promise.resolve();
 
       return LN.getPending().then(function (p) {
@@ -13994,18 +14311,123 @@
         });
     }
 
+    // Every dated task that is not finished, past ones included: an
+    // overdue task is still something owed, and the calendar should say so
+    // where it was due. Same ids as the reminders, so each task is one
+    // entry however often it moves.
+    var CB = calBridge();
+    function calendarItems() {
+      var out = [];
+      try {
+        taskLists().forEach(function (l) {
+          loadTasks(l.storageKey).forEach(function (t) {
+            if (t.done || t.deleted || !t.due) return;
+            out.push({ id: "t:" + (t.id || t.text), title: "To do: " + t.text, due: t.due,
+                       notes: "From Do. \u00b7 " + (l.title || "") });
+          });
+        });
+        loadScheduled().forEach(function (w) {
+          if (w.deleted || !w.dueAt || wsFinished(w)) return;
+          out.push({ id: "w:" + w.id, title: "To do: " + w.name, due: w.dueAt,
+                     notes: "From Do. \u00b7 Scheduled" });
+        });
+      } catch (e) {
+        errRecord("native", "could not read tasks for the calendar: " + e.message, "calendarItems");
+        return null;
+      }
+      out.sort(function (a, b) { return a.due - b.due || (a.id < b.id ? -1 : 1); });
+      return out;
+    }
+
+    var lastCalPlan = "", calAgain = false, calWriting = false;
+    function writeCalendar() {
+      var cw = calWrite();
+      if (!CB || !CB.writeTasks || !cw.on) return Promise.resolve();
+      var items = calendarItems();
+      if (!items) return Promise.resolve();
+      var plan = cw.alerts + "|" + JSON.stringify(items);
+      if (plan === lastCalPlan) return Promise.resolve();
+      if (calWriting) { calAgain = true; return Promise.resolve(); }
+      calWriting = true;
+      var rang = calendarRings();
+      return CB.writeTasks({ items: items, alarm: cw.alerts === "calendar" }).then(function (r) {
+        calWriteState.result = r || { ok: false, reason: "no answer" };
+        if (r && r.ok) lastCalPlan = plan;
+        else errRecord("native", "the Do. calendar was not updated: " + (r && r.reason), "writeCalendar");
+      }, function (e) {
+        calWriteState.result = { ok: false, reason: (e && e.message) || "failed" };
+        errRecord("native", "the Do. calendar was not updated: " + (e && e.message), "writeCalendar");
+      }).then(function () {
+        calWriting = false;
+        // Whether the phone rings depends on whether this worked.
+        if (calendarRings() !== rang) { lastPlan = ""; reschedule(); }
+        if (calWriteState.paint) calWriteState.paint();
+        if (calAgain) { calAgain = false; writeCalendar(); }
+      });
+    }
+    calWriteState.changed = function () { lastPlan = ""; lastCalPlan = ""; sync(); };
+
+    // This phone's meetings, for the other devices, when switched on. Read
+    // at most every five minutes while the app is open, and uploaded only
+    // when they changed: an unchanged day costs nothing.
+    var meetBusy = false, meetReadAt = 0;
+    function shareMeetings(force) {
+      var cb = calBridge();
+      if (!cb || !cb.events) return;
+      var mine = loadMeetingsDoc();
+      if (!meetShareOn()) {
+        // Switched off: said once, so the other devices drop their copy.
+        if (mine && !mine.off) {
+          saveMeetingsDoc({ at: meetingsStamp(), off: true, events: [] });
+          if (vaultActive()) scheduleSyncPush();
+          if (meetShareState.paint) meetShareState.paint();
+        }
+        return;
+      }
+      if (!vaultActive() || localStorage.getItem(CAL_PERM_KEY) !== "1") return;
+      if (meetBusy || (!force && Date.now() - meetReadAt < 5 * 60 * 1000)) return;
+      meetBusy = true;
+      cb.events({ from: startOfDay(Date.now(), -MEET_BACK_DAYS), to: startOfDay(Date.now(), MEET_AHEAD_DAYS) }).then(function (res) {
+        meetBusy = false;
+        meetReadAt = Date.now();
+        if (!res || !res.granted || !meetShareOn()) return;
+        var events = [];
+        (res.events || []).forEach(function (ev) {
+          if (ev.declined) return;
+          if (isOwnEcho(ev.title, ev.calendar) || isCancelled(ev.title)) return;
+          if (!calendarAllowed(ev.calendar)) return;      // hidden here, not shared either
+          events.push({ s: ev.start, e: ev.end, a: !!ev.allDay, t: ev.title || "",
+                        w: ev.where || "", c: ev.calendar || "", k: ev.colour || "" });
+        });
+        events = normalizeMeetings(events);
+        events.sort(function (x, y) { return (x.s - y.s) || (x.t < y.t ? -1 : x.t > y.t ? 1 : 0); });
+        var now = loadMeetingsDoc();
+        if (now && !now.off && JSON.stringify(now.events) === JSON.stringify(events)) {
+          if (meetShareState.paint) meetShareState.paint();
+          return;
+        }
+        saveMeetingsDoc({ at: meetingsStamp(), events: events });
+        scheduleSyncPush();
+        if (meetShareState.paint) meetShareState.paint();
+      }, function () { meetBusy = false; });
+    }
+    meetShareState.changed = function () { shareMeetings(true); };
+
     var pending = null;
     function sync() {
       clearTimeout(pending);
       pending = setTimeout(function () {
         reschedule();
         writeWidget();
+        writeCalendar();
+        shareMeetings(false);
       }, 1200);
     }
 
     // Every task write goes through these two, so this is the whole set of
     // places the device needs to hear about.
     onCalendarCached = function () { sync(); };
+    onSyncApplied = function () { sync(); };
     var _saveTasks = saveTasks, _saveScheduled = saveScheduled;
     saveTasks = function (key, arr) { _saveTasks(key, arr); sync(); };
     saveScheduled = function (arr) { _saveScheduled(arr); sync(); };
@@ -14032,7 +14454,9 @@
     // another device, or midnight passing.
     if (AppPlug && AppPlug.addListener) {
       AppPlug.addListener("appStateChange", function (s) {
-        if (s && s.isActive) { lastPlan = ""; sync(); }
+        // Coming back also re-checks the Do. calendar, in case an entry
+        // was deleted from it by hand in the meantime.
+        if (s && s.isActive) { lastPlan = ""; lastCalPlan = ""; meetReadAt = 0; sync(); }
       });
     }
 
@@ -14046,6 +14470,8 @@
       }).catch(function () { /* nothing to do if iOS refuses to ask */ });
     }
     writeWidget();
+    writeCalendar();
+    shareMeetings(true);
     document.body.classList.add("native");
   })();
 })();
