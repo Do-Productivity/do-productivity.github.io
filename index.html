@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JVuSD4A0/1Mt75ZbMvbLhhQpP26h6A6VrikBCtn2uEU=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WjDwdPz9FOAuhIqlBTBGhUZivxkRb6/Sd9hSpstM2lo=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2751,6 +2751,32 @@
     body.view-today .today { flex: 1; }
     .today-card { height: 100%; }
     .panel-footer { margin-top: auto; }
+
+    /* Several lists side by side: see fitPanelTracks, which picks the step
+       from the width each column would get. */
+    .panels.narrow { gap: 20px; }
+    .panels.narrow > .panel { padding: 26px 22px 18px; }
+    .panels.narrow .panel-header .panel-title { font-size: 27px; line-height: 1.15; }
+    .panels.narrow .panel-header .panel-subtitle { font-size: 10px; letter-spacing: 2px; }
+    .panels.narrow .add-row { gap: 8px; }
+    .panels.narrow .add-input { padding: 10px 11px; font-size: 15px; }
+    .panels.narrow .add-btn { padding: 0 14px; letter-spacing: 1px; }
+    .panels.narrow .task-row { gap: 11px; padding: 13px 2px; }
+    .panels.narrow .task-text { font-size: 15.5px; }
+
+    .panels.tight { gap: 14px; }
+    .panels.tight > .panel { padding: 22px 16px 16px; }
+    .panels.tight .panel-header .panel-title { font-size: 23px; line-height: 1.15; letter-spacing: 0; }
+    .panels.tight .panel-header .panel-subtitle { font-size: 9.5px; letter-spacing: 1.5px; }
+    .panels.tight .panel-count { margin-left: 6px; padding: 1px 7px; vertical-align: 4px; }
+    .panels.tight .panel-header .divider { margin: 12px 0 14px; }
+    .panels.tight .add-row { gap: 6px; }
+    .panels.tight .add-input { padding: 9px 9px; font-size: 14.5px; }
+    .panels.tight .add-btn { padding: 0 10px; font-size: 11px; letter-spacing: .5px; }
+    .panels.tight .task-row { gap: 9px; padding: 11px 0; }
+    .panels.tight .task-circle { width: 19px; height: 19px; }
+    .panels.tight .task-text { font-size: 14.5px; line-height: 1.4; }
+    .panels.tight .task-body { min-width: 5em; }
   }
 
   /* Unfolded phones and tablets (and narrow laptop windows): keep the two
@@ -2931,6 +2957,27 @@
   @media (max-width: 600px) {
     #runs-btn, #cal-btn { display: none; }
   }
+  /* The Lists button, and lists put away with it, belong to the web app on
+     a wide screen only. The iPhone app, the Duo and narrow windows are
+     left exactly as they were: every list shows there. */
+  @media (max-width: 1200px) { #lists-btn { display: none; } }
+  body.native #lists-btn { display: none; }
+  @media (min-width: 1201px) {
+    body:not(.native) .panels > .panel.list-hidden { display: none; }
+  }
+  .lists-pop {
+    position: absolute; z-index: 60; width: 270px; max-height: 70vh; overflow: auto;
+    background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+    box-shadow: 0 14px 40px rgba(43, 38, 32, .22); padding: 12px 14px 10px;
+    font-family: var(--sans); color: var(--ink);
+  }
+  .lists-pop-head { font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 6px; }
+  .lists-pop-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; cursor: pointer; }
+  .lists-pop-row input { width: 17px; height: 17px; margin: 0; accent-color: var(--ink); }
+  .lists-pop-row.locked { cursor: default; color: var(--ink-soft); }
+  .lists-pop-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .lists-pop-sep { border-top: 1px solid var(--rule); margin: 6px 0; }
+  .lists-pop-note { font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); margin: 8px 0 2px; }
   .toolbar-btn.on { color: var(--ink); border-color: var(--ink-faint); }
   /* Esc is not a key a phone has. Opening a drawer is the one thing search
      leaves behind, so while one is open there is a visible way to put it
@@ -3145,6 +3192,7 @@
     <button class="toolbar-btn undo-drawer" id="undo-drawer" hidden>× Close Completed</button>
     <button class="toolbar-btn" id="search-btn" title="Search everything (press / )">Search</button>
     <button class="toolbar-btn" id="today-btn">Today</button>
+    <button class="toolbar-btn" id="lists-btn" title="Choose which lists show as columns" aria-haspopup="dialog">Lists</button>
     <button class="toolbar-btn" id="runs-btn" title="Show or hide the Scheduled tasks column">Scheduled</button>
     <button class="toolbar-btn" id="cal-btn" title="Show or hide the Calendar column">Calendar</button>
     <button class="toolbar-btn" id="sync-btn">Sync</button>
@@ -5566,7 +5614,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-16-1502";
+  var BUILD = "2026-11-17-1420";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -8841,9 +8889,25 @@
     // stylesheet said 28, which four columns had enough slack to absorb and
     // five did not: the tracks were sized for 1194px of room and asked for
     // 1257, so the last column hung off the right edge.
+    // Many lists in one window make columns too narrow for the desktop's
+    // type: at six lists a 34px title and 34px of padding left 140px for
+    // the words, and "Updates" broke as "Updat / es". So the columns step
+    // down, "narrow" then "tight", with a smaller title, less padding and a
+    // smaller gap (the stylesheet has the same numbers, on wide screens).
+    panelsRoot.classList.remove("narrow", "tight");
     var cs = getComputedStyle(panelsRoot);
     var gap = parseFloat(cs.columnGap || cs.gap || "") || 12;
-    var ideal = Math.floor((w - (n - 1) * gap) / n);
+    var fit = function (g) { return Math.floor((w - (n - 1) * g) / n); };
+    var ideal = fit(gap);
+    if (n > 1 && ideal < 300) {
+      panelsRoot.classList.add("narrow");
+      gap = Math.min(gap, 20); ideal = fit(gap);
+      if (ideal < 240) {
+        panelsRoot.classList.remove("narrow");
+        panelsRoot.classList.add("tight");
+        gap = Math.min(gap, 14); ideal = fit(gap);
+      }
+    }
     // The 240px cap keeps columns from sprawling when there are several.
     // With one panel filling the screen on purpose it would do the
     // opposite — pin the calendar to 240px in the corner of a 1250px
@@ -8852,13 +8916,19 @@
       panelsRoot.style.setProperty("--track-min", Math.max(132, ideal) + "px");
       return;
     }
+    // On a wide screen a column under 185px cannot hold a word like
+    // "confirmation" beside its tick circle, so below that the row keeps
+    // 185px columns and scrolls sideways. Unfolded phones keep their own
+    // floor: there every column must stay on the one screen.
+    var floor = (panelsRoot.classList.contains("tight") &&
+                 window.matchMedia("(min-width: 1201px) and (min-height: 520px)").matches) ? 185 : 132;
     panelsRoot.style.setProperty("--track-min",
-      Math.max(132, Math.min(240, ideal)) + "px");
+      Math.max(floor, Math.min(240, ideal)) + "px");
   }
   fitPanelTracks();
   window.addEventListener("resize", fitPanelTracks);
   // a list added or removed changes which tile is the odd one out
-  if (window.MutationObserver) new MutationObserver(fitPanelTracks).observe(panelsRoot, { childList: true });
+  if (window.MutationObserver) new MutationObserver(function () { applyListVisibility(); }).observe(panelsRoot, { childList: true });
 
   function panelEl(id) {
     return panelsRoot.querySelector(".panel." + id);
@@ -8940,6 +9010,129 @@
     window.addEventListener("resize", function () {
       if (localStorage.getItem(RUNS_KEY) === null) applyRunsVisibility();
     });
+  })();
+
+  // ── Which lists show as columns ──────────────────────────
+  // Six lists in a laptop window are six narrow columns. Any of them can be
+  // put away with the Lists button: it stays in Search, Today and the
+  // Calendar and keeps its reminders; only its column goes. Kept per
+  // device, because a laptop and a phone are different screens. A new
+  // list shows, and one list always stays.
+  var HIDDEN_LISTS_KEY = "dia_todo_hiddenlists_v1";
+  function hiddenLists() {
+    try { var v = JSON.parse(localStorage.getItem(HIDDEN_LISTS_KEY) || "[]"); return v.slice ? v : []; }
+    catch (e) { return []; }
+  }
+  function setHiddenLists(v) {
+    try { localStorage.setItem(HIDDEN_LISTS_KEY, JSON.stringify(v)); } catch (e) {}
+  }
+  function hideableLists() {
+    var out = taskLists().map(function (l) { return { id: l.id, title: l.title }; });
+    out.push({ id: "notes", title: "Notes" });
+    return out;
+  }
+  function listHidden(id) {
+    var ids = hideableLists().map(function (l) { return l.id; });
+    var hidden = hiddenLists();
+    if (ids.every(function (x) { return hidden.indexOf(x) !== -1; })) return false;
+    return hidden.indexOf(id) !== -1;
+  }
+  function showList(id) {
+    if (hiddenLists().indexOf(id) === -1) return;
+    setHiddenLists(hiddenLists().filter(function (x) { return x !== id; }));
+    applyListVisibility();
+  }
+  function applyListVisibility() {
+    var lists = hideableLists(), n = 0;
+    lists.forEach(function (l) {
+      var off = listHidden(l.id);
+      if (off) n++;
+      var pn = panelEl(l.id);
+      if (pn) pn.classList.toggle("list-hidden", off);
+    });
+    var btn = document.getElementById("lists-btn");
+    if (btn) {
+      btn.classList.toggle("on", n > 0);
+      btn.textContent = n ? "Lists \u00b7 " + n + " hidden" : "Lists";
+      btn.title = n ? n + (n === 1 ? " list is" : " lists are") + " hidden. Choose which lists show as columns"
+                    : "Choose which lists show as columns";
+    }
+    fitPanelTracks();
+  }
+
+  (function () {
+    var btn = document.getElementById("lists-btn");
+    if (!btn) return;
+    var pop = null;
+    function close() {
+      if (!pop) return;
+      pop.remove(); pop = null;
+      btn.setAttribute("aria-expanded", "false");
+      document.removeEventListener("mousedown", outside, true);
+      document.removeEventListener("keydown", onKey, true);
+    }
+    function outside(e) { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); }
+    function onKey(e) { if (e.key === "Escape") { close(); btn.focus(); } }
+    function row(label, colour, checked, locked, onChange) {
+      var r = el("label", "lists-pop-row" + (locked ? " locked" : ""));
+      var box = el("input");
+      box.type = "checkbox";
+      box.checked = checked;
+      box.disabled = !!locked;
+      if (locked) r.title = "One list always stays on screen";
+      box.addEventListener("change", function () { onChange(box.checked); });
+      r.appendChild(box);
+      if (colour) { var d = el("span", "lists-pop-dot"); d.style.background = colour; r.appendChild(d); }
+      r.appendChild(el("span", null, label));
+      return r;
+    }
+    function paint() {
+      pop.textContent = "";
+      pop.appendChild(el("div", "lists-pop-head", "Show as columns"));
+      var lists = hideableLists();
+      var shown = lists.filter(function (l) { return !listHidden(l.id); }).length;
+      lists.forEach(function (l) {
+        var on = !listHidden(l.id);
+        var meta = PANEL_META[l.id] || {};
+        var colour = "";
+        try { colour = tint(meta.tint || "amber").solid; } catch (e) {}
+        pop.appendChild(row(l.title, colour, on, on && shown === 1, function (want) {
+          var h = hiddenLists().filter(function (x) { return x !== l.id; });
+          if (!want) h.push(l.id);
+          setHiddenLists(h);
+          applyListVisibility();
+          paint();
+        }));
+      });
+      pop.appendChild(el("div", "lists-pop-sep"));
+      pop.appendChild(row("Scheduled tasks", "", runsShown(), false, function (want) {
+        localStorage.setItem(RUNS_KEY, want ? "1" : "0");
+        applyRunsVisibility();
+        paint();
+      }));
+      pop.appendChild(el("p", "lists-pop-note", "A hidden list stays in Search, Today and the Calendar, and keeps its reminders. Only its column goes, on this device."));
+    }
+    btn.addEventListener("click", function () {
+      if (pop) { close(); return; }
+      pop = el("div", "lists-pop");
+      pop.setAttribute("role", "dialog");
+      pop.setAttribute("aria-label", "Which lists show as columns");
+      document.body.appendChild(pop);
+      paint();
+      var r = btn.getBoundingClientRect();
+      var left = Math.max(12, Math.min(window.innerWidth - pop.offsetWidth - 12, r.left));
+      var top = r.bottom + 8;
+      if (top + pop.offsetHeight > window.innerHeight - 12) top = Math.max(12, r.top - pop.offsetHeight - 8);
+      if (left + pop.offsetWidth > r.left && r.left > window.innerWidth - 120) left = Math.max(12, r.left - pop.offsetWidth - 10);
+      pop.style.left = (left + window.scrollX) + "px";
+      pop.style.top = (top + window.scrollY) + "px";
+      btn.setAttribute("aria-expanded", "true");
+      document.addEventListener("mousedown", outside, true);
+      document.addEventListener("keydown", onKey, true);
+      var first = pop.querySelector("input:not([disabled])");
+      if (first) first.focus();
+    });
+    applyListVisibility();
   })();
 
   function setMobileTab(id) {
@@ -9179,6 +9372,8 @@
         localStorage.setItem(RUNS_KEY, "1");
         applyRunsVisibility();
       }
+      // and one from a list put away brings that list back
+      showList(r.kind === "note" ? "notes" : r.listId);
       if (document.body.classList.contains("view-today")) showToday(false);
       // Notes can be filtered down to a single task by the badge on a task
       // row. A note from any other task is then not rendered, so drop the
