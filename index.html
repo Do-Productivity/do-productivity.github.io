@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hlwbUpLgKxm69KL/MV/8AcbV+wHmgy0gsb4aefwVifg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-jng2iWT4uA/mJupgx5nrp/fjhESIUUE4RpoTNtAgwpE=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2971,13 +2971,36 @@
   @media (max-width: 600px) {
     #runs-btn, #cal-btn { display: none; }
   }
-  /* The Lists button, and lists put away with it, belong to the web app on
-     a wide screen only. The iPhone app, the Duo and narrow windows are
-     left exactly as they were: every list shows there. */
-  @media (max-width: 1200px) { #lists-btn { display: none; } }
-  body.native #lists-btn { display: none; }
+  /* The Lists button, and lists put away with it, belong where lists
+     stand side by side and the controls have room: a wide window, and the
+     Duo opened (its symbols column or row). A phone shows one list at a
+     time in the card deck, and a narrow window's row of words has no room,
+     so there every list stays and the button is not shown. It waits for
+     the Duo's layout class: as a word in the row it would widen the row
+     before that class arrives, and the page would open zoomed out. */
+  @media (max-width: 600px) { #lists-btn { display: none; } }
+  @media (min-width: 601px) and (max-width: 1200px) {
+    html:not(.has-pill):not(.pill-top) #lists-btn { display: none; }
+    html.has-pill .panels > .panel.list-hidden,
+    html.pill-top .panels > .panel.list-hidden { display: none; }
+  }
   @media (min-width: 1201px) {
-    body:not(.native) .panels > .panel.list-hidden { display: none; }
+    .panels > .panel.list-hidden { display: none; }
+  }
+  #lists-btn { position: relative; }
+  /* in the Duo's column of symbols the count of hidden lists is a badge */
+  #lists-btn .lists-n { display: none; }
+  html.has-pill #lists-btn .lists-n, html.pill-top #lists-btn .lists-n {
+    display: block; position: absolute; right: -3px; top: -3px;
+    min-width: 19px; height: 19px; padding: 0 5px; box-sizing: border-box;
+    border-radius: 999px; background: var(--ink); color: var(--card);
+    font: 700 11px/19px var(--sans); text-align: center;
+  }
+  html.has-pill #lists-btn .lists-n:empty, html.pill-top #lists-btn .lists-n:empty { display: none; }
+  @media (pointer: coarse) {
+    .lists-pop { width: 290px; }
+    .lists-pop-row { min-height: 44px; padding: 4px 0; font-size: 16px; }
+    .lists-pop-row input { width: 22px; height: 22px; }
   }
   .lists-pop {
     position: absolute; z-index: 60; width: 270px; max-height: 70vh; overflow: auto;
@@ -3119,6 +3142,7 @@
     html.pill-top #runs-btn:not(.off), html.pill-top #cal-btn:not(.off) { filter: invert(1) hue-rotate(180deg); }
     html.has-pill #search-btn, html.pill-top #search-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2711%27%20cy%3D%2711%27%20r%3D%276.5%27%2F%3E%3Cpath%20d%3D%27M16%2016l4.5%204.5%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill #today-btn, html.pill-top #today-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Crect%20x%3D%274%27%20y%3D%275%27%20width%3D%2716%27%20height%3D%2715%27%20rx%3D%273%27%2F%3E%3Cpath%20d%3D%27M4%2010h16M8%203v4M16%203v4%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #lists-btn, html.pill-top #lists-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Crect%20x%3D%273.5%27%20y%3D%274.5%27%20width%3D%274.5%27%20height%3D%2715%27%20rx%3D%271.5%27%2F%3E%3Crect%20x%3D%279.75%27%20y%3D%274.5%27%20width%3D%274.5%27%20height%3D%2715%27%20rx%3D%271.5%27%2F%3E%3Crect%20x%3D%2716%27%20y%3D%274.5%27%20width%3D%274.5%27%20height%3D%2715%27%20rx%3D%271.5%27%20stroke-dasharray%3D%272%202.2%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill #runs-btn, html.pill-top #runs-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M5%206h14M5%2012h14M5%2018h9%27%2F%3E%3Ccircle%20cx%3D%2718.5%27%20cy%3D%2718%27%20r%3D%272.2%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill #cal-btn, html.pill-top #cal-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%278%27%2F%3E%3Cpath%20d%3D%27M12%207.5V12l3%202%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill #sync-btn, html.pill-top #sync-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M20%2012a8%208%200%200%201-14.3%204.9M4%2012a8%208%200%200%201%2014.3-4.9%27%2F%3E%3Cpath%20d%3D%27M18.6%203.4v3.9h-3.9M5.4%2020.6v-3.9h3.9%27%2F%3E%3C%2Fsvg%3E"); }
@@ -5681,7 +5705,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-17-1458";
+  var BUILD = "2026-11-17-2214";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -9121,6 +9145,8 @@
     if (btn) {
       btn.classList.toggle("on", n > 0);
       btn.textContent = n ? "Lists \u00b7 " + n + " hidden" : "Lists";
+      btn.appendChild(el("span", "lists-n", n ? String(n) : ""));
+      btn.setAttribute("aria-label", n ? "Lists, " + n + " hidden" : "Lists");
       btn.title = n ? n + (n === 1 ? " list is" : " lists are") + " hidden. Choose which lists show as columns"
                     : "Choose which lists show as columns";
     }
@@ -9135,7 +9161,7 @@
       if (!pop) return;
       pop.remove(); pop = null;
       btn.setAttribute("aria-expanded", "false");
-      document.removeEventListener("mousedown", outside, true);
+      document.removeEventListener("pointerdown", outside, true);
       document.removeEventListener("keydown", onKey, true);
     }
     function outside(e) { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); }
@@ -9194,7 +9220,7 @@
       pop.style.left = (left + window.scrollX) + "px";
       pop.style.top = (top + window.scrollY) + "px";
       btn.setAttribute("aria-expanded", "true");
-      document.addEventListener("mousedown", outside, true);
+      document.addEventListener("pointerdown", outside, true);
       document.addEventListener("keydown", onKey, true);
       var first = pop.querySelector("input:not([disabled])");
       if (first) first.focus();
