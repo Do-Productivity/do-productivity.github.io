@@ -1,7 +1,7 @@
 # Security
 
 What Do. holds, who would want it, what is now closed, and what is left open
-on purpose. Written 10 November 2026, last checked against build `2026-11-18-1733`.
+on purpose. Written 10 November 2026, last checked against build `2026-11-18-1822`.
 
 This is not a reassurance document. Where something is weak, it says so.
 
@@ -122,7 +122,8 @@ anywhere, and an allow-list would break the moment somebody pasted their own.
 ### 4. The sync token sat in `localStorage` — moved to the Keychain on iOS
 
 Four things are secrets: the GitHub sync token, the cloud session, the feed
-token and the Microsoft calendar session. On the iPhone they now live in the
+token and the Microsoft calendar session (that Outlook connection was
+removed in November 2026: calendars are now connected on the iPhone only). On the iPhone they now live in the
 **Keychain**, through a small native plugin (`SecureStore.swift`), stored
 `AfterFirstUnlockThisDeviceOnly` and not synchronised — so they are encrypted
 with the device, never ride along in an iCloud or computer backup, and are no
