@@ -78,7 +78,7 @@ public class CalendarBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             return [
                 "id": cal.calendarIdentifier,
                 "title": cal.title,
-                // The account it came from: "Mylo", "iCloud", "Gmail". This
+                // The account it came from: "Work", "iCloud", "Gmail". This
                 // is the word a person recognises, not the calendar's name.
                 "account": cal.source?.title ?? "",
                 "colour": Self.hex(cal.cgColor),
