@@ -79,7 +79,20 @@ policy gets a paragraph saying exactly the table above.
 2. Founder codes loaded (unchanged plan, without the 25% codes).
 3. Build referrals, test, then submit 1.1.
 
-## Built (18 November 2026), not yet online
+## Online (18 November 2026)
+
+Database part, both server functions and REFERRAL_ALLOW_SANDBOX=1 deployed
+with `scripts/deploy-referrals.sh`. Checked from outside with the public key:
+the app gets a code; it cannot record a purchase, a refund or hand out a code
+(permission denied, after taking back Supabase's default grants); the
+function refuses an unsigned purchase; the listener refuses an unsigned
+notice. Apple Root CA - G3 fingerprint checked against apple.com.
+
+Still to do, after 1.0 is approved: the notifications URL and the offer codes
+in App Store Connect (step 4 below); publish the web app with the 1.1 code
+before 1.1 is released, so shared #ref links explain themselves.
+
+## Built (18 November 2026)
 
 | Part | Where | Tested by |
 |---|---|---|
