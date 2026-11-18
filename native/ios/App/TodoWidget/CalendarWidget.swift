@@ -451,7 +451,7 @@ struct CalTodayView: View {
                         Text(quiet.head).font(.system(size: 10, weight: .bold)).widgetAccentable()
                         Text(quiet.line).font(.system(size: 13, weight: .semibold))
                         if entry.today != nil, let t = tomorrow {
-                            Text("tomorrow \(CalStore.label(t, at: now)) · \(t.text)")
+                            Text("tomorrow \(CalStore.span(t, at: now, compact: true)) · \(t.text)")
                                 .font(.system(size: 10)).lineLimit(1).opacity(0.7)
                         }
                     }
@@ -524,7 +524,7 @@ struct CalTodayView: View {
         return VStack(alignment: .leading, spacing: shown.count >= 4 ? 0 : 1) {
             ForEach(Array(shown.enumerated()), id: \.offset) { i, it in
                 HStack(alignment: .lastTextBaseline, spacing: 2) {
-                    (Text(CalStore.label(it, at: now) + "\u{2002}")
+                    (Text(CalStore.span(it, at: now, compact: true) + "\u{2002}")
                         .font(.system(size: 10, weight: .heavy).width(.condensed))
                      + Text(it.text)
                         .font(.system(size: 11.5, weight: i == 0 ? .bold : .medium)
@@ -578,7 +578,7 @@ struct CalTodayView: View {
             if left.isEmpty {
                 Text(quiet.line + ".").font(serif(14).italic()).foregroundColor(inkSoft)
                 if entry.today != nil, let t = tomorrow {
-                    Text("Tomorrow \(CalStore.label(t, at: now)) · \(t.text)")
+                    Text("Tomorrow \(CalStore.span(t, at: now, compact: true)) · \(t.text)")
                         .font(.system(size: 10)).foregroundColor(inkSoft).lineLimit(2)
                 }
             } else if family == .systemMedium {
