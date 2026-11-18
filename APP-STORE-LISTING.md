@@ -166,6 +166,19 @@ So the honest answer is **Yes, we collect data**, with one item:
 |---|---|---|---|
 | Identifiers → User ID | App Functionality | No | No |
 
+**From 1.1 (referrals), add one more row.** A friend who subscribes with a
+referral code sends Apple's signed record of that purchase; the server keeps
+the transaction number, plan, date and refund status (see the privacy policy,
+"Referrals"):
+
+| Data type | Used for | Linked to the user? | Tracking? |
+|---|---|---|---|
+| Purchases → Purchase History | App Functionality | No | No |
+
+The app's own privacy file (PrivacyInfo.xcprivacy) already declares it on the
+1.1 branch. With it, the label reads "Data Not Linked to You: Identifiers,
+Purchases".
+
 The store label will read "Data Not Linked to You: Identifiers" instead of
 "Data Not Collected". **This is your decision.** If the "Data Not Collected"
 label matters more to you than the founding seats, the seats have to go; they

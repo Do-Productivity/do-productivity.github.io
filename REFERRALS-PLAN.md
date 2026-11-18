@@ -79,6 +79,39 @@ policy gets a paragraph saying exactly the table above.
 2. Founder codes loaded (unchanged plan, without the 25% codes).
 3. Build referrals, test, then submit 1.1.
 
+## Built (18 November 2026), not yet online
+
+| Part | Where | Tested by |
+|---|---|---|
+| Database: codes, a friend's code, the 14 days, refunds, the free year, the code pool | `supabase-part-6-referrals.sql` | `t_referral_sql.mjs` (35 checks, real Postgres via PGlite) |
+| Server function: checks Apple's signature on the friend's purchase | `supabase/functions/referral-convert/` + `_shared/apple-core.js` | `t_referral_verify.mjs` (22 checks: forgeries, edits, other roots, expired, Family Sharing, free starts) |
+| Server function: Apple's refund notices | `supabase/functions/apple-notifications/` | same verifier |
+| App: Refer a friend card in Sync, Have a friend's code?, Redeem, Stop using my code | `index.html` | `t_referral_app.mjs` (37 checks, several mock iPhones) |
+| iPhone: hands Apple's signed purchase to the app; the plans screen shows the friend's code | `StoreBridge.swift` | builds; the flow is covered by the app test |
+| Privacy policy, support page, privacy label, app privacy file | `privacy/`, `support/`, `APP-STORE-LISTING.md`, `PrivacyInfo.xcprivacy` | read through |
+
+TestFlight purchases are recorded as test-only: testers see the whole flow and
+no real Apple code is spent (while `REFERRAL_ALLOW_SANDBOX=1` is set).
+
+### To put it online
+
+1. **Check Apple's root certificate.** `_shared/apple-core.js` pins Apple Root
+   CA - G3 by its SHA-256. Before deploying, download AppleRootCA-G3.cer from
+   apple.com/certificateauthority (with your OK) and compare the fingerprint.
+2. **Database:** paste `supabase-part-6-referrals.sql` into Supabase → SQL
+   Editor → Run.
+3. **Functions** (needs your access token, typed into a terminal prompt):
+   `supabase functions deploy referral-convert --no-verify-jwt` and
+   `supabase functions deploy apple-notifications --no-verify-jwt`, then
+   `supabase secrets set REFERRAL_ALLOW_SANDBOX=1` for the TestFlight period.
+4. **App Store Connect** (after 1.0 is approved): the Production Server URL
+   for notifications is
+   `https://mxlbafuzdbnypexhgptw.supabase.co/functions/v1/apple-notifications`;
+   create the offer codes and load them (instructions at the end of the SQL).
+5. **Before 1.1 goes to App Review:** set `REFERRAL_ALLOW_SANDBOX` to 0 only
+   if App Review should not see the flow; leaving it on is harmless, since
+   test purchases never get real codes.
+
 ## Also in 1.1: dated tasks in Apple Calendar (agreed 15 November 2026)
 
 - A switch, off by default: "Add my dated tasks to Apple Calendar". iPhone asks
