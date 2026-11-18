@@ -227,7 +227,10 @@
     if (noteRow) {
       hits = await search(TAG + " note");
       check("note is found", hits.length >= 1, "");
-      check("note says where it lives", /Notes/.test(($(".sr-item") || {}).textContent || ""), "");
+      // results stand under their list's heading, so that is where it says so
+      var noteHit = $(".sr-item");
+      var noteHead = noteHit && noteHit.closest(".sr-group") && noteHit.closest(".sr-group").querySelector(".sr-ghead");
+      check("note says where it lives", /notes/i.test((noteHead || {}).textContent || ""), noteHead ? noteHead.textContent : "no heading");
       landed = await pickFirst();
       check("note lands and flashes",
         !!(landed && landed.hit && /note-row/.test(landed.hit.className)), "");
