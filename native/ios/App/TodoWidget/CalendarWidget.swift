@@ -429,7 +429,7 @@ struct CalTodayView: View {
             // One line, no colour, no layout. All it can do is be the
             // sentence you would have wanted to read.
             if let n = left.first {
-                Text("\(CalStore.label(n, at: now)) · \(n.text)")
+                Text("\(CalStore.label(n, at: now)) · \(n.text)") // allow-start-only: one line, the name needs the room
             } else {
                 Text(quiet.line)
             }
