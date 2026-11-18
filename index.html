@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hlwbUpLgKxm69KL/MV/8AcbV+wHmgy0gsb4aefwVifg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-l9bKpiaMQIBBbf9gqw3SkO2myUNnPvttJG9WYTdhB04=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -243,20 +243,23 @@
     padding: 14px 16px 10px; border-bottom: 1px solid var(--rule);
     position: relative;
   }
-  /* The way out. It is always here, not only on touch: a visible exit is
-     not something a desktop needs protecting from. */
-  .search-close {
-    position: absolute; top: 8px; right: 8px;
-    width: 38px; height: 38px;
+  /* Material's search bar: the way back is an arrow at the start of the
+     field, where a thumb and an eye both look first; the × at the end only
+     clears what was typed. It is always here, not only on touch. */
+  .search-bar { display: flex; align-items: center; gap: 4px; margin: -4px -6px 0; }
+  .search-close, .search-clear {
+    flex: none; width: 44px; height: 44px;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--sans); font-size: 26px; line-height: 1;
-    color: var(--ink-soft); background: none; border: none;
-    border-radius: 50%; cursor: pointer; z-index: 2;
+    font-family: var(--sans); font-size: 24px; line-height: 1;
+    color: var(--ink); background: none; border: none;
+    border-radius: 50%; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .search-close:hover { background: rgba(43, 38, 32, .08); color: var(--ink); }
-  /* Keep the typing clear of it. */
-  .search-head .search-input { padding-right: 44px; }
+  .search-close svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .search-clear { color: var(--ink-soft); }
+  .search-clear[hidden] { display: none; }
+  .search-close:hover, .search-clear:hover { background: rgba(43, 38, 32, .08); }
+  .search-bar .search-input { flex: 1; min-width: 0; }
   /* A phone has no Escape key, so the hint is a desktop one. */
   @media (hover: none) {
     .search-esc { display: none; }
@@ -283,7 +286,22 @@
     justify-content: space-between;
     gap: 10px;
   }
-  .search-results { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 6px 0 10px; }
+  .search-results { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 0 10px; overscroll-behavior: contain; }
+  /* Results stand under the list they belong to, in the order the lists
+     are in, a few each: a flat run of sixty mixed rows read as noise. */
+  .sr-group + .sr-group { border-top: 1px solid var(--rule); }
+  .sr-ghead {
+    display: flex; align-items: center; gap: 8px; padding: 12px 16px 4px;
+    font: 700 10.5px/1 var(--sans); letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .sr-gdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .sr-gcount { margin-left: auto; font-weight: 600; color: var(--ink-faint); letter-spacing: .5px; }
+  .sr-more {
+    display: block; width: 100%; text-align: left; background: none; border: 0;
+    padding: 8px 16px 12px 19px; cursor: pointer;
+    font: 600 12.5px/1.2 var(--sans); color: var(--ink-soft);
+  }
+  .sr-more:hover { color: var(--ink); }
   .sr-item {
     display: block;
     width: 100%;
@@ -332,10 +350,13 @@
     70%  { background: #f6e6a8; }
     100% { background: transparent; }
   }
+  /* On a phone the search is a sheet from the top, not the whole screen:
+     the lists stay in sight below it, and a tap on them closes it. */
   @media (max-width: 600px) {
-    .search-sheet { margin: 0; max-width: none; border-radius: 0;
-                    max-height: 100dvh; height: 100dvh; }
-    .search-head { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+    .search-sheet { margin: calc(8px + env(safe-area-inset-top, 0px)) 8px 0; max-width: none;
+                    width: auto; border-radius: 18px;
+                    max-height: 74vh; max-height: 74dvh; }
+    .modal-overlay.search-overlay { align-items: stretch; flex-direction: column; }
     .search-input { font-size: 16px; }   /* no iOS zoom-jump */
   }
 
@@ -2715,7 +2736,10 @@
       letter-spacing: 1.5px;
     }
     .toolbar-btn { padding: 8px 7px; font-size: 8.5px; letter-spacing: 0.3px; }
-    .build-stamp { font-size: 8px; letter-spacing: 0.5px; }
+    /* With Calendar in the row there is no width left for the build
+       number on a phone; it is in the Sync sheet ("This device is running
+       build …"), which is where anyone asking for it is sent. */
+    .build-stamp { display: none; }
     .layout { padding-left: clamp(6px, env(safe-area-inset-left, 0px), 20px);
               padding-right: clamp(6px, env(safe-area-inset-right, 0px), 20px); }
     .panel { padding: 15px calc(12px + var(--panel-gutter, 0px)) 8px 12px; }
@@ -2969,15 +2993,38 @@
     .task-body { min-width: 0; }
   }
   @media (max-width: 600px) {
-    #runs-btn, #cal-btn { display: none; }
+    #runs-btn { display: none; }
   }
-  /* The Lists button, and lists put away with it, belong to the web app on
-     a wide screen only. The iPhone app, the Duo and narrow windows are
-     left exactly as they were: every list shows there. */
-  @media (max-width: 1200px) { #lists-btn { display: none; } }
-  body.native #lists-btn { display: none; }
+  /* The Lists button, and lists put away with it, belong where lists
+     stand side by side and the controls have room: a wide window, and the
+     Duo opened (its symbols column or row). A phone shows one list at a
+     time in the card deck, and a narrow window's row of words has no room,
+     so there every list stays and the button is not shown. It waits for
+     the Duo's layout class: as a word in the row it would widen the row
+     before that class arrives, and the page would open zoomed out. */
+  @media (max-width: 600px) { #lists-btn { display: none; } }
+  @media (min-width: 601px) and (max-width: 1200px) {
+    html:not(.has-pill):not(.pill-top) #lists-btn { display: none; }
+    html.has-pill .panels > .panel.list-hidden,
+    html.pill-top .panels > .panel.list-hidden { display: none; }
+  }
   @media (min-width: 1201px) {
-    body:not(.native) .panels > .panel.list-hidden { display: none; }
+    .panels > .panel.list-hidden { display: none; }
+  }
+  #lists-btn { position: relative; }
+  /* in the Duo's column of symbols the count of hidden lists is a badge */
+  #lists-btn .lists-n { display: none; }
+  html.has-pill #lists-btn .lists-n, html.pill-top #lists-btn .lists-n {
+    display: block; position: absolute; right: -3px; top: -3px;
+    min-width: 19px; height: 19px; padding: 0 5px; box-sizing: border-box;
+    border-radius: 999px; background: var(--ink); color: var(--card);
+    font: 700 11px/19px var(--sans); text-align: center;
+  }
+  html.has-pill #lists-btn .lists-n:empty, html.pill-top #lists-btn .lists-n:empty { display: none; }
+  @media (pointer: coarse) {
+    .lists-pop { width: 290px; }
+    .lists-pop-row { min-height: 44px; padding: 4px 0; font-size: 16px; }
+    .lists-pop-row input { width: 22px; height: 22px; }
   }
   .lists-pop {
     position: absolute; z-index: 60; width: 270px; max-height: 70vh; overflow: auto;
@@ -2993,16 +3040,110 @@
   .lists-pop-sep { border-top: 1px solid var(--rule); margin: 6px 0; }
   .lists-pop-note { font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); margin: 8px 0 2px; }
   .toolbar-btn.on { color: var(--ink); border-color: var(--ink-faint); }
-  /* Esc is not a key a phone has. Opening a drawer is the one thing search
-     leaves behind, so while one is open there is a visible way to put it
-     back, in the toolbar where the eye already is. */
+  /* Esc is not a key a phone has. A search result takes you somewhere —
+     another list, sometimes an open drawer — so while you are there a
+     visible Back stands in the toolbar, where the eye already is. It puts
+     the drawer away and brings the search back as you left it. */
   .toolbar-btn.undo-drawer {
     color: var(--red);
     border-color: var(--red);
     background: #fdf1ee;
   }
   .toolbar-btn.undo-drawer:hover { color: var(--red); border-color: var(--red); }
+  .toolbar-btn.undo-drawer { white-space: nowrap; }
+  @media (max-width: 440px) { .undo-long { display: none; } }
   .toolbar-btn[hidden] { display: none; }
+  /* ── The first-run guide ──────────────────────────────────
+     Material's onboarding pattern in Do.'s paper: pages that slide, Skip
+     always at the top, Back and Next at the bottom with the page dots
+     between them, and the last Next saying what it does. Swipe, the arrow
+     keys and the dots all move it; Escape is Skip. */
+  .guide {
+    position: fixed; inset: 0; z-index: 70; display: none;
+    background: rgba(43, 38, 32, 0.45);
+    align-items: center; justify-content: center;
+    font-family: var(--sans); color: var(--ink);
+  }
+  .guide.show { display: flex; }
+  .guide-sheet {
+    position: relative; display: flex; flex-direction: column;
+    width: min(440px, calc(100vw - 32px)); height: min(640px, calc(100vh - 48px));
+    background: var(--paper); border-radius: 22px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(43, 38, 32, .28);
+  }
+  .guide-top { display: flex; justify-content: flex-end; padding: 10px 10px 0; flex: none; }
+  .guide-text-btn {
+    min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: none;
+    font: 600 15px/1 var(--sans); color: var(--ink-soft); cursor: pointer; letter-spacing: .2px;
+  }
+  .guide-text-btn:hover, .guide-text-btn:focus-visible { background: rgba(43, 38, 32, .07); color: var(--ink); }
+  .guide-text-btn[aria-hidden="true"] { visibility: hidden; }
+  .guide-viewport { flex: 1; overflow: hidden; touch-action: pan-y; }
+  .guide-track { display: flex; height: 100%; transition: transform .32s cubic-bezier(.2, 0, 0, 1); }
+  .guide-track.dragging { transition: none; }
+  .guide-page {
+    flex: 0 0 100%; height: 100%; overflow-y: auto; padding: 4px 30px 8px;
+    /* a page that can scroll is its own touch owner: without this a
+       sideways swipe on it is claimed by the browser and never turns it */
+    touch-action: pan-y;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  }
+  .guide-art { width: 200px; height: 150px; margin-bottom: 26px; flex: none; }
+  .guide-art svg { width: 100%; height: 100%; display: block; }
+  .guide-title { font: 700 27px/1.15 var(--serif); margin: 0 0 12px; }
+  .guide-title .dot { color: var(--red); }
+  .guide-body { font-size: 16px; line-height: 1.5; color: var(--ink-soft); margin: 0; max-width: 340px; }
+  .guide-body b { color: var(--ink); font-weight: 600; }
+  .guide-note { margin-top: 14px; color: var(--ink); }
+  .guide-nav {
+    flex: none; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .guide-nav .guide-text-btn { justify-self: start; }
+  .guide-next {
+    justify-self: end; min-height: 48px; padding: 0 24px; border: 0; border-radius: 999px;
+    background: var(--ink); color: var(--card); font: 600 15px/1 var(--sans); cursor: pointer;
+    box-shadow: 0 1px 3px rgba(43, 38, 32, .25); white-space: nowrap;
+  }
+  .guide button:focus:not(:focus-visible) { outline: none; }
+  .guide button:focus-visible { outline: 2px solid var(--ink-faint); outline-offset: 3px; }
+  .guide-next:active { transform: scale(.97); }
+  .guide-dots { display: flex; gap: 0; justify-self: center; }
+  .guide-dot {
+    width: 16px; height: 44px; border: 0; padding: 0; background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .guide-dot i { display: block; width: 8px; height: 8px; border-radius: 999px; background: var(--ink-faint); opacity: .55; transition: width .25s, background .25s, opacity .25s; }
+  .guide-dot[aria-current="step"] { width: 30px; }
+  .guide-dot[aria-current="step"] i { width: 22px; background: var(--ink); opacity: 1; }
+  .guide-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* on a phone the guide is the screen, not a card on it */
+  @media (max-width: 600px) {
+    .guide { background: var(--paper); align-items: stretch; }
+    .guide-sheet {
+      width: 100%; height: 100%; border-radius: 0; box-shadow: none;
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+    .guide-page { padding: 0 26px 6px; }
+    .guide-next { padding: 0 20px; }
+    .guide-nav { padding-left: 8px; padding-right: 12px; }
+  }
+  /* the Duo: clear of the status pill, as every sheet is */
+  html.has-pill .guide { padding-right: var(--side); }
+  html.has-pill .guide .guide-sheet { padding-top: 0; }
+  @media (max-width: 600px) {
+    html.has-pill .guide-top { padding-top: calc(var(--occl-b, 0px) - 40px); }
+  }
+  html.pill-top .guide { padding-top: calc(var(--occl-b, 0px) + 8px); }
+  @media (max-height: 560px) {
+    .guide-art { width: 150px; height: 104px; margin-bottom: 14px; }
+    .guide-title { font-size: 23px; margin-bottom: 8px; }
+    .guide-body { font-size: 15px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .guide-track, .guide-dot i { transition: none; }
+  }
+
   .toolbar-btn.off { color: var(--ink-faint); }
 
   /* Phone held sideways: width is plentiful, height is the scarce resource,
@@ -3098,7 +3239,7 @@
       top: calc(var(--occl-b, 0px) + 14px);
       right: calc(var(--occl-w, 0px) / 2 - 18px);
       width: 52px; height: auto;
-      display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px;
+      display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 19px;
       margin: 0; padding: 0;
     }
     html.has-pill .toolbar h1,
@@ -3115,15 +3256,33 @@
        glance and "off" does not look like "unavailable". */
     html.has-pill .toolbar .toolbar-btn.off,
     html.pill-top .toolbar .toolbar-btn.off { opacity: 1; }
-    html.has-pill #runs-btn:not(.off), html.has-pill #cal-btn:not(.off),
-    html.pill-top #runs-btn:not(.off), html.pill-top #cal-btn:not(.off) { filter: invert(1) hue-rotate(180deg); }
+    html.has-pill #runs-btn:not(.off), html.has-pill #cal-btn.on,
+    html.pill-top #runs-btn:not(.off), html.pill-top #cal-btn.on { filter: invert(1) hue-rotate(180deg); }
     html.has-pill #search-btn, html.pill-top #search-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2711%27%20cy%3D%2711%27%20r%3D%276.5%27%2F%3E%3Cpath%20d%3D%27M16%2016l4.5%204.5%27%2F%3E%3C%2Fsvg%3E"); }
-    html.has-pill #today-btn, html.pill-top #today-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Crect%20x%3D%274%27%20y%3D%275%27%20width%3D%2716%27%20height%3D%2715%27%20rx%3D%273%27%2F%3E%3Cpath%20d%3D%27M4%2010h16M8%203v4M16%203v4%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #today-btn, html.pill-top #today-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%232b2620%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22M12%202.5v2.2M12%2019.3v2.2M2.5%2012h2.2M19.3%2012h2.2M5.3%205.3l1.55%201.55M17.15%2017.15l1.55%201.55M5.3%2018.7l1.55-1.55M17.15%206.85l1.55-1.55%22%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #lists-btn, html.pill-top #lists-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Crect%20x%3D%273.5%27%20y%3D%274.5%27%20width%3D%274.5%27%20height%3D%2715%27%20rx%3D%271.5%27%2F%3E%3Crect%20x%3D%279.75%27%20y%3D%274.5%27%20width%3D%274.5%27%20height%3D%2715%27%20rx%3D%271.5%27%2F%3E%3Crect%20x%3D%2716%27%20y%3D%274.5%27%20width%3D%274.5%27%20height%3D%2715%27%20rx%3D%271.5%27%20stroke-dasharray%3D%272%202.2%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill #runs-btn, html.pill-top #runs-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M5%206h14M5%2012h14M5%2018h9%27%2F%3E%3Ccircle%20cx%3D%2718.5%27%20cy%3D%2718%27%20r%3D%272.2%27%2F%3E%3C%2Fsvg%3E"); }
-    html.has-pill #cal-btn, html.pill-top #cal-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%278%27%2F%3E%3Cpath%20d%3D%27M12%207.5V12l3%202%27%2F%3E%3C%2Fsvg%3E"); }
+    html.has-pill #cal-btn, html.pill-top #cal-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%232b2620%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%225%22%20width%3D%2217%22%20height%3D%2215.5%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M3.5%2010h17M8%203v4M16%203v4%22%2F%3E%3Cpath%20d%3D%22M8%2013.6h.01M12%2013.6h.01M16%2013.6h.01M8%2017h.01M12%2017h.01%22%20stroke-width%3D%222.6%22%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill #sync-btn, html.pill-top #sync-btn { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M20%2012a8%208%200%200%201-14.3%204.9M4%2012a8%208%200%200%201%2014.3-4.9%27%2F%3E%3Cpath%20d%3D%27M18.6%203.4v3.9h-3.9M5.4%2020.6v-3.9h3.9%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill #undo-drawer, html.pill-top #undo-drawer { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%232b2620%27%20stroke-width%3D%271.9%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M9%2014L4%209l5-5%27%2F%3E%3Cpath%20d%3D%27M4%209h10a6%206%200%200%201%200%2012h-3%27%2F%3E%3C%2Fsvg%3E"); }
     html.has-pill .toolbar .sync-dot { position: absolute; right: 2px; bottom: 2px; }
+    /* Each symbol carries its name underneath, as Material's navigation
+       rail does. Two calendar-ish symbols side by side were read as the
+       same thing: Today (a sun, the day's tasks in order) and Calendar
+       (the date grid, meetings and all) are now told apart in words. */
+    html.has-pill .toolbar .toolbar-btn, html.pill-top .toolbar .toolbar-btn { position: relative; overflow: visible; }
+    html.has-pill .toolbar .toolbar-btn::after, html.pill-top .toolbar .toolbar-btn::after {
+      content: attr(data-label); position: absolute; left: 50%; top: calc(100% + 3px);
+      transform: translateX(-50%); white-space: nowrap; pointer-events: none;
+      font: 600 9.5px/1 var(--sans); letter-spacing: .2px; color: var(--ink-soft);
+    }
+    /* a symbol that is on is drawn inverted; its name is inverted back */
+    html.has-pill #runs-btn:not(.off)::after, html.has-pill #cal-btn.on::after,
+    html.pill-top #runs-btn:not(.off)::after, html.pill-top #cal-btn.on::after,
+    html.has-pill body.view-today #today-btn::after, html.pill-top body.view-today #today-btn::after {
+      filter: invert(1) hue-rotate(180deg); color: var(--ink);
+    }
+    html.has-pill body.view-today #today-btn, html.pill-top body.view-today #today-btn { filter: invert(1) hue-rotate(180deg); }
     html.has-pill .toolbar .err-dot { position: absolute; right: -6px; top: -12px; flex: none; }
     /* The status line was the spacer that pushed the buttons right. In a
        column it would be an invisible extra button; it becomes a toast. */
@@ -3203,13 +3362,13 @@
     <button class="err-dot" id="err-dot" hidden title="Something went wrong on this device — tap to read it">!</button>
     <span class="sync-dot" id="sync-dot" title="Sync status"></span>
     <span class="status-msg" id="status-msg"></span>
-    <button class="toolbar-btn undo-drawer" id="undo-drawer" hidden>× Close Completed</button>
-    <button class="toolbar-btn" id="search-btn" title="Search everything (press / )">Search</button>
-    <button class="toolbar-btn" id="today-btn">Today</button>
-    <button class="toolbar-btn" id="lists-btn" title="Choose which lists show as columns" aria-haspopup="dialog">Lists</button>
-    <button class="toolbar-btn" id="runs-btn" title="Show or hide the Scheduled tasks column">Scheduled</button>
-    <button class="toolbar-btn" id="cal-btn" title="Show or hide the Calendar column">Calendar</button>
-    <button class="toolbar-btn" id="sync-btn">Sync</button>
+    <button class="toolbar-btn undo-drawer" id="undo-drawer" hidden title="Back to your search" aria-label="Back to search" data-label="Back">‹ Back<span class="undo-long"> to search</span></button>
+    <button class="toolbar-btn" id="search-btn" title="Search everything (press / )" data-label="Search">Search</button>
+    <button class="toolbar-btn" id="today-btn" title="Today: your dated tasks in time order" data-label="Today">Today</button>
+    <button class="toolbar-btn" id="lists-btn" title="Choose which lists show as columns" aria-haspopup="dialog" data-label="Lists">Lists</button>
+    <button class="toolbar-btn" id="runs-btn" title="Show or hide the Scheduled tasks column" data-label="Scheduled">Scheduled</button>
+    <button class="toolbar-btn" id="cal-btn" title="Show or hide the Calendar column" data-label="Calendar">Calendar</button>
+    <button class="toolbar-btn" id="sync-btn" data-label="Sync">Sync</button>
   </div>
 
   <div class="mobile-tabs" id="mobile-tabs">
@@ -3517,6 +3676,7 @@
       <p class="modal-hint">Payment is taken by Apple. Do. never asks for a card and never sees one. Whatever happens, your lists stay yours to read and export.</p>
     </div>
     <p class="modal-hint" id="secrets-line" style="display:none"></p>
+    <button class="modal-btn quiet" id="guide-replay">Show the quick tour again</button>
     <div class="modal-actions">
       <button class="toolbar-btn" id="sync-modal-close">Close</button>
     </div>
@@ -3541,9 +3701,12 @@
 <div class="modal-overlay search-overlay" id="search-modal">
   <div class="search-sheet">
     <div class="search-head">
-      <button class="search-close" id="search-close" title="Close search" aria-label="Close search">×</button>
-      <input class="search-input" id="search-input" type="text" autocomplete="off"
-             autocorrect="off" spellcheck="false" placeholder="Search tasks, notes, scheduled steps…">
+      <div class="search-bar">
+        <button class="search-close" id="search-close" title="Back" aria-label="Close search and go back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <input class="search-input" id="search-input" type="text" autocomplete="off"
+               autocorrect="off" spellcheck="false" placeholder="Search tasks, notes, scheduled steps…">
+        <button class="search-clear" id="search-clear" title="Clear" aria-label="Clear the search" hidden>×</button>
+      </div>
       <div class="search-hint">
         <span id="search-count"></span>
         <span class="search-esc">Esc to close</span>
@@ -3603,6 +3766,19 @@
   </div>
 </div>
 
+
+<div class="guide" id="guide" role="dialog" aria-modal="true" aria-label="Welcome to Do.">
+  <div class="guide-sheet">
+    <div class="guide-top"><button class="guide-text-btn" id="guide-skip">Skip</button></div>
+    <div class="guide-viewport" id="guide-viewport"><div class="guide-track" id="guide-track"></div></div>
+    <div class="guide-nav">
+      <button class="guide-text-btn" id="guide-back">Back</button>
+      <div class="guide-dots" id="guide-dots" role="group" aria-label="Pages"></div>
+      <button class="guide-next" id="guide-next">Next</button>
+    </div>
+    <div class="guide-live" id="guide-live" aria-live="polite"></div>
+  </div>
+</div>
 <div class="ptr-indicator" id="ptr-indicator"><span class="ptr-arrow">↻</span></div>
 <div class="net-banner" id="net-banner" role="status" aria-live="polite">
   <span class="net-dot"></span>
@@ -4022,11 +4198,12 @@
     ]
   };
 
-  Object.keys(SEED).forEach(function (key) {
-    if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify(SEED[key]));
-    }
-  });
+  // No list ever saved on this device: a first visit. The guide reads this.
+  // The starter tasks above are no longer written (1.1): somebody new
+  // starts with empty lists and builds their own, and the first-run guide
+  // does the teaching the starter tasks used to. SEED stays as the record
+  // of what was shown before, and FIRST_VISIT still reads its keys.
+  var FIRST_VISIT = Object.keys(SEED).every(function (key) { return localStorage.getItem(key) === null; });
 
   // ── Storage ──────────────────────────────────────────────
 
@@ -5681,7 +5858,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-17-1458";
+  var BUILD = "2026-11-18-1402";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -7424,12 +7601,17 @@
     if (!stale) return;
     msFetching[range] = true;
 
-    // Asked once, and only once: iOS shows the sheet the first time and
-    // silently refuses ever after, so re-asking is noise that teaches the
-    // person nothing.
-    var ask = (nativeAsked || localStorage.getItem(CAL_PERM_KEY) === "1")
-      ? Promise.resolve({ granted: true })
-      : cb.access();
+    // Never asked from here. Reading the calendar used to raise Apple's
+    // sheet the moment the app first wanted a day, which on a new phone
+    // was at launch, before a word had been said about why (and under the
+    // first-run guide). The sheet now comes only from a tap: "Connect
+    // calendar" in the guide, or the line in the Calendar that offers it.
+    // Until then there is nothing to read, and the Calendar says so.
+    if (!nativeAsked && localStorage.getItem(CAL_PERM_KEY) !== "1") {
+      msFetching[range] = false;
+      return;
+    }
+    var ask = Promise.resolve({ granted: true });
 
     ask.then(function (res) {
       nativeAsked = true;
@@ -9027,16 +9209,29 @@
   // more than it wants company, and the lists are one press away.
   function calSolo() { return localStorage.getItem(CAL_SHOW_KEY) === "solo"; }
 
+  // On a phone the calendar is a card, not a column: Calendar goes to it,
+  // and pressed again goes back to the list you came from. Today is shut
+  // on the way, so the two never stand on top of each other.
+  var calFromTab = null;
+  function onPhone() { return window.matchMedia("(max-width: 600px)").matches; }
+  function phoneTab() {
+    var m = /\bshow-([\w-]+)/.exec(panelsRoot.className);
+    return m ? m[1] : null;
+  }
+  function paintCalBtn() {
+    var btn = document.getElementById("cal-btn");
+    if (!btn) return;
+    var on = onPhone() ? (phoneTab() === "cal" && !todayOpen) : calSolo();
+    btn.classList.toggle("on", on);
+    btn.classList.toggle("off", !on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = on ? "Back to the lists" : (onPhone() ? "Open the Calendar" : "Open the calendar on its own");
+  }
   function applyCalVisibility() {
     var solo = calSolo();
     document.body.classList.toggle("cal-solo", solo);
     document.body.classList.toggle("hide-cal", !solo);
-    var btn = document.getElementById("cal-btn");
-    if (btn) {
-      btn.classList.toggle("on", solo);
-      btn.classList.toggle("off", !solo);
-      btn.title = solo ? "Back to the lists" : "Open the calendar on its own";
-    }
+    paintCalBtn();
     fitPanelTracks();
   }
 
@@ -9044,11 +9239,24 @@
     var btn = document.getElementById("cal-btn");
     if (btn) {
       btn.addEventListener("click", function () {
+        if (onPhone()) {
+          if (PANEL_IDS.indexOf("cal") === -1) return;
+          if (phoneTab() === "cal" && !todayOpen) {
+            setMobileTab(calFromTab && calFromTab !== "cal" ? calFromTab : PANEL_IDS[0]);
+          } else {
+            if (phoneTab() !== "cal") calFromTab = phoneTab();
+            if (todayOpen) showToday(false);
+            setMobileTab("cal");
+          }
+          paintCalBtn();
+          return;
+        }
         localStorage.setItem(CAL_SHOW_KEY, calSolo() ? "0" : "solo");
         applyCalVisibility();
       });
     }
     applyCalVisibility();
+    window.addEventListener("resize", paintCalBtn);
   })();
 
   function applyRunsVisibility() {
@@ -9121,6 +9329,8 @@
     if (btn) {
       btn.classList.toggle("on", n > 0);
       btn.textContent = n ? "Lists \u00b7 " + n + " hidden" : "Lists";
+      btn.appendChild(el("span", "lists-n", n ? String(n) : ""));
+      btn.setAttribute("aria-label", n ? "Lists, " + n + " hidden" : "Lists");
       btn.title = n ? n + (n === 1 ? " list is" : " lists are") + " hidden. Choose which lists show as columns"
                     : "Choose which lists show as columns";
     }
@@ -9135,7 +9345,7 @@
       if (!pop) return;
       pop.remove(); pop = null;
       btn.setAttribute("aria-expanded", "false");
-      document.removeEventListener("mousedown", outside, true);
+      document.removeEventListener("pointerdown", outside, true);
       document.removeEventListener("keydown", onKey, true);
     }
     function outside(e) { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); }
@@ -9194,7 +9404,7 @@
       pop.style.left = (left + window.scrollX) + "px";
       pop.style.top = (top + window.scrollY) + "px";
       btn.setAttribute("aria-expanded", "true");
-      document.addEventListener("mousedown", outside, true);
+      document.addEventListener("pointerdown", outside, true);
       document.addEventListener("keydown", onKey, true);
       var first = pop.querySelector("input:not([disabled])");
       if (first) first.focus();
@@ -9222,6 +9432,7 @@
       if (tab) tab.classList.toggle("active", t === id);
     });
     localStorage.setItem(MTAB_KEY, id);
+    if (typeof paintCalBtn === "function") paintCalBtn();
     renderFan(id);
   }
 
@@ -9343,23 +9554,73 @@
         return;
       }
       countEl.textContent = results.length + (results.length === 1 ? " match" : " matches");
-      results.forEach(function (r, i) {
+      // grouped by list, in the lists' own order; a few each, the rest a tap away
+      var order = PANEL_IDS.slice();
+      var groups = {};
+      results.forEach(function (r) {
+        var g = r.kind === "note" ? "notes" : r.listId;
+        if (!groups[g]) { groups[g] = []; if (order.indexOf(g) === -1) order.push(g); }
+        groups[g].push(r);
+      });
+      var few = results.length > 6 ? 3 : 99;
+      order.forEach(function (g) {
+        var rs = groups[g];
+        if (!rs) return;
+        var box = el("div", "sr-group");
+        var head = el("div", "sr-ghead");
+        var dot = el("span", "sr-gdot");
+        try { dot.style.background = tint((PANEL_META[g] || {}).tint || "amber").solid; } catch (e) {}
+        head.appendChild(dot);
+        head.appendChild(el("span", null, rs[0].listTitle || g));
+        head.appendChild(el("span", "sr-gcount", String(rs.length)));
+        box.appendChild(head);
+        var showAll = !!openGroups[g] || rs.length <= few + 1;
+        rs.forEach(function (r, i) { if (showAll || i < few) box.appendChild(itemFor(r, q)); });
+        if (!showAll) {
+          var more = el("button", "sr-more", "Show " + (rs.length - few) + " more in " + (rs[0].listTitle || g) + " \u203a");
+          more.type = "button";
+          more.addEventListener("click", function () {
+            openGroups[g] = true;
+            var keep = selKey();
+            render(input.value);
+            selectKey(keep);
+          });
+          box.appendChild(more);
+        }
+        listEl.appendChild(box);
+      });
+      var first = listEl.querySelector(".sr-item");
+      if (first) first.classList.add("sel");
+    }
+
+    var openGroups = {};
+    function keyOf(r) { return r.kind + ":" + r.id + ":" + r.listId; }
+    function selKey() {
+      var items = listEl.querySelectorAll(".sr-item");
+      return items[sel] ? items[sel].getAttribute("data-key") : null;
+    }
+    function selectKey(k) {
+      var items = listEl.querySelectorAll(".sr-item");
+      [].forEach.call(items, function (x) { x.classList.remove("sel"); });
+      var i = [].map.call(items, function (x) { return x.getAttribute("data-key"); }).indexOf(k);
+      sel = i === -1 ? 0 : i;
+      if (items[sel]) { items[sel].classList.add("sel"); items[sel].scrollIntoView({ block: "nearest" }); }
+    }
+    function itemFor(r, q) {
         var item = el("button", "sr-item" +
           (r.state === "done" ? " is-done" : "") +
-          (r.state === "deleted" ? " is-deleted" : "") +
-          (i === 0 ? " sel" : ""));
+          (r.state === "deleted" ? " is-deleted" : ""));
         item.type = "button";
+        item.setAttribute("data-key", keyOf(r));
         var line = el("span", "sr-text");
         line.appendChild(highlight(r.text, r.at, q.trim().length));
         item.appendChild(line);
-        var meta = el("span", "sr-meta");
-        var bits = metaFor(r);
-        meta.appendChild(el("span", "sr-where", bits[0]));
-        if (bits.length > 1) meta.appendChild(document.createTextNode("  \u00b7  " + bits.slice(1).join("  \u00b7  ")));
-        item.appendChild(meta);
+        // the list's name is the heading above; the line under a row says
+        // only what the heading does not
+        var bits = metaFor(r).slice(1);
+        if (bits.length) item.appendChild(el("span", "sr-meta", bits.join("  \u00b7  ")));
         item.addEventListener("click", function () { go(r); });
-        listEl.appendChild(item);
-      });
+        return item;
     }
 
     function moveSel(d) {
@@ -9399,18 +9660,31 @@
                label: trash ? "Recently deleted" : "Completed" };
     }
 
-    // Opening a drawer is the one thing search does that outlives the search
-    // itself, and a drawer with sixty rows in it does not look like something
-    // search did — it looks like the app broke. Remember which one, say so,
-    // and let Escape put it back.
+    // A result takes you somewhere: another list, Today shut, sometimes a
+    // drawer opened. A tester tapped one and had no way back to the
+    // results, so search now keeps a short trail. Back puts away the drawer
+    // it opened and brings the search back with the same words and the
+    // same row picked; closing the search from there returns you to where
+    // you were before you started searching. Escape is the same Back.
     var lastOpened = null;
     var undoBtn = document.getElementById("undo-drawer");
+    var origin = null;      // where you were when the search first opened
+    var trail = null;       // the search a result was picked from
+    var returning = false;  // the sheet is open again by Back
 
-    function showUndo(opened) {
-      lastOpened = opened;
-      if (!undoBtn) return;
-      undoBtn.hidden = !opened;
-      if (opened) undoBtn.textContent = "\u00d7 Close " + opened.label;
+    function showUndo(opened) { lastOpened = opened; }
+    function showBack(on) { if (undoBtn) undoBtn.hidden = !on; }
+
+    function currentTab() {
+      var m = /\bshow-([\w-]+)/.exec(panelsRoot.className);
+      return m ? m[1] : null;
+    }
+    function here() { return { tab: currentTab(), today: todayOpen, y: window.scrollY }; }
+    function backTo(o) {
+      if (!o) return;
+      if (o.today !== todayOpen) showToday(o.today);
+      if (phoneLayout() && o.tab && o.tab !== currentTab()) setMobileTab(o.tab);
+      setTimeout(function () { window.scrollTo(0, o.y || 0); }, 0);
     }
 
     function closeLastDrawer() {
@@ -9426,14 +9700,33 @@
       return true;
     }
 
-    if (undoBtn) undoBtn.addEventListener("click", function () { closeLastDrawer(); });
+    function back() {
+      if (!trail) return false;
+      closeLastDrawer();
+      showBack(false);
+      var t = trail;
+      modal.classList.add("show");
+      input.value = t.query;
+      paintClear();
+      openGroups = t.open || {};
+      results = run(t.query);
+      render(t.query);
+      selectKey(t.key);
+      returning = true;
+      setTimeout(function () { input.focus(); }, 30);
+      return true;
+    }
+    if (undoBtn) undoBtn.addEventListener("click", function () { back(); });
 
     function find(panel, attr, id) {
       return panel.querySelector("[data-" + attr + '="' + id + '"]');
     }
 
     function go(r) {
-      close();
+      trail = { query: input.value, key: keyOf(r), open: JSON.parse(JSON.stringify(openGroups)) };
+      returning = false;
+      modal.classList.remove("show");
+      showBack(true);
       // the Scheduled column can be put away; a result from it brings it back
       if (r.listId === "runs" && document.body.classList.contains("hide-runs") && !phoneLayout()) {
         localStorage.setItem(RUNS_KEY, "1");
@@ -9477,13 +9770,23 @@
     // ── open / close ──
     function open() {
       closeLastDrawer();     // one search, one drawer — they must not pile up
+      showBack(false);
+      trail = null; returning = false;
+      origin = here();
       modal.classList.add("show");
       input.value = "";
+      openGroups = {};
+      paintClear();
       results = [];
       render("");
       setTimeout(function () { input.focus(); }, 30);
     }
-    function close() { modal.classList.remove("show"); }
+    function close() {
+      if (!modal.classList.contains("show")) return;
+      modal.classList.remove("show");
+      // shut after Back: all the way back to where the search began
+      if (returning) { returning = false; trail = null; backTo(origin); }
+    }
     // On a phone the sheet covers the whole screen, so the "tap the
     // backdrop" exit has no backdrop to tap, and Escape needs a keyboard
     // the device does not have. Without this the only way out was to pull
@@ -9491,7 +9794,15 @@
     var closeBtn = document.getElementById("search-close");
     if (closeBtn) closeBtn.addEventListener("click", close);
 
+    var clearBtn = document.getElementById("search-clear");
+    function paintClear() { if (clearBtn) clearBtn.hidden = !input.value; }
+    if (clearBtn) clearBtn.addEventListener("click", function () {
+      input.value = ""; openGroups = {}; paintClear();
+      results = []; render(""); input.focus();
+    });
     input.addEventListener("input", function () {
+      openGroups = {};
+      paintClear();
       results = run(input.value);
       render(input.value);
     });
@@ -9501,7 +9812,8 @@
       else if (e.key === "ArrowUp") { e.preventDefault(); moveSel(-1); }
       else if (e.key === "Enter") {
         e.preventDefault();
-        if (results[sel]) go(results[sel]);
+        var picked = listEl.querySelectorAll(".sr-item")[sel];
+        if (picked) picked.click();
       } else if (e.key === "Escape") { close(); }
     });
 
@@ -9513,9 +9825,12 @@
         if (e.key === "Escape") close();
         return;
       }
-      // Escape with the search shut means "undo what it left open"
-      if (e.key === "Escape" && lastOpened) {
-        if (closeLastDrawer()) { e.preventDefault(); return; }
+      // Escape with the search shut is Back, while there is one
+      if (e.key === "Escape" && trail && undoBtn && !undoBtn.hidden) {
+        var tg = e.target;
+        if (!(tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA"))) {
+          if (back()) { e.preventDefault(); return; }
+        }
       }
       var t = e.target;
       var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
@@ -9826,6 +10141,7 @@
     if (btn) btn.textContent = todayOpen ? "Lists" : "Today";
     if (todayOpen) renderToday();
     else if (todayRoot) todayRoot.textContent = "";
+    if (typeof paintCalBtn === "function") paintCalBtn();
   }
 
   (function () {
@@ -10968,6 +11284,8 @@
 
   function playFanHint(activeId) {
     if (fanHintSeen() || PANEL_IDS.length < 2) return;
+    // the guide comes first; the cards are shown turning once it is shut
+    if (document.body.classList.contains("guide-open")) return;
     // Built on every layout, visible only on a phone — and the hint has no
     // meaning where the cards are not on screen.
     if (fanRoot.offsetParent === null) return;
@@ -10995,6 +11313,260 @@
       fanHintTimers.push(setTimeout(f[1], f[0]));
     });
   }
+
+
+  // ── The first-run guide ──────────────────────────────────
+  // Shown once, to somebody who has just installed Do.: no list had ever
+  // been saved on this device. Somebody
+  // updating from 1.0 already knows the app and is not stopped by it; the
+  // Sync sheet has "Show the quick tour again" for anyone who wants it.
+  // It explains only what is on their screen: the cards on a phone, the
+  // columns where lists stand side by side.
+  var GUIDE_KEY = "dia_todo_onboarded_v1";
+  var openGuide = (function () {
+    var root = document.getElementById("guide");
+    var track = document.getElementById("guide-track");
+    var viewport = document.getElementById("guide-viewport");
+    var dotsEl = document.getElementById("guide-dots");
+    var backBtn = document.getElementById("guide-back");
+    var nextBtn = document.getElementById("guide-next");
+    var skipBtn = document.getElementById("guide-skip");
+    var live = document.getElementById("guide-live");
+    if (!root) return function () {};
+    var page = 0, pages = [], lastFocus = null;
+
+    function phone() { return window.matchMedia("(max-width: 600px)").matches; }
+    function calConnected() { try { return localStorage.getItem(CAL_PERM_KEY) === "1"; } catch (e) { return false; } }
+    var calAnswer = null;   // "yes" or "no" once Apple's sheet has been answered here
+    function calPage() { return !!(pages[page] && pages[page].calendar); }
+    function calNote(text) {
+      var sec = track.children[page], n = sec && sec.querySelector(".guide-note");
+      if (!sec) return;
+      if (!n) { n = el("p", "guide-body guide-note"); sec.appendChild(n); }
+      n.textContent = text;
+    }
+    function connectCalendar() {
+      var cb = calBridge();
+      if (!cb) { finish(); return; }
+      nextBtn.disabled = true;
+      cb.access().then(function (res) {
+        nextBtn.disabled = false;
+        nativeAsked = true;
+        if (res && res.granted) {
+          calAnswer = "yes";
+          try { localStorage.setItem(CAL_PERM_KEY, "1"); } catch (e) {}
+          for (var k in msEventsAt) {
+            if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k];
+          }
+          if (typeof refreshCalendar === "function") refreshCalendar();
+          finish();
+          flashStatus("Reading your calendars\u2026");
+        } else {
+          calAnswer = "no";
+          msEvNote("no calendar permission");
+          calNote("No problem. You can turn it on any time in Settings \u203a Do. \u203a Calendars.");
+          go(page);
+        }
+      }).catch(function () {
+        nextBtn.disabled = false;
+        calAnswer = "no";
+        calNote("Calendar access did not open. You can turn it on in Settings \u203a Do. \u203a Calendars.");
+        go(page);
+      });
+    }
+    function duoOpen() { return !phone() && /has-pill|pill-top/.test(document.documentElement.className); }
+
+    // Drawings in the app's own line and colours, not screenshots: they
+    // stay true when the app changes shade, and say one thing each.
+    var S = 'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+    var ART = {
+      hello: '<svg ' + S + '><rect x="38" y="22" width="124" height="106" rx="16" fill="#fffdf7" stroke="#d9d2c2" stroke-width="2"/><text x="100" y="92" text-anchor="middle" font-family="Iowan Old Style, Georgia, serif" font-weight="700" font-size="46" fill="#2b2620" stroke="none">Do<tspan fill="#c8553d">.</tspan></text></svg>',
+      write: '<svg ' + S + '><rect x="22" y="14" width="156" height="122" rx="14" fill="#fffdf7" stroke="#d9d2c2" stroke-width="2"/><rect x="36" y="28" width="92" height="22" rx="6" stroke="#d9d2c2" stroke-width="2"/><rect x="134" y="28" width="30" height="22" rx="6" fill="#c8553d"/><circle cx="46" cy="76" r="8" stroke="#c8553d" stroke-width="2.4"/><path d="M62 76h74" stroke="#2b2620" stroke-width="3"/><circle cx="46" cy="108" r="8" fill="#c8553d" stroke="#c8553d" stroke-width="2.4"/><path d="M42 108l3 3 6-6" stroke="#fffdf7" stroke-width="2.4"/><path d="M62 108h58" stroke="#a89f93" stroke-width="3"/></svg>',
+      date: '<svg ' + S + '><rect x="22" y="30" width="156" height="90" rx="14" fill="#fffdf7" stroke="#d9d2c2" stroke-width="2"/><circle cx="46" cy="62" r="8" stroke="#3d6b8c" stroke-width="2.4"/><path d="M62 62h66" stroke="#2b2620" stroke-width="3"/><path d="M62 88h50" stroke="#a89f93" stroke-width="2.4"/><rect x="140" y="48" width="26" height="26" rx="5" fill="#fff" stroke="#c8553d" stroke-width="2"/><path d="M140 56h26" stroke="#c8553d" stroke-width="5"/><text x="153" y="71" text-anchor="middle" font-family="-apple-system, Helvetica, Arial" font-size="11" font-weight="700" fill="#2b2620" stroke="none">17</text><path d="M124 82c0-5 4-9 9-9s9 4 9 9v5l3 4h-24l3-4z" fill="#e6b93c" stroke="#b8902a" stroke-width="1.6"/></svg>',
+      cards: '<svg ' + S + '><rect x="44" y="18" width="112" height="30" rx="10" fill="#d3dee6" stroke="#3d6b8c" stroke-width="2"/><rect x="36" y="32" width="128" height="30" rx="10" fill="#dfeadf" stroke="#4a8a5c" stroke-width="2"/><rect x="26" y="48" width="148" height="88" rx="14" fill="#fffdf7" stroke="#c8553d" stroke-width="2.4"/><path d="M42 72h60" stroke="#2b2620" stroke-width="3"/><path d="M42 94h96M42 114h70" stroke="#a89f93" stroke-width="2.4"/><path d="M176 92h18M186 84l8 8-8 8" stroke="#2b2620" stroke-width="2.4"/></svg>',
+      columns: '<svg ' + S + '><rect x="14" y="20" width="54" height="112" rx="10" fill="#fffdf7" stroke="#c8553d" stroke-width="2.4"/><rect x="73" y="20" width="54" height="112" rx="10" fill="#fffdf7" stroke="#3d6b8c" stroke-width="2.4"/><rect x="132" y="20" width="54" height="112" rx="10" fill="#fffdf7" stroke="#4a8a5c" stroke-width="2.4" stroke-dasharray="6 5"/><path d="M24 40h30M83 40h30M142 40h30" stroke="#2b2620" stroke-width="3"/><path d="M24 60h34M24 76h26M83 60h34M83 76h22M142 60h30" stroke="#a89f93" stroke-width="2.2"/></svg>',
+      today: '<svg ' + S + '><rect x="22" y="14" width="156" height="122" rx="14" fill="#fffdf7" stroke="#d9d2c2" stroke-width="2"/><text x="38" y="40" font-family="Iowan Old Style, Georgia, serif" font-weight="700" font-size="17" fill="#2b2620" stroke="none">Today<tspan fill="#c8553d">.</tspan></text><path d="M38 58v20" stroke="#3d6b8c" stroke-width="4"/><path d="M48 62h20" stroke="#a89f93" stroke-width="2.4"/><path d="M48 73h80" stroke="#2b2620" stroke-width="3"/><path d="M38 92v20" stroke="#c8553d" stroke-width="4"/><path d="M48 96h20" stroke="#a89f93" stroke-width="2.4"/><path d="M48 107h64" stroke="#2b2620" stroke-width="3"/></svg>',
+      cal: '<svg ' + S + '><rect x="50" y="22" width="100" height="106" rx="16" fill="#fffdf7" stroke="#d9d2c2" stroke-width="2"/><path d="M50 50h100" stroke="#c8553d" stroke-width="2"/><rect x="51" y="23" width="98" height="26" rx="15" fill="#c8553d" stroke="none"/><text x="100" y="41" text-anchor="middle" font-family="-apple-system, Helvetica, Arial" font-size="12" font-weight="700" fill="#fffdf7" stroke="none" letter-spacing="1.5">TODAY</text><rect x="64" y="62" width="72" height="18" rx="5" fill="#d3dee6" stroke="#3d6b8c" stroke-width="1.6"/><rect x="64" y="86" width="52" height="14" rx="5" fill="#dfeadf" stroke="#4a8a5c" stroke-width="1.6"/><circle cx="72" cy="114" r="5" stroke="#c8553d" stroke-width="2"/><path d="M82 114h40" stroke="#2b2620" stroke-width="2.6"/></svg>',
+      find: '<svg ' + S + '><rect x="22" y="24" width="122" height="34" rx="17" fill="#fffdf7" stroke="#d9d2c2" stroke-width="2"/><circle cx="42" cy="41" r="7" stroke="#2b2620" stroke-width="2.4"/><path d="M47 46l5 5" stroke="#2b2620" stroke-width="2.4"/><path d="M60 41h50" stroke="#a89f93" stroke-width="2.4"/><rect x="104" y="76" width="74" height="54" rx="12" fill="#fffdf7" stroke="#4a8a5c" stroke-width="2.2"/><rect x="128" y="96" width="26" height="22" rx="4" fill="#dfeadf" stroke="#4a8a5c" stroke-width="2"/><path d="M134 96v-6a7 7 0 0 1 14 0v6" stroke="#4a8a5c" stroke-width="2.2"/><path d="M52 92c16 0 30 6 44 14" stroke="#a89f93" stroke-width="2" stroke-dasharray="4 5"/></svg>'
+    };
+
+    function build() {
+      var lists;
+      if (phone()) {
+        lists = { art: "cards", title: "One list at a time",
+          body: "<b>Swipe the cards</b> to move between your lists. <b>Tap them</b> to spread them all out: from there you can add a list, and rename one or change its colour under <b>Colours &amp; more</b>." };
+      } else {
+        lists = { art: "columns", title: "Every list side by side",
+          body: "Your lists stand in columns. <b>Tap a list’s name</b> to rename it. " +
+            (duoOpen() ? "The <b>columns button</b> chooses which lists show, and closing the phone brings back one list at a time."
+                       : "<b>Lists</b> in the toolbar chooses which ones show, on a wide window.") };
+      }
+      pages = [
+        { art: "hello", title: "Welcome to Do<span class=\"dot\">.</span>",
+          body: "Your lists and your day, in one calm place. Here is the short tour: it takes a minute." },
+        { art: "write", title: "Write it down",
+          body: "Type what needs doing and tap <b>Add</b>. <b>Tap the circle</b> when it is done. Finished tasks wait under <b>Completed</b>, and a deleted one can be brought back for 30 days." },
+        { art: "date", title: "Give it a day",
+          body: "Tap the <b>calendar</b> beside a task to give it a date and a time. A <b>bell</b> means Do. will remind you when it is due." },
+        lists,
+        { art: "today", title: "Your day, in order",
+          body: "<b>Today</b> puts every dated task in time order. The <b>Calendar</b> shows your meetings beside your tasks, so you can see the whole day at once." },
+        { art: "find", title: "Find it. Keep it with you.",
+          body: "<b>Search</b> finds any task, note or step, even finished ones. <b>Sync</b> is optional and needs no account: your lists are encrypted on your device before they leave it." }
+      ];
+      // In the app, the last page asks for the phone's calendar: the day
+      // is only whole with the meetings in it. The words come before
+      // Apple's sheet, because a permission that appears out of nowhere
+      // gets declined.
+      if (calBridge()) {
+        pages.push({ art: "cal", title: "Bring in your calendar", calendar: true,
+          body: calConnected()
+            ? "Your iPhone’s calendar is connected. Your meetings show in the <b>Calendar</b> and in <b>Today</b>, beside your tasks."
+            : "Show your meetings beside your tasks. Do. reads the calendars already on this iPhone: iCloud, Google, Outlook, whatever the Calendar app has. They are read on this phone, and stay on it unless you choose to share them with your other devices." });
+      }
+      track.textContent = ""; dotsEl.textContent = "";
+      pages.forEach(function (pg, i) {
+        var sec = el("section", "guide-page");
+        sec.setAttribute("aria-roledescription", "page");
+        sec.id = "guide-p" + i;
+        var art = el("div", "guide-art"); art.innerHTML = ART[pg.art]; art.setAttribute("aria-hidden", "true");
+        var h = el("h2", "guide-title"); h.innerHTML = pg.title; h.id = "guide-h" + i;
+        var p = el("p", "guide-body"); p.innerHTML = pg.body;
+        sec.setAttribute("aria-labelledby", h.id);
+        sec.appendChild(art); sec.appendChild(h); sec.appendChild(p);
+        track.appendChild(sec);
+        var d = el("button", "guide-dot"); d.appendChild(el("i"));
+        d.setAttribute("aria-label", "Page " + (i + 1) + " of " + pages.length);
+        d.addEventListener("click", function () { go(i); });
+        dotsEl.appendChild(d);
+      });
+    }
+
+    function paint(offset) {
+      track.style.transform = "translateX(calc(" + (-page * 100) + "% + " + (offset || 0) + "px))";
+    }
+    function go(i) {
+      page = Math.max(0, Math.min(pages.length - 1, i));
+      paint(0);
+      [].forEach.call(dotsEl.children, function (d, j) {
+        if (j === page) d.setAttribute("aria-current", "step"); else d.removeAttribute("aria-current");
+      });
+      [].forEach.call(track.children, function (sec, j) {
+        sec.setAttribute("aria-hidden", j === page ? "false" : "true");
+        sec.inert = j !== page;
+        if (j === page) sec.scrollTop = 0;
+      });
+      var first = page === 0, last = page === pages.length - 1;
+      backBtn.setAttribute("aria-hidden", first ? "true" : "false");
+      backBtn.tabIndex = first ? -1 : 0;
+      var asking = calPage() && !calConnected() && calAnswer !== "no";
+      nextBtn.textContent = asking ? "Connect calendar" : (last ? "Get started" : "Next");
+      // on the calendar page the top button is the way to say no
+      skipBtn.textContent = asking ? "Not now" : "Skip";
+      skipBtn.style.visibility = last && !asking ? "hidden" : "";
+      root.setAttribute("aria-labelledby", "guide-h" + page);
+      if (live) live.textContent = "Page " + (page + 1) + " of " + pages.length + ": " +
+        document.getElementById("guide-h" + page).textContent;
+    }
+    function finish() {
+      try { localStorage.setItem(GUIDE_KEY, "1"); } catch (e) {}
+      root.classList.remove("show");
+      document.body.classList.remove("guide-open");
+      document.removeEventListener("keydown", onKey, true);
+      if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
+      // the cards' own first-run nudge, held back until now
+      setTimeout(function () {
+        if (typeof playFanHint === "function") playFanHint(localStorage.getItem(MTAB_KEY) || PANEL_IDS[0]);
+      }, 450);
+    }
+    function onKey(e) {
+      if (!root.classList.contains("show")) return;
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); go(page + 1); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); go(page - 1); }
+      else if (e.key === "Tab") {
+        // keep the keyboard inside the guide
+        var f = [].filter.call(root.querySelectorAll("button"), function (b) {
+          return b.offsetParent !== null && b.tabIndex !== -1 && b.style.visibility !== "hidden" && b.getAttribute("aria-hidden") !== "true";
+        });
+        if (!f.length) return;
+        var i = f.indexOf(document.activeElement);
+        if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+      } else { e.stopPropagation(); }
+    }
+    nextBtn.addEventListener("click", function () {
+      if (calPage() && !calConnected() && calAnswer !== "no") { connectCalendar(); return; }
+      if (page === pages.length - 1) finish(); else go(page + 1);
+    });
+    backBtn.addEventListener("click", function () { go(page - 1); });
+    // Skip goes to the one question left, as Material's Skip goes to the
+    // end; there, it is "Not now" and closes the guide
+    skipBtn.addEventListener("click", function () {
+      var last = pages.length - 1;
+      if (page !== last && pages[last].calendar && !calConnected() && calAnswer !== "no") { go(last); return; }
+      finish();
+    });
+
+    // the swipe: the page follows the finger, and a third of a flick turns it
+    var sx = null, sy = 0, dx = 0, horiz = null, pid = null;
+    viewport.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      sx = e.clientX; sy = e.clientY; dx = 0; horiz = null; pid = e.pointerId;
+    });
+    viewport.addEventListener("pointermove", function (e) {
+      if (sx === null || e.pointerId !== pid) return;
+      var mx = e.clientX - sx, my = e.clientY - sy;
+      if (horiz === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) {
+        horiz = Math.abs(mx) > Math.abs(my);
+        if (horiz) { track.classList.add("dragging"); try { viewport.setPointerCapture(pid); } catch (er) {} }
+      }
+      if (!horiz) return;
+      dx = mx;
+      // resistance past the first and last page
+      if ((page === 0 && dx > 0) || (page === pages.length - 1 && dx < 0)) dx = dx / 3;
+      paint(dx);
+    });
+    function release() {
+      if (sx === null) return;
+      track.classList.remove("dragging");
+      var w = viewport.clientWidth || 1;
+      if (horiz && dx < -Math.min(80, w / 4)) go(page + 1);
+      else if (horiz && dx > Math.min(80, w / 4)) go(page - 1);
+      else paint(0);
+      sx = null; horiz = null; dx = 0;
+    }
+    viewport.addEventListener("pointerup", release);
+    viewport.addEventListener("pointercancel", release);
+
+    return function open() {
+      lastFocus = document.activeElement;
+      calAnswer = null;
+      build();
+      root.classList.add("show");
+      document.body.classList.add("guide-open");
+      document.addEventListener("keydown", onKey, true);
+      go(0);
+      // a keyboard starts on Next; a finger needs no focus ring
+      if (!window.matchMedia("(pointer: coarse)").matches) setTimeout(function () { nextBtn.focus(); }, 30);
+    };
+  })();
+
+  (function () {
+    var replay = document.getElementById("guide-replay");
+    if (replay) replay.addEventListener("click", function () {
+      document.getElementById("sync-modal").classList.remove("show");
+      openGuide();
+    });
+    var seen = null;
+    try { seen = localStorage.getItem(GUIDE_KEY); } catch (e) { return; }
+    if (seen) return;
+    // A fresh install: no list had ever been saved when the app started
+    // (the starter tasks are written on that same start, so counting tasks
+    // would not tell).
+    if (!FIRST_VISIT) { try { localStorage.setItem(GUIDE_KEY, "1"); } catch (e) {} return; }
+    openGuide();
+  })();
 
   function fanCountText(id) {
     // The calendar card is the one place a count is the wrong answer.
