@@ -305,6 +305,12 @@ grant execute on function public.referral_friend(text) to anon, authenticated;
 grant execute on function public.referral_forget(text) to anon, authenticated;
 grant execute on function public.referral_convert(text, text, text, bigint, boolean) to service_role;
 grant execute on function public.referral_refund(text) to service_role;
+-- Supabase grants every new function to anon and authenticated by default,
+-- separately from "public", so those grants are taken back by name. Without
+-- this the app's public key could record a purchase and skip Apple's check.
+revoke execute on function public.referral_fill(bigint) from anon, authenticated;
+revoke execute on function public.referral_convert(text, text, text, bigint, boolean) from anon, authenticated;
+revoke execute on function public.referral_refund(text) from anon, authenticated;
 
 -- ═══ When the offer codes exist (after 1.0 is approved) ═════════════
 -- Load each batch Apple gives you. Paste the codes, one per line, between
