@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FI8DbJU2w9+sNUp+6arbB4ciyiE7Jp1ROwG5qKzheHM=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-GqJDB+OlNpglDqCdEES9uiOgGIbXRNABVh3/zU77B50=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -5867,7 +5867,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-18-1820";
+  var BUILD = "2026-11-19-1026";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -6912,6 +6912,25 @@
     } catch (e) { /* a corrupt cache is just an empty one */ }
   })();
 
+  // Calendar links (added on the iPhone) keep a cache of their own. They
+  // used to share the one above with the phone's calendars, and since each
+  // reader empties a day before filling it, only one could win: adding a
+  // link made every Apple Calendar meeting disappear from Do.
+  var LINK_EV_KEY = "dia_todo_linkevents_v1";
+  var linkEvents = {};       // "YYYY-MM-DD" -> [event], from calendar links
+  var linkEventsAt = {};
+  (function () {
+    try {
+      var c = JSON.parse(localStorage.getItem(LINK_EV_KEY) || "{}");
+      linkEvents = c.days || {};
+      linkEventsAt = c.at || {};
+    } catch (e) { /* a corrupt cache is just an empty one */ }
+  })();
+  function forgetLinkEvents() {
+    linkEvents = {}; linkEventsAt = {};
+    try { localStorage.removeItem(LINK_EV_KEY); } catch (e) {}
+  }
+
   // Every reader of a calendar ends here. One function rather than three
   // copies of the same two lines, because something outside this file's
   // view of the world needs to hear about it: the lock-screen widget only
@@ -6923,6 +6942,12 @@
   // them the next time the app was reopened: a task added on the laptop got
   // no reminder and no place in the Do. calendar until then.
   var onSyncApplied = null;
+  function saveLinkCache() {
+    try {
+      localStorage.setItem(LINK_EV_KEY, JSON.stringify({ days: linkEvents, at: linkEventsAt }));
+    } catch (e) { /* a full quota should not break the calendar */ }
+    if (onCalendarCached) { try { onCalendarCached(); } catch (e) {} }
+  }
   function saveMsCache() {
     try {
       localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
@@ -7024,7 +7049,8 @@
   function msEventsFor(dayStart) {
     // A browser keeps no calendar of its own (an Outlook or link cache from
     // before the web became a follower is ignored): only what the phone shares.
-    var own = calBridge() ? (msEvents[dayKey(dayStart)] || []) : [];
+    var k0 = dayKey(dayStart);
+    var own = calBridge() ? (msEvents[k0] || []).concat(linkEvents[k0] || []) : [];
     var all = own.concat(sharedEventsFor(dayStart));
     return all.filter(function (ev) {
       if (isOwnEcho(ev.subject, ev.calendar || ev.where)) return false;
@@ -7474,9 +7500,42 @@
     return out;
   }
 
-  function ensureIcsEvents(fromTs, days, done) {
+  // Every link, read and expanded over one range. Resolves to the events
+  // and to how many links failed, so the caller can say so.
+  function icsRead(fromTs, toTs) {
     var feeds = icsFeeds();
-    if (!feeds.length) return;
+    if (!feeds.length) return Promise.resolve({ events: [], bad: [], all: 0 });
+    return Promise.all(feeds.map(function (f) {
+      return icsFetch(f.url).then(function (text) {
+        return { feed: f, events: icsParse(text) };
+      }).catch(function (e) {
+        return { feed: f, events: [], error: (e && e.message) || "failed" };
+      });
+    })).then(function (results) {
+      var out = [];
+      results.forEach(function (res) {
+        res.events.forEach(function (ev) {
+          if (ev.status === "CANCELLED") return;
+          if (isOwnEcho(ev.summary, res.feed.name)) return;
+          var span = (ev.end || ev.start) - ev.start;
+          icsExpand(ev, fromTs, toTs).forEach(function (ts) {
+            out.push({
+              id: (ev.uid || ev.summary) + ":" + ts,
+              subject: ev.summary || "(no title)",
+              start: ts, end: ts + (span || 1800000),
+              allDay: !!ev.allDay,
+              where: ev.where || res.feed.name || "",
+              link: res.feed.name || "Calendar link"
+            });
+          });
+        });
+      });
+      return { events: out, bad: results.filter(function (r) { return r.error; }), all: results.length };
+    });
+  }
+
+  function ensureIcsEvents(fromTs, days, done) {
+    if (!icsFeeds().length) return;
     var toTs = startOfDay(fromTs, days);
     var range = "i" + fromTs + ":" + toTs;
     if (msFetching[range]) return;
@@ -7484,47 +7543,27 @@
     var i, stale = false;
     for (i = 0; i < days; i++) {
       var k = dayKey(startOfDay(fromTs, i));
-      if (!msEventsAt[k] || Date.now() - msEventsAt[k] > MS_EV_FRESH) stale = true;
+      if (!linkEventsAt[k] || Date.now() - linkEventsAt[k] > MS_EV_FRESH) stale = true;
     }
     if (!stale) return;
     msFetching[range] = true;
 
-    Promise.all(feeds.map(function (f) {
-      return icsFetch(f.url).then(function (text) {
-        return { feed: f, events: icsParse(text) };
-      }).catch(function (e) {
-        return { feed: f, events: [], error: (e && e.message) || "failed" };
-      });
-    })).then(function (results) {
+    icsRead(fromTs, toTs).then(function (r) {
       msFetching[range] = false;
-      var bad = results.filter(function (r) { return r.error; });
-      msEvNote(bad.length === results.length
-        ? (bad[0].error === "Failed to fetch" ? "blocked by the browser" : bad[0].error)
-        : "");
+      // A link that fails is said once; it does not hide the phone's own calendars.
+      if (r.bad.length && r.bad.length === r.all) {
+        msEvNote(r.bad[0].error === "Failed to fetch" ? "blocked by the browser" : r.bad[0].error);
+      }
       for (var j = 0; j < days; j++) {
         var kk = dayKey(startOfDay(fromTs, j));
-        msEvents[kk] = [];
-        msEventsAt[kk] = Date.now();
+        linkEvents[kk] = [];
+        linkEventsAt[kk] = Date.now();
       }
-      results.forEach(function (res) {
-        res.events.forEach(function (ev) {
-          if (ev.status === "CANCELLED") return;
-          if (isOwnEcho(ev.summary, res.feed.name)) return;
-          var span = (ev.end || ev.start) - ev.start;
-          icsExpand(ev, fromTs, toTs).forEach(function (ts) {
-            var key = dayKey(ev.allDay ? ts + 60000 : ts);
-            if (!msEvents[key]) return;
-            msEvents[key].push({
-              id: (ev.uid || ev.summary) + ":" + ts,
-              subject: ev.summary || "(no title)",
-              start: ts, end: ts + (span || 1800000),
-              allDay: !!ev.allDay,
-              where: ev.where || res.feed.name || ""
-            });
-          });
-        });
+      r.events.forEach(function (ev) {
+        var key = dayKey(ev.allDay ? ev.start + 60000 : ev.start);
+        if (linkEvents[key]) linkEvents[key].push(ev);
       });
-      saveMsCache();
+      saveLinkCache();
       if (done) done();
     });
   }
@@ -7675,12 +7714,12 @@
   // The phone reads its own calendars (and any links added on it). A
   // browser reads none: meetings reach it only when the phone shares them.
   function ensureExternalEvents(fromTs, days, done) {
-    // A pasted link beats everything: it is the one the person set up on
-    // purpose, it works the same on every device, and it needed nobody's
-    // permission to exist.
-    if (icsFeeds().length) return ensureIcsEvents(fromTs, days, done);
-    if (calBridge()) return ensureNativeEvents(fromTs, days, done);
     // A browser reads no calendar itself: it shows what the phone shares.
+    if (!calBridge()) return;
+    // The phone's calendars and any links, together. A link adds a calendar
+    // the phone does not have; it never stands in for the ones it does.
+    ensureNativeEvents(fromTs, days, done);
+    if (icsFeeds().length) ensureIcsEvents(fromTs, days, done);
   }
   function anyCalendarSource() {
     return icsFeeds().length > 0 || !!calBridge() || msConnected();
@@ -8163,7 +8202,7 @@
         row.appendChild(words);
         row.appendChild(removeButton("Remove", function () {
           saveIcsFeeds(icsFeeds().filter(function (x) { return x.id !== f.id; }));
-          for (var k in msEventsAt) { if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k]; }
+          forgetLinkEvents();   // drawn with the old set of links
           flashStatus("Calendar link removed.");
           paintFeeds();
           render();
@@ -8188,7 +8227,7 @@
       saveIcsFeeds(feeds);
       feedInput.value = "";
       // Everything cached was drawn without this calendar in it.
-      for (var k in msEventsAt) { if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k]; }
+      forgetLinkEvents();   // drawn with the old set of links
       paintFeeds();
       flashStatus("Reading that calendar\u2026");
       render();
@@ -15498,7 +15537,15 @@
       if (!vaultActive() || localStorage.getItem(CAL_PERM_KEY) !== "1") return;
       if (meetBusy || (!force && Date.now() - meetReadAt < 5 * 60 * 1000)) return;
       meetBusy = true;
-      cb.events({ from: startOfDay(Date.now(), -MEET_BACK_DAYS), to: startOfDay(Date.now(), MEET_AHEAD_DAYS) }).then(function (res) {
+      var shareFrom = startOfDay(Date.now(), -MEET_BACK_DAYS), shareTo = startOfDay(Date.now(), MEET_AHEAD_DAYS);
+      cb.events({ from: shareFrom, to: shareTo }).then(function (res) {
+        // Calendar links added on this phone travel with the rest: the other
+        // devices follow the phone, so they see what the phone sees.
+        if (!icsFeeds().length) return [res, null];
+        return icsRead(shareFrom, shareTo).then(function (links) { return [res, links]; },
+                                                 function () { return [res, null]; });
+      }).then(function (both) {
+        var res = both[0], links = both[1];
         meetBusy = false;
         meetReadAt = Date.now();
         if (!res || !res.granted || !meetShareOn()) return;
@@ -15509,6 +15556,19 @@
           if (!calendarAllowed(ev.calendar, ev.account)) return;      // hidden here, not shared either
           events.push({ s: ev.start, e: ev.end, a: !!ev.allDay, t: ev.title || "",
                         w: ev.where || "", c: ev.calendar || "", k: ev.colour || "" });
+        });
+        if (links) links.events.forEach(function (ev) {
+          if (isCancelled(ev.subject)) return;
+          events.push({ s: ev.start, e: ev.end, a: !!ev.allDay, t: ev.subject || "",
+                        w: ev.where || "", c: ev.link || "", k: "" });
+        });
+        // The same meeting from a link and from the phone's own calendar is one meeting.
+        var seenMeet = {};
+        events = events.filter(function (m) {
+          var key = String(m.t || "").trim().toLowerCase() + "|" + m.s + "|" + m.e;
+          if (seenMeet[key]) return false;
+          seenMeet[key] = 1;
+          return true;
         });
         events = normalizeMeetings(events);
         events.sort(function (x, y) { return (x.s - y.s) || (x.t < y.t ? -1 : x.t > y.t ? 1 : 0); });
