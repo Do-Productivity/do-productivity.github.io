@@ -68,7 +68,7 @@ BIG JOBS, STEP BY STEP
 Some work is not one tick. Give it a start, a deadline and the steps in between.
 
 YOUR CALENDAR, BESIDE YOUR TASKS
-Do. reads the calendar on your iPhone so you can plan around it, and never changes it. Switch on Add my dated tasks to Apple Calendar and your tasks also appear in a calendar of their own, on your iPhone, iPad and Mac. Tap an empty hour to add a task at that time.
+Do. shows every calendar connected to Apple Calendar on your iPhone, whether Outlook, Google, Yahoo or any other email account, so you can plan around it. It never changes them. Switch on Add my dated tasks to Apple Calendar and your tasks also appear in a calendar of their own, on your iPhone, iPad and Mac. Tap an empty hour to add a task at that time.
 
 WIDGETS
 What is next on your Lock Screen. Your week on your Home Screen.
