@@ -26,12 +26,15 @@ allow it to be removed once released.
 >
 > | Field | Text |
 > |---|---|
-> | Subtitle (27/30) | `Every iPhone. Made for Duo.` |
-> | Promotional text (156/170) | `Your lists and your day in one calm place, on any iPhone. On iPhone Duo it follows the fold: closed, one list; open, all of them. No account and no sign-up.` |
+> | Subtitle (27/30) | `One app for your whole day.` (chosen 22 November 2026; the earlier choice was `Every iPhone. Made for Duo.`) |
+> | Promotional text (156/170) | `Reminders, notes, to-dos, your calendar and step-by-step plans, in one place. A card for every part of your life: work, personal, family, hobbies, anything.` |
 > | Keywords | unchanged: `foldable` and `duo` stay, the Duo is still the hook |
 >
 > The promotional text can be changed as soon as 1.0 is live, without waiting
-> for 1.1. The description below is already the 1.1 version.
+> for 1.1. The description below is already the 1.1 version: "everything in
+> one place" (22 November 2026). It names no other company's apps on purpose;
+> App Review can flag that in a listing. Social posts and the website may say
+> "replaces Reminders, Notes and your to-do app".
 
 | Field | Limit | Text |
 |---|---|---|
@@ -53,24 +56,31 @@ the place for the founding-members line once the seats open:
 ### Description
 
 ```
-Do. is a calm to-do list and calendar for iPhone: tasks, notes, plans and your meetings in one place, kept on your device.
+Stop jumping between a reminders app, a notes app, a to-do list and a calendar. Do. puts all of it in one place, so your whole day is on one screen.
+
+ONE APP INSTEAD OF FIVE
+- To-dos: tick them off, give them a date, a time, or neither.
+- Reminders: give a task a time and your iPhone reminds you when it is due.
+- Notes: the thoughts that are not tasks yet, kept beside the ones that are.
+- Calendar: every calendar on your iPhone, beside your tasks.
+- Scheduled: big jobs with a start, a deadline and the steps in between.
+
+A CARD FOR EVERY PART OF YOUR LIFE
+Each list is a card of its own colour: Work, Personal, Family, Hobbies, Groceries, Travel, whatever your life needs. Swipe between them, or tap to see them all at once. Rename any card and give it the colour you like.
 
 MADE FOR IPHONE DUO
 Closed, Do. shows one list at a time. Open it and your lists sit side by side, with room for your plans and your calendar. Turn it upright and every list is still on screen. Nothing to set up and nothing to drag into place.
 
 YOUR DAY, IN ONE TIMELINE
-The Today screen shows the tasks that have a time and the meetings in your calendar, in the order they happen. One tap hides the meetings when you only want the work.
+The Today screen puts the tasks that have a time and the meetings in your calendar in the order they happen. One tap hides the meetings when you only want the work.
 
 TYPE IT THE WAY YOU SAY IT
 Write "Call the bank tomorrow 3pm" and Do. takes the time out of the sentence and sets the reminder. It shows what it understood while you type.
 
-BIG JOBS, STEP BY STEP
-Some work is not one tick. Give it a start, a deadline and the steps in between.
+EVERY CALENDAR YOU ALREADY HAVE
+Do. shows every calendar connected to Apple Calendar on your iPhone, whether Outlook, Google, Yahoo or any other email account. It never changes them. Tap an empty hour to add a task at that time. Switch on Add my dated tasks to Apple Calendar and your tasks also appear in a calendar of their own, on your iPhone, iPad and Mac.
 
-YOUR CALENDAR, BESIDE YOUR TASKS
-Do. shows every calendar connected to Apple Calendar on your iPhone, whether Outlook, Google, Yahoo or any other email account, so you can plan around it. It never changes them. Switch on Add my dated tasks to Apple Calendar and your tasks also appear in a calendar of their own, on your iPhone, iPad and Mac. Tap an empty hour to add a task at that time.
-
-WIDGETS
+ON YOUR LOCK SCREEN AND HOME SCREEN
 What is next on your Lock Screen. Your week on your Home Screen.
 
 PRIVATE BY DESIGN
