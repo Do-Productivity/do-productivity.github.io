@@ -122,12 +122,7 @@
   .dev.open img { border-radius: 3.7% / 5.2%; }
   .dev.upright { padding: 1.5%; border-radius: 6.5% / 4.6%; }
   .dev.upright img { border-radius: 5.2% / 3.7%; }
-  /* the fold, as a faint change in the light across the open screen */
-  .dev.open::after, .dev.upright::after { content: ""; position: absolute; pointer-events: none; }
-  .dev.open::after { top: 1.6%; bottom: 1.6%; left: 48.4%; width: 3.2%;
-    background: linear-gradient(90deg, transparent, rgba(43,38,32,.07) 38%, rgba(255,255,255,.16) 50%, rgba(43,38,32,.07) 62%, transparent); }
-  .dev.upright::after { left: 1.6%; right: 1.6%; top: 48.4%; height: 3.2%;
-    background: linear-gradient(180deg, transparent, rgba(43,38,32,.07) 38%, rgba(255,255,255,.16) 50%, rgba(43,38,32,.07) 62%, transparent); }
+  /* no fold line drawn across the open screen: the inner screen is seamless */
 
   .poses { display: grid; grid-template-columns: 486fr 971fr 689fr; gap: clamp(18px, 3vw, 40px); align-items: end; margin-top: clamp(30px, 5vw, 56px); }
   .poses figure { margin: 0; }
