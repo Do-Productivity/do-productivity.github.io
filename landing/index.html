@@ -157,6 +157,28 @@
   .more span { color: var(--soft); font-size: 15px; }
   @media (max-width: 820px) { .more { grid-template-columns: 1fr; } }
 
+  /* ── widgets band, from the friends-and-family page ── */
+  .wband { margin-top: clamp(40px, 6vw, 72px); border-radius: 28px; padding: clamp(24px, 4vw, 44px);
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: clamp(24px, 4vw, 48px); align-items: center;
+    background: linear-gradient(135deg, #2f4a63 0%, #3a7f86 55%, #7fb7ad 100%); color: #fff; }
+  .wband .eyebrow { color: #ffd9cf; }
+  .wband h3 { font: 700 clamp(26px, 3.2vw, 36px)/1.12 var(--serif); margin: 0 0 14px; text-wrap: balance; }
+  .wband p { color: rgba(255, 255, 255, .86); margin: 0; max-width: 22em; }
+  .wrow { display: flex; gap: 16px; align-items: flex-start; }
+  .wrow img { display: block; height: auto; box-shadow: 0 10px 26px rgba(0, 0, 0, .28); }
+  .wrow .week { width: 290px; border-radius: 26px; }
+  .wcol { display: flex; flex-direction: column; gap: 16px; width: 330px; }
+  .wcol .med { width: 100%; border-radius: 22px; }
+  .locks { display: flex; gap: 12px; }
+  .lock { flex: 1; background: #3b4554; border-radius: 12px; padding: 7px 8px; box-shadow: 0 10px 26px rgba(0, 0, 0, .28); }
+  .lock img { width: 100%; box-shadow: none; }
+  @media (max-width: 1040px) { .wband { grid-template-columns: 1fr; } .wrow { justify-content: center; } }
+  @media (max-width: 680px) {
+    .wrow { flex-direction: column; align-items: center; }
+    .wrow .week { width: min(100%, 300px); }
+    .wcol { width: min(100%, 340px); }
+  }
+
   /* ── one app instead of five ── */
   .five { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-top: clamp(32px, 5vw, 56px); text-align: left; }
   .five div { background: var(--card); border: 1px solid var(--rule); border-radius: 18px; padding: 20px; }
@@ -347,8 +369,26 @@
     <div class="more">
       <div><b>Every list, one deck<i class="dot">.</i></b><span>Work, personal, family, hobbies, notes and plans, each a card of its own colour. Swipe between them, or tap to see them all at once. Add your own lists, rename any card and pick its colour.</span></div>
       <div><b>Your calendar, beside your tasks<i class="dot">.</i></b><span>Do. shows every calendar connected to Apple Calendar on your iPhone, whether Outlook, Google, Yahoo or any other email account, so you can plan around it. It never changes them.</span></div>
-      <div><b>Widgets<i class="dot">.</i></b><span>What is next on your Lock Screen, and your week on your Home Screen.</span></div>
+      <div><b>Find anything, lose nothing<i class="dot">.</i></b><span>Search every task and note, in every list. Deleted things wait in Recently deleted for 30 days before they go.</span></div>
       <div><b>On the web too<i class="dot">.</i></b><span>Open Do. in a browser on any computer and keep the same lists as your iPhone, through sync.</span></div>
+    </div>
+
+    <div class="wband">
+      <div>
+        <p class="eyebrow">In the iPhone app</p>
+        <h3>See your day without opening it<i class="dot">.</i></h3>
+        <p>Widgets for the Home Screen and the Lock Screen: the week ahead, your lists in their colours, and what comes next.</p>
+      </div>
+      <div class="wrow">
+        <img class="week" src="media/w-week-c.png" width="1014" height="1062" loading="lazy" alt="The week widget: a week of meetings and tasks with their times, day by day.">
+        <div class="wcol">
+          <img class="med" src="media/w-lists-medium-c.png" width="1014" height="474" loading="lazy" alt="The lists widget: Personal, Business and another list in their colours, with what is late and what is due today.">
+          <div class="locks">
+            <div class="lock"><img src="media/w-lock-day-c.png" width="480" height="216" loading="lazy" alt="Lock Screen widget: the next things in your day, with their times."></div>
+            <div class="lock"><img src="media/w-lock-lists-c.png" width="480" height="216" loading="lazy" alt="Lock Screen widget: how many things are to do and late, and the first of them."></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
