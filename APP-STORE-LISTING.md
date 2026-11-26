@@ -222,6 +222,34 @@ Sync: optional. "Start syncing from this device" needs no account. Data is encry
 
 Contact details for review: your name and phone number, and `hello.doproductivity@gmail.com` as the email.
 
+## 7b. Version 1.1: What's New and review notes (drafted 26 November 2026)
+
+**What's New in This Version**
+
+```
+Refer a friend: give a month, get a month. Open Sync for your code. When a friend subscribes with it, you both get a free month, and every 10 friends earns you a free year.
+
+Your tasks in Apple Calendar: one switch puts every dated task in a calendar of its own, called Do., so it shows on your Mac and iPad too. Alerts still ring only once.
+
+Your meetings on your other devices: turn it on and Do. on the web shows your iPhone's meetings, encrypted like your lists.
+
+Calendar links now add to your iPhone's calendars instead of replacing them.
+
+Rename any list, the built-in ones too. On iPhone Duo, choose which lists show as columns.
+
+Calendar widgets show when each meeting ends, not only when it starts.
+
+A short guide on first launch, Today and Calendar told apart, and search grouped by list with a clear way back.
+
+Pulling down no longer reloads the app while you scroll a calendar or a sheet.
+```
+
+**Notes for App Review (add to section 7's text)**
+
+```
+New in 1.1, Refer a friend (Sync, under Membership): each person can show a referral code and share it. A friend enters the code before subscribing. Rewards are App Store subscription offer codes (one month free, or one year free for every ten friends), shown in the app to redeem in the App Store; the app never unlocks anything itself. A referrer's reward appears 14 days after the friend's first payment, confirmed by App Store Server Notifications, and is withdrawn if that payment is refunded. No names, email addresses or accounts are involved. To see the card without subscribing: open Sync and scroll to "Refer a friend".
+```
+
 ## 8. What is left, in order
 
 Yours:
