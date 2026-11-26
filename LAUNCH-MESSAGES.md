@@ -3,7 +3,7 @@
 Written 13 November 2026. Every claim below is true of the app as built.
 Two things to fill in before you use the launch versions:
 
-- `[APP STORE LINK]`: the link Apple gives you once the app is approved.
+- `https://apps.apple.com/app/id6834582863`: the link Apple gives you once the app is approved.
 - The founding seats must be open on the server that day (see
   `FOUNDING-MEMBERS.md`, step 3).
 
@@ -44,7 +44,7 @@ The first 100 people are founding members: Do. is free for life. For everyone el
 
 If your day lives in five apps, try living in one.
 
-[APP STORE LINK]
+https://apps.apple.com/app/id6834582863
 
 #productivity #iPhoneDuo #privacy #indiedev #todolist
 ```
@@ -131,7 +131,7 @@ No account, no email, no ads. Your lists stay on your phone.
 
 The first 100 people get it free for life, and I'd love you to be one of them:
 
-1. Download it: [APP STORE LINK]
+1. Download it: https://apps.apple.com/app/id6834582863
 2. Open it, tap Sync, then "Take a founding seat"
 
 Tell me what you think, good or bad. And send it to anyone who lives in their to-do list 🙏
@@ -154,7 +154,7 @@ There's no account, so I don't have your name or email. Your lists stay on your 
 ## 4. A short version for groups
 
 ```
-Do. is live ✦ One app for your to-dos, reminders, notes and calendar. Made for iPhone Duo, works on every iPhone, laptop and iPad. No account, no ads. First 100 people get it free for life: [APP STORE LINK]
+Do. is live ✦ One app for your to-dos, reminders, notes and calendar. Made for iPhone Duo, works on every iPhone, laptop and iPad. No account, no ads. First 100 people get it free for life: https://apps.apple.com/app/id6834582863
 ```
 
 ---
