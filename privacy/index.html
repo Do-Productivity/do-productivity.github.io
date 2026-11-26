@@ -40,11 +40,11 @@
 <main>
   <header>
     <img src="../apple-touch-icon.png" alt="Do. app icon">
-    <div><h1>Privacy Policy<i>.</i></h1><p>Do. for iPhone, iPhone Duo and the web · Effective 12 November 2026, updated the same day for founding members</p></div>
+    <div><h1>Privacy Policy<i>.</i></h1><p>Do. for iPhone, iPhone Duo and the web · Effective 12 November 2026, updated for founding members and for version 1.1</p></div>
   </header>
 
   <div class="short"><b>The short version</b>
-    <p>Your lists stay on your device. Do. has no accounts and never asks for your name or email address. If you turn on sync, your lists are scrambled on your device before they leave it, and the key stays on your devices. We cannot read them. There is no usage counting, no advertising and no tracking.</p></div>
+    <p>Your lists stay on your device. Do. has no accounts and never asks for your name or email address. If you turn on sync, your lists (and your meetings, only if you choose to share them) are scrambled on your device before they leave it, and the key stays on your devices. We cannot read them. There is no usage counting, no advertising and no tracking.</p></div>
 
   <h2>Who is responsible<i>.</i></h2>
   <p>Do. is published by Do Productivity. For anything in this policy, write to <a href="mailto:hello.doproductivity@gmail.com">hello.doproductivity@gmail.com</a>.</p>
@@ -52,7 +52,7 @@
   <h2>What stays on your device<i>.</i></h2>
   <ul>
     <li><b>Your lists, tasks, notes and scheduled tasks.</b> They are saved on the device you wrote them on.</li>
-    <li><b>Your calendar.</b> If you allow it, Do. reads the calendar on your iPhone so your meetings appear beside your tasks. It is read on the device, never changed, and never sent to us.</li>
+    <li><b>Your calendar.</b> If you allow it, Do. reads the calendar on your iPhone so your meetings appear beside your tasks. It is read on the device and is not sent to us. The one exception is your choice: if you switch on <b>Show my meetings on my other devices</b>, your meetings travel inside your scrambled synced copy, described below, which we cannot read. Do. never changes your calendars. If you switch on <b>Add my dated tasks to Apple Calendar</b>, Do. writes your dated tasks into a separate calendar of its own, called Do., on your iPhone; if that calendar is in iCloud, Apple keeps it on your other devices too. Switching it off deletes that calendar.</li>
     <li><b>Widgets.</b> They show what the app hands them on the same device.</li>
     <li><b>The key to your synced lists.</b> It is made on your device and never sent to us. On iPhone it is kept in the Keychain, not in a backup.</li>
     <li><b>Sign-in details for calendars you connect.</b> On iPhone they are kept in the Keychain too.</li>
@@ -66,6 +66,7 @@
 
   <h3>A scrambled copy of your lists <span class="when">· only if you turn on sync</span></h3>
   <p>Sync has no account. Your device makes a random key and encrypts your lists with it (AES-256) before sending them. Our server keeps only that encrypted copy, under a random number. It never receives the key, so neither we nor anyone who broke into the server could read your lists. We hold no name, no email address and no password, because the app never asks for them.</p>
+  <p><b>Your meetings, only if you choose.</b> If you switch on <b>Show my meetings on my other devices</b> on your iPhone, the title, time, place and calendar name of your meetings for the coming 8 weeks join the same encrypted copy, so Do. on your other devices, such as the web, can show them. Notes, links and the people invited are not included, and calendars you have hidden in Do. are left out. Like your lists, we cannot read them. Switching it off removes them from the copy, and your other devices delete theirs at their next sync.</p>
   <p>To add a second device, the first device shows a one-time code. You type it on the new device, approve that device on the first one, and then type the number the first device shows back on the new one. Until both are done, nothing is handed over.</p>
   <p>If you lose every device that holds the key, the synced copy can no longer be opened by anyone, including us.</p>
 
@@ -74,19 +75,24 @@
   <p>If you use someone's invitation, the server keeps a fingerprint of a random token made on your device, the number of the seat that invited you, and the time. Nothing in either record is a name, an email address or a device identifier, and neither is linked to your lists.</p>
   <p>The home page of this website asks the server how many seats are left. That request carries nothing about you.</p>
 
+  <h3>Referrals <span class="when">· only if you share a code or use one</span></h3>
+  <p>Your referral code works like a founding seat: your device makes a random key and sends only its fingerprint (a SHA-256 hash). The server keeps that fingerprint, your code, the time it was made and the day your app last checked it.</p>
+  <p>If you enter a friend's code, the server keeps a fingerprint of a random token made on your device, the code you entered, and the time. If you then subscribe, the app sends the server Apple's signed record of that purchase, so the server can check with Apple's signature that it is real. From it the server keeps only Apple's transaction number (a number, not a name), which plan, when it was paid, whether it was refunded, and whether it was a test purchase. The rest of Apple's record is checked and not kept. Apple also tells the server when a purchase is refunded, and the server uses that only to mark the refund.</p>
+  <p>Free months and years are Apple offer codes. The server keeps which code was given for which referral, so that no code is handed out twice. Nothing in these records is a name, an email address or a device identifier, and none of it is linked to your lists.</p>
+
   <h3>Calendars you connect yourself <span class="when">· only if you connect one</span></h3>
-  <p>Calendars are connected in the iPhone app only. If you add a calendar subscription link there, your iPhone downloads it straight from that address, and the events do not pass through us. Do. on the web connects no calendar of its own: it shows meetings only if you switch on <b>Show my meetings on my other devices</b> in Do. on your iPhone. They then travel inside your encrypted synced copy, which we cannot read.</p>
+  <p>Calendars are connected in the iPhone app only. If you add a calendar subscription link there, your iPhone downloads it straight from that address, and the events do not pass through us. Do. on the web connects no calendar of its own: it shows meetings only if you turn on sharing on your iPhone, as described above.</p>
 
   <h3>Sync through your own GitHub account <span class="when">· only if you set this up</span></h3>
   <p>An advanced option saves your lists to an unlisted gist in your own GitHub account. Unlisted is not private: anyone who has the gist's address can read it. GitHub's own privacy policy applies to what is stored there.</p>
 
   <h3>Purchases <span class="when">· only if you buy a plan</span></h3>
-  <p>Apple takes the payment. We never see your card or your Apple Account details. The app learns from Apple only whether a plan is active on your device.</p>
+  <p>Apple takes the payment. We never see your card or your Apple Account details. The app learns from Apple only whether a plan is active on your device. If you subscribe after entering a friend's referral code, Apple's record of that purchase is sent as described under Referrals.</p>
 
   <h2>What Do. never does<i>.</i></h2>
   <ul>
     <li>No advertising, and no advertising or analytics code from other companies.</li>
-    <li>No accounts, and no names or email addresses. A founding seat is a number.</li>
+    <li>No accounts, and no names or email addresses. A founding seat is a number, and a referral code is a code.</li>
     <li>No counting of who opens the app, and no device identifiers.</li>
     <li>No tracking across other apps or websites.</li>
     <li>No selling, renting or trading of your data.</li>
@@ -96,7 +102,7 @@
   <h2>Who else handles data<i>.</i></h2>
   <div class="scroll"><table>
     <tr><th>Company</th><th>What for</th><th>When</th></tr>
-    <tr><td>Supabase</td><td>Hosts the database that holds the encrypted copy of synced lists, and the founding seats and invitations</td><td>Only if you turn on sync, or take a seat or an invitation. The home page asks it how many seats are left</td></tr>
+    <tr><td>Supabase</td><td>Hosts the database that holds the encrypted copy of synced lists, the founding seats and invitations, and referrals</td><td>Only if you turn on sync, take a seat or an invitation, or share or use a referral code. The home page asks it how many seats are left</td></tr>
     <tr><td>Apple</td><td>App Store and payments</td><td>When you download or buy</td></tr>
     <tr><td>GitHub</td><td>Hosts this website and the web version of Do.</td><td>When you use the web version, or its gist sync</td></tr>
   </table></div>
@@ -107,12 +113,14 @@
     <li><b>On your device:</b> until you delete the item or the app.</li>
     <li><b>The encrypted copy of synced lists:</b> until you erase it in the app.</li>
     <li><b>A founding seat or an invitation:</b> until you give it up in the app. A seat that no device has opened for a long time may be released for someone else.</li>
+    <li><b>Your referral code:</b> until you stop using it in the app. The record of a referred purchase (Apple's transaction number, plan, date, refunded or not) is kept while the referral programme runs, so that one purchase can never be counted twice.</li>
   </ul>
 
   <h2>Your choices<i>.</i></h2>
   <ul>
     <li>Use Do. without sync. It is optional, and there is no account either way.</li>
     <li>Give up a founding seat, or forget an invitation, at any time. Open Sync and look under Founding members. The record is deleted from the server straight away.</li>
+    <li>Stop using your referral code at any time. Open Sync, then Refer a friend, then How it works. The code and its rewards are deleted from the server straight away; friends already counted stay counted.</li>
     <li>Turn calendar access off at any time in Settings on your iPhone.</li>
     <li>Erase the synced copy yourself. Open Sync, then Erase the synced copy. It is removed from the server straight away, and sync stops on every device. The lists on each device stay.</li>
     <li>Stop syncing on one device at any time. Its lists stay on it.</li>
