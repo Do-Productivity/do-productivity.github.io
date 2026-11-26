@@ -28,7 +28,7 @@ allow it to be removed once released.
 > |---|---|
 > | Subtitle (27/30) | `One app for your whole day.` (chosen 22 November 2026; the earlier choice was `Every iPhone. Made for Duo.`) |
 > | Promotional text (156/170) | `Reminders, notes, to-dos, your calendar and step-by-step plans, in one place. A card for every part of your life: work, personal, family, hobbies, anything.` |
-> | Keywords | unchanged: `foldable` and `duo` stay, the Duo is still the hook |
+> | Keywords (98/100) | `productivity,tasks,planner,reminders,notes,widget,checklist,agenda,foldable,duo,schedule,organizer` (26 November 2026: `productivity` added so "Do productivity" finds the app, since the seller name is Ahmed Hassaan; `private` dropped to make room) |
 >
 > The promotional text can be changed as soon as 1.0 is live, without waiting
 > for 1.1. The description below is already the 1.1 version: "everything in
