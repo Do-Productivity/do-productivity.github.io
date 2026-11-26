@@ -146,6 +146,16 @@ final class Store: ObservableObject {
     @Published var note: String?
 
     var changed: (() -> Void)?
+    /// A subscription was just bought: its JWS, exactly as Apple signed it.
+    /// The web layer passes it on for a referral; the server checks Apple's
+    /// signature and believes nothing else.
+    var purchased: ((String, String) -> Void)?
+    /// The signed transaction behind the current subscription, so a referral
+    /// that could not be sent at the moment of purchase can be sent later.
+    private(set) var subscriptionJws: (jws: String, product: String)?
+    /// A friend's referral code waiting for the purchase, shown on the plans.
+    @Published var referral: String?
+    var askReferral: (() -> Void)?
     private var updates: Task<Void, Never>?
 
     func start() {
@@ -154,7 +164,12 @@ final class Store: ObservableObject {
         // bought on another device, renewed, refunded — arrive here.
         updates = Task { [weak self] in
             for await result in Transaction.updates {
-                if case .verified(let t) = result { await t.finish() }
+                if case .verified(let t) = result {
+                    await t.finish()
+                    if Plan.forSale.contains(t.productID), t.revocationDate == nil {
+                        await MainActor.run { self?.purchased?(result.jwsRepresentation, t.productID) }
+                    }
+                }
                 await self?.refresh()
             }
         }
@@ -166,6 +181,7 @@ final class Store: ObservableObject {
 
     func refresh() async {
         var mine = Set<String>()
+        var signed: (jws: String, product: String)?
         for await result in Transaction.currentEntitlements {
             // .unverified is dropped on the floor: it means the signature did
             // not check out, which is exactly the case this exists to refuse.
@@ -173,7 +189,9 @@ final class Store: ObservableObject {
             guard Plan.all.contains(t.productID), t.revocationDate == nil else { continue }
             if let end = t.expirationDate, end < Date() { continue }
             mine.insert(t.productID)
+            if Plan.forSale.contains(t.productID) { signed = (result.jwsRepresentation, t.productID) }
         }
+        subscriptionJws = signed
         let was = owned
         owned = mine
         if was != mine { changed?() }
@@ -206,6 +224,7 @@ final class Store: ObservableObject {
                 if case .verified(let t) = result {
                     await t.finish()
                     await refresh()
+                    if Plan.forSale.contains(t.productID) { purchased?(result.jwsRepresentation, t.productID) }
                 } else {
                     note = "Apple could not confirm that purchase, so nothing was unlocked and nothing was charged to keep."
                 }
@@ -281,13 +300,20 @@ public class StoreBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "showPlans", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "receipt", returnType: CAPPluginReturnPromise)
     ]
 
     override public func load() {
         Task { @MainActor [weak self] in
             Store.shared.changed = { [weak self] in
                 self?.notifyListeners("entitlement", data: Store.shared.status())
+            }
+            Store.shared.purchased = { [weak self] jws, product in
+                self?.notifyListeners("purchase", data: ["jws": jws, "product": product])
+            }
+            Store.shared.askReferral = { [weak self] in
+                self?.notifyListeners("askReferral", data: [:])
             }
             Store.shared.start()
         }
@@ -304,7 +330,9 @@ public class StoreBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     /// on a native screen the person can see and Apple's own payment sheet;
     /// the web layer can open that screen and cannot do anything else.
     @objc func showPlans(_ call: CAPPluginCall) {
+        let ref = call.getString("ref")
         Task { @MainActor in
+            Store.shared.referral = (ref?.isEmpty == false) ? ref : nil
             guard let host = self.bridge?.viewController, host.presentedViewController == nil else {
                 call.resolve(Store.shared.status())
                 return
@@ -324,6 +352,18 @@ public class StoreBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in
             await Store.shared.restore()
             call.resolve(Store.shared.status())
+        }
+    }
+
+    /// The signed transaction behind the current subscription, if there is one.
+    @objc func receipt(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            await Store.shared.refresh()
+            if let s = Store.shared.subscriptionJws {
+                call.resolve(["jws": s.jws, "product": s.product])
+            } else {
+                call.resolve([:])
+            }
         }
     }
 
@@ -399,7 +439,9 @@ struct PlansView: View {
                 }
                 .padding(.top, 26)
 
-                plans.padding(.top, 28)
+                referralLine.padding(.top, 22)
+
+                plans.padding(.top, 18)
 
                 if let note = store.note {
                     Text(note)
@@ -443,6 +485,33 @@ struct PlansView: View {
             .padding(.horizontal, 24)
         }
         .background(Palette.paper.ignoresSafeArea())
+    }
+
+    /// A friend's code, entered in Do., shows here so the person knows it
+    /// will apply; without one, a way to enter it (it is entered in the
+    /// app, not here, because the code box belongs with the sharing card).
+    @ViewBuilder private var referralLine: some View {
+        if let code = store.referral {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "gift").foregroundColor(Palette.green)
+                Text("Referral code \(code) applied. Subscribe below and your free month appears in Do. straight after.")
+                    .font(.system(size: 14))
+                    .foregroundColor(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Palette.green.opacity(0.10)))
+        } else if state == "trial" || state == "expired" {
+            Button {
+                close()
+                store.askReferral?()
+            } label: {
+                Text("Have a referral code?")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Palette.ink)
+                    .underline()
+            }
+        }
     }
 
     private var headline: String {

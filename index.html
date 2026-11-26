@@ -12,7 +12,7 @@
      connect-src allows any https host on purpose: a calendar feed can live
      anywhere, and the alternative is an allow-list that breaks the moment
      somebody pastes their own. Everything else is closed. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L5FCEISz1ElclO0xAHqYQBC1O4r1XSIv646CFodV0Ig=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-m98fL6kQfXbCxz/36gmZosjUa34R0TqMyGAj3GzGotg=' 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: blob:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f7f3e9">
 <link rel="manifest" href="manifest.json">
@@ -2019,6 +2019,17 @@
   }
   .founder-seal[hidden] { display: none; }
   html.has-pill .founder-seal { display: none; }
+
+  /* Refer a friend (1.1) */
+  .ref-reward { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: var(--green-soft); font-size: 14px; }
+  .ref-reward .modal-btn { margin: 0; width: auto; padding: 8px 14px; }
+  .ref-reward.waiting { background: var(--paper); color: var(--ink-soft); }
+  .ref-reward.test { background: var(--paper); color: var(--ink-soft); font-size: 13px; }
+  .ref-banner { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+    max-width: 520px; margin: 0 auto; background: var(--card); border: 1px solid var(--rule); border-radius: 14px;
+    box-shadow: 0 12px 36px rgba(43, 38, 32, .22); padding: 14px 44px 14px 16px; font: 14px/1.45 var(--sans); color: var(--ink); }
+  .ref-banner b { font-weight: 700; }
+  .ref-banner button { position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; border: 0; background: none; font-size: 22px; color: var(--ink-soft); cursor: pointer; }
   .member-h {
     font-family: var(--sans); font-size: 11px; font-weight: 700; letter-spacing: 1.6px;
     text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px;
@@ -3642,9 +3653,40 @@
       <button class="modal-btn" id="member-manage-btn" style="display:none">Manage or cancel the subscription</button>
       <button class="modal-btn quiet" id="member-restore-btn">Restore purchases</button>
       <p class="modal-hint">Payment is taken by Apple. Do. never asks for a card and never sees one. Whatever happens, your lists stay yours to read and export.</p>
+      <div id="referral-box" style="display:none">
+        <h3 class="member-h">Refer a friend</h3>
+        <div id="ref-friend" style="display:none">
+          <p id="ref-friend-line"></p>
+          <div id="ref-friend-rewards"></div>
+          <button class="modal-btn primary" id="ref-friend-plans" style="display:none">See the plans</button>
+        </div>
+        <div id="ref-mine">
+          <p><b>Give a month, get a month.</b> Share your code. When a friend subscribes with it, you both get a free month. Every 10 friends, you get a free year.</p>
+          <div class="vault-code" id="ref-code">&nbsp;</div>
+          <button class="modal-btn" id="ref-share-btn">Share my code</button>
+          <p class="modal-hint" id="ref-tally" role="status"></p>
+          <div id="ref-rewards"></div>
+        </div>
+        <div id="ref-enter">
+          <div class="cloud-or">Have a friend's code?</div>
+          <p class="modal-hint">Enter it before you subscribe to get your first month free.</p>
+          <input class="sync-token" id="ref-input" placeholder="Referral code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button class="modal-btn" id="ref-use-btn">Use this code</button>
+          <p class="modal-hint" id="ref-msg" role="status"></p>
+        </div>
+        <details class="modal-details" id="ref-how">
+          <summary>How it works</summary>
+          <p class="modal-hint">Your friend enters your code in Do. before they subscribe, monthly or yearly. Their free month appears in the app as soon as they subscribe, to redeem in the App Store. Yours appears 14 days after their first payment, as long as it was not refunded. Every 10 friends who count this way, you also get a free year.</p>
+          <p class="modal-hint">Free months and years are Apple codes, redeemed in the App Store. Each works once and has to be redeemed within six months. After a free month or year the plan renews at its usual price unless you cancel it in Settings › Apple Account › Subscriptions. One referral per friend; a code cannot be used by the person it belongs to. No names or email addresses are involved: your code is a code.</p>
+          <p class="modal-hint">Stopping deletes your code and its rewards from the server. Friends already counted stay counted, and the code stops working for anyone new. If you open this again later, you get a new code.</p>
+          <button class="modal-btn danger" id="ref-forget-btn">Stop using my referral code</button>
+          <p class="modal-hint" id="ref-forget-msg" role="status"></p>
+        </details>
+      </div>
     </div>
     <p class="modal-hint" id="secrets-line" style="display:none"></p>
     <button class="modal-btn quiet" id="guide-replay">Show the quick tour again</button>
+    <p class="modal-hint version-line" id="version-line"></p>
     <div class="modal-actions">
       <button class="toolbar-btn" id="sync-modal-close">Close</button>
     </div>
@@ -5826,7 +5868,7 @@
   // old build while the server had the fix. Poll a tiny version file and
   // reload once when it changes. Data lives in localStorage, so a reload
   // costs nothing.
-  var BUILD = "2026-11-22-1311";
+  var BUILD = "2026-11-26-1521";
 
   function checkForUpdate() {
     // In the shell this would be a reload loop: the bundled file cannot climb
@@ -5899,6 +5941,17 @@
   if (stampEl) stampEl.textContent = "b" + BUILD.slice(-4);
   var buildTextEl = document.getElementById("build-text");
   if (buildTextEl) buildTextEl.textContent = BUILD;
+
+  // The version line at the foot of Sync: "Do. 1.1 (5)" on iPhone, the web build elsewhere.
+  (function () {
+    var el = document.getElementById("version-line");
+    if (!el) return;
+    el.textContent = "Do. for the web, build " + BUILD;
+    var app = NATIVE && plug("App");
+    if (app && app.getInfo) app.getInfo().then(function (i) {
+      if (i && i.version) el.textContent = "Do. " + i.version + (i.build ? " (" + i.build + ")" : "") + " for iPhone";
+    }, function () {});
+  })();
 
   checkForUpdate();
   window.addEventListener("focus", checkForUpdate);
@@ -6871,6 +6924,25 @@
     } catch (e) { /* a corrupt cache is just an empty one */ }
   })();
 
+  // Calendar links (added on the iPhone) keep a cache of their own. They
+  // used to share the one above with the phone's calendars, and since each
+  // reader empties a day before filling it, only one could win: adding a
+  // link made every Apple Calendar meeting disappear from Do.
+  var LINK_EV_KEY = "dia_todo_linkevents_v1";
+  var linkEvents = {};       // "YYYY-MM-DD" -> [event], from calendar links
+  var linkEventsAt = {};
+  (function () {
+    try {
+      var c = JSON.parse(localStorage.getItem(LINK_EV_KEY) || "{}");
+      linkEvents = c.days || {};
+      linkEventsAt = c.at || {};
+    } catch (e) { /* a corrupt cache is just an empty one */ }
+  })();
+  function forgetLinkEvents() {
+    linkEvents = {}; linkEventsAt = {};
+    try { localStorage.removeItem(LINK_EV_KEY); } catch (e) {}
+  }
+
   // Every reader of a calendar ends here. One function rather than three
   // copies of the same two lines, because something outside this file's
   // view of the world needs to hear about it: the lock-screen widget only
@@ -6882,6 +6954,12 @@
   // them the next time the app was reopened: a task added on the laptop got
   // no reminder and no place in the Do. calendar until then.
   var onSyncApplied = null;
+  function saveLinkCache() {
+    try {
+      localStorage.setItem(LINK_EV_KEY, JSON.stringify({ days: linkEvents, at: linkEventsAt }));
+    } catch (e) { /* a full quota should not break the calendar */ }
+    if (onCalendarCached) { try { onCalendarCached(); } catch (e) {} }
+  }
   function saveMsCache() {
     try {
       localStorage.setItem(MS_EV_KEY, JSON.stringify({ days: msEvents, at: msEventsAt }));
@@ -6983,7 +7061,8 @@
   function msEventsFor(dayStart) {
     // A browser keeps no calendar of its own (an Outlook or link cache from
     // before the web became a follower is ignored): only what the phone shares.
-    var own = calBridge() ? (msEvents[dayKey(dayStart)] || []) : [];
+    var k0 = dayKey(dayStart);
+    var own = calBridge() ? (msEvents[k0] || []).concat(linkEvents[k0] || []) : [];
     var all = own.concat(sharedEventsFor(dayStart));
     return all.filter(function (ev) {
       if (isOwnEcho(ev.subject, ev.calendar || ev.where)) return false;
@@ -7433,9 +7512,42 @@
     return out;
   }
 
-  function ensureIcsEvents(fromTs, days, done) {
+  // Every link, read and expanded over one range. Resolves to the events
+  // and to how many links failed, so the caller can say so.
+  function icsRead(fromTs, toTs) {
     var feeds = icsFeeds();
-    if (!feeds.length) return;
+    if (!feeds.length) return Promise.resolve({ events: [], bad: [], all: 0 });
+    return Promise.all(feeds.map(function (f) {
+      return icsFetch(f.url).then(function (text) {
+        return { feed: f, events: icsParse(text) };
+      }).catch(function (e) {
+        return { feed: f, events: [], error: (e && e.message) || "failed" };
+      });
+    })).then(function (results) {
+      var out = [];
+      results.forEach(function (res) {
+        res.events.forEach(function (ev) {
+          if (ev.status === "CANCELLED") return;
+          if (isOwnEcho(ev.summary, res.feed.name)) return;
+          var span = (ev.end || ev.start) - ev.start;
+          icsExpand(ev, fromTs, toTs).forEach(function (ts) {
+            out.push({
+              id: (ev.uid || ev.summary) + ":" + ts,
+              subject: ev.summary || "(no title)",
+              start: ts, end: ts + (span || 1800000),
+              allDay: !!ev.allDay,
+              where: ev.where || res.feed.name || "",
+              link: res.feed.name || "Calendar link"
+            });
+          });
+        });
+      });
+      return { events: out, bad: results.filter(function (r) { return r.error; }), all: results.length };
+    });
+  }
+
+  function ensureIcsEvents(fromTs, days, done) {
+    if (!icsFeeds().length) return;
     var toTs = startOfDay(fromTs, days);
     var range = "i" + fromTs + ":" + toTs;
     if (msFetching[range]) return;
@@ -7443,47 +7555,27 @@
     var i, stale = false;
     for (i = 0; i < days; i++) {
       var k = dayKey(startOfDay(fromTs, i));
-      if (!msEventsAt[k] || Date.now() - msEventsAt[k] > MS_EV_FRESH) stale = true;
+      if (!linkEventsAt[k] || Date.now() - linkEventsAt[k] > MS_EV_FRESH) stale = true;
     }
     if (!stale) return;
     msFetching[range] = true;
 
-    Promise.all(feeds.map(function (f) {
-      return icsFetch(f.url).then(function (text) {
-        return { feed: f, events: icsParse(text) };
-      }).catch(function (e) {
-        return { feed: f, events: [], error: (e && e.message) || "failed" };
-      });
-    })).then(function (results) {
+    icsRead(fromTs, toTs).then(function (r) {
       msFetching[range] = false;
-      var bad = results.filter(function (r) { return r.error; });
-      msEvNote(bad.length === results.length
-        ? (bad[0].error === "Failed to fetch" ? "blocked by the browser" : bad[0].error)
-        : "");
+      // A link that fails is said once; it does not hide the phone's own calendars.
+      if (r.bad.length && r.bad.length === r.all) {
+        msEvNote(r.bad[0].error === "Failed to fetch" ? "blocked by the browser" : r.bad[0].error);
+      }
       for (var j = 0; j < days; j++) {
         var kk = dayKey(startOfDay(fromTs, j));
-        msEvents[kk] = [];
-        msEventsAt[kk] = Date.now();
+        linkEvents[kk] = [];
+        linkEventsAt[kk] = Date.now();
       }
-      results.forEach(function (res) {
-        res.events.forEach(function (ev) {
-          if (ev.status === "CANCELLED") return;
-          if (isOwnEcho(ev.summary, res.feed.name)) return;
-          var span = (ev.end || ev.start) - ev.start;
-          icsExpand(ev, fromTs, toTs).forEach(function (ts) {
-            var key = dayKey(ev.allDay ? ts + 60000 : ts);
-            if (!msEvents[key]) return;
-            msEvents[key].push({
-              id: (ev.uid || ev.summary) + ":" + ts,
-              subject: ev.summary || "(no title)",
-              start: ts, end: ts + (span || 1800000),
-              allDay: !!ev.allDay,
-              where: ev.where || res.feed.name || ""
-            });
-          });
-        });
+      r.events.forEach(function (ev) {
+        var key = dayKey(ev.allDay ? ev.start + 60000 : ev.start);
+        if (linkEvents[key]) linkEvents[key].push(ev);
       });
-      saveMsCache();
+      saveLinkCache();
       if (done) done();
     });
   }
@@ -7634,12 +7726,12 @@
   // The phone reads its own calendars (and any links added on it). A
   // browser reads none: meetings reach it only when the phone shares them.
   function ensureExternalEvents(fromTs, days, done) {
-    // A pasted link beats everything: it is the one the person set up on
-    // purpose, it works the same on every device, and it needed nobody's
-    // permission to exist.
-    if (icsFeeds().length) return ensureIcsEvents(fromTs, days, done);
-    if (calBridge()) return ensureNativeEvents(fromTs, days, done);
     // A browser reads no calendar itself: it shows what the phone shares.
+    if (!calBridge()) return;
+    // The phone's calendars and any links, together. A link adds a calendar
+    // the phone does not have; it never stands in for the ones it does.
+    ensureNativeEvents(fromTs, days, done);
+    if (icsFeeds().length) ensureIcsEvents(fromTs, days, done);
   }
   function anyCalendarSource() {
     return icsFeeds().length > 0 || !!calBridge() || msConnected();
@@ -8122,7 +8214,7 @@
         row.appendChild(words);
         row.appendChild(removeButton("Remove", function () {
           saveIcsFeeds(icsFeeds().filter(function (x) { return x.id !== f.id; }));
-          for (var k in msEventsAt) { if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k]; }
+          forgetLinkEvents();   // drawn with the old set of links
           flashStatus("Calendar link removed.");
           paintFeeds();
           render();
@@ -8147,7 +8239,7 @@
       saveIcsFeeds(feeds);
       feedInput.value = "";
       // Everything cached was drawn without this calendar in it.
-      for (var k in msEventsAt) { if (Object.prototype.hasOwnProperty.call(msEventsAt, k)) delete msEventsAt[k]; }
+      forgetLinkEvents();   // drawn with the old set of links
       paintFeeds();
       flashStatus("Reading that calendar\u2026");
       render();
@@ -13115,6 +13207,7 @@
     var m = loadMember(), out = {};
     if (founderSeat()) out.founder = m.founder;
     if (invitedHere()) out.invited = m.invited;
+    if (m.ref && m.ref.k) out.ref = { k: m.ref.k, at: m.ref.at || 0, id: m.ref.id || "" };
     if (m.gone && m.gone.length) out.gone = m.gone;
     return out;
   }
@@ -13135,6 +13228,7 @@
       if (myGone.indexOf(id) < 0) { noteGone(m, id); changed = true; }
       if (m.founder && m.founder.id === id) { delete m.founder; changed = true; }
       if (m.invited && m.invited.id === id) { delete m.invited; changed = true; }
+      if (m.ref && m.ref.k && m.ref.id === id) { delete m.ref.k; delete m.ref.at; delete m.ref.id; changed = true; }
     });
     if (myGone.some(function (id) { return theirGone.indexOf(id) < 0; })) ahead = true;
     var isGone = function (x) { return !!(x && x.id && (m.gone || []).indexOf(x.id) >= 0); };
@@ -13147,6 +13241,14 @@
     var theirInvite = (r.invited && typeof r.invited.t === "string" && !isGone(r.invited)) ? r.invited : null;
     if (theirInvite && !myInvite) { m.invited = theirInvite; changed = true; }
     else if (myInvite && !theirInvite) ahead = true;
+    // one referral code for all your devices: the oldest key wins
+    var myRef = (m.ref && m.ref.k) ? m.ref : null;
+    var theirRef = (r.ref && typeof r.ref.k === "string" && /^[0-9a-f]{32,128}$/.test(r.ref.k) && !isGone(r.ref)) ? r.ref : null;
+    if (theirRef && (!myRef || (+theirRef.at || 0) < (+myRef.at || 0)) && (!myRef || theirRef.k !== myRef.k)) {
+      m.ref = Object.assign({}, m.ref || {}, { k: theirRef.k, at: +theirRef.at || 0, id: typeof theirRef.id === "string" ? theirRef.id : "" });
+      changed = true;
+      if (typeof refSeen !== "undefined") refSeen.at = 0;
+    } else if (myRef && (!theirRef || ((+myRef.at || 0) < (+theirRef.at || 0)))) ahead = true;
     if (changed) { saveMember(m); refreshMemberBox(); }
     return ahead;
   }
@@ -13191,8 +13293,10 @@
         : n === 1 ? "1 person has joined with your invitation."
         : n + " people have joined with your invitation.");
       var gift = appleRedeemLink(f.gift);
-      document.getElementById("founder-gift-btn").style.display = gift ? "" : "none";
-      memberSay("founder-gift-line", gift
+      var owned = membership && membership.state === "lifetime";
+      document.getElementById("founder-gift-btn").style.display = gift && !owned ? "" : "none";
+      memberSay("founder-gift-line", owned ? "Your free-for-life code is redeemed. Do. is yours for good."
+        : gift
         ? "Your App Store code is ready. It is yours alone and works once, so redeem it on your own iPhone."
         : "Free for life: when Do. reaches the App Store, your own App Store code appears here. Redeeming it makes Do. yours for good, at no charge.");
     }
@@ -13407,6 +13511,296 @@
       refreshMemberBox();
       refreshMember(false);
       setTimeout(fromLink, 600);
+    });
+  })();
+
+
+  // ── Refer a friend (1.1) ─────────────────────────────────
+  // See REFERRALS-PLAN.md. This side only shows and asks: the server makes
+  // the code, and a referral counts only when the server function has
+  // checked Apple's signature on the friend's purchase. Every reward is an
+  // Apple offer code, redeemed in the App Store.
+  //
+  // Kept with the seat (in the Keychain on a phone, and in the scrambled
+  // synced copy): k, the key behind your code, so every device shows the
+  // same code; t, the token behind a friend's code you entered; used, that
+  // code; sent, whether your purchase has been passed on for it.
+  var refSeen = { at: 0, mine: null, friend: null, missing: false };
+  var REF_FN = CLOUD_URL + "/functions/v1/referral-convert";
+
+  function refState() { var m = loadMember(); return m.ref || {}; }
+  function refSave(patch) {
+    var m = loadMember();
+    m.ref = Object.assign({}, m.ref || {}, patch);
+    saveMember(m);
+    if (vaultActive()) scheduleSyncPush();
+    return m.ref;
+  }
+  // membership is set further down the file, after this first runs
+  function refMember() { return (typeof membership !== "undefined" && membership) || {}; }
+  function refPlan() { return refMember().plan === "yearly" ? "yearly" : "monthly"; }
+  function refOn() { return !!plug("StoreBridge") && !refSeen.missing; }
+
+  function refRedeem(code, redeem) {
+    return (code && redeem) ? appleRedeemLink(redeem + code) : "";
+  }
+
+  function refRewardRow(r, redeem, who) {
+    var row = el("div", "ref-reward" + (r.test ? " test" : ""));
+    var what = r.kind === "year" ? "free year" : "free month";
+    if (r.test) {
+      row.appendChild(el("span", null, "A test " + what + " from a TestFlight purchase. Test purchases are not given a real App Store code."));
+      return row;
+    }
+    var url = refRedeem(r.code, redeem);
+    if (!url) {
+      row.className += " waiting";
+      row.appendChild(el("span", null, "Your " + what + " is earned. Its App Store code is on its way and will appear here."));
+      return row;
+    }
+    row.appendChild(el("span", null, who === "friend" ? "Welcome to Do. Your free month is ready."
+      : r.kind === "year" ? "10 friends. Your free year is ready." : "Your free month is ready."));
+    var b = el("button", "modal-btn primary", "Redeem in the App Store");
+    b.addEventListener("click", function () { openExternal(url); });
+    row.appendChild(b);
+    return row;
+  }
+
+  function refDay(ms) {
+    var d = new Date(ms);
+    return d.getDate() + " " + ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][d.getMonth()];
+  }
+
+  function drawReferral() {
+    var box = document.getElementById("referral-box");
+    if (!box) return;
+    box.style.display = refOn() ? "" : "none";
+    if (!refOn()) return;
+    var st = refState(), mine = refSeen.mine, fr = refSeen.friend;
+    document.getElementById("ref-code").textContent = mine && mine.code ? showInviteCode(mine.code) : "…";
+    document.getElementById("ref-share-btn").disabled = !(mine && mine.code);
+    var tally = "";
+    if (mine && mine.ok) {
+      var n = +mine.counted || 0, wait = mine.waiting || [];
+      if (!n && !wait.length) tally = "No friends have subscribed with your code yet.";
+      else {
+        if (n) tally = n + (n === 1 ? " friend has" : " friends have") + " subscribed with your code. " +
+          (10 - (n % 10)) + " more to a free year.";
+        if (wait.length) tally += (tally ? " " : "") + wait.length + (wait.length === 1 ? " friend is" : " friends are") +
+          " in their first 14 days. Your month arrives on " + refDay(wait[0]) + ".";
+      }
+    } else if (refSeen.at) tally = "Could not reach the server. Your code appears when it can.";
+    memberSay("ref-tally", tally);
+    var rw = document.getElementById("ref-rewards");
+    rw.textContent = "";
+    ((mine && mine.rewards) || []).forEach(function (r) { rw.appendChild(refRewardRow(r, mine.redeem, "referrer")); });
+
+    // the friend's side: a code entered here
+    var paid = refMember().state === "subscribed" || refMember().state === "lifetime";
+    var fbox = document.getElementById("ref-friend");
+    var fline = document.getElementById("ref-friend-line");
+    var frw = document.getElementById("ref-friend-rewards");
+    frw.textContent = "";
+    var plansBtn = document.getElementById("ref-friend-plans");
+    plansBtn.style.display = "none";
+    if (st.used) {
+      fbox.style.display = "";
+      if (fr && fr.converted) {
+        fline.textContent = "You subscribed with code " + showInviteCode(st.used) + ".";
+        (fr.rewards || []).forEach(function (r) { frw.appendChild(refRewardRow(r, fr.redeem, "friend")); });
+      } else if (paid && !st.sent) {
+        fline.textContent = "Passing your subscription on for code " + showInviteCode(st.used) + "…";
+      } else {
+        fline.textContent = "Code " + showInviteCode(st.used) + " is ready. Subscribe and your free month appears here straight after.";
+        plansBtn.style.display = paid ? "none" : "";
+      }
+    } else fbox.style.display = "none";
+    // entering a code is for before subscribing
+    document.getElementById("ref-enter").style.display = (paid || (st.used && st.sent)) ? "none" : "";
+  }
+
+  function refreshReferral(force) {
+    if (!plug("StoreBridge")) return;
+    if (!force && Date.now() - refSeen.at < 60000) { drawReferral(); return; }
+    refSeen.at = Date.now();
+    var st = refState();
+    if (!st.k) st = refSave({ k: randomHex(), at: Date.now(), id: "ref" + randomHex().slice(0, 13) });
+    sha256Hex(st.k).then(function (h) { return memberRpc("referral_mine", { k: h, p: refPlan() }); }).then(function (r) {
+      refSeen.missing = false;
+      refSeen.mine = r && r.ok ? r : null;
+      drawReferral();
+    }).catch(function (err) {
+      if (err && err.missing) refSeen.missing = true;   // not switched on on the server yet
+      drawReferral();
+    });
+    if (st.used) {
+      sha256Hex(st.t).then(function (h) { return memberRpc("referral_friend", { t: h }); }).then(function (r) {
+        refSeen.friend = r && r.found ? r : null;
+        drawReferral();
+      }).catch(function () {});
+      refRetrySend();
+    }
+    drawReferral();
+  }
+
+  function useReferral() {
+    var box = document.getElementById("ref-input"), btn = document.getElementById("ref-use-btn");
+    var code = readPairCode(box.value);
+    if (code.length !== 8) { memberSay("ref-msg", "A referral code is 8 letters and numbers."); return; }
+    if (refSeen.mine && refSeen.mine.code === code) { memberSay("ref-msg", "That is your own code. Share it with a friend instead."); return; }
+    var st = refState();
+    if (!st.t) st = refSave({ t: randomHex() });
+    btn.disabled = true;
+    memberSay("ref-msg", "Checking…");
+    Promise.all([sha256Hex(st.t), st.k ? sha256Hex(st.k) : Promise.resolve(null)]).then(function (h) {
+      return memberRpc("referral_use", { c: code, t: h[0], k: h[1] });
+    }).then(function (r) {
+      btn.disabled = false;
+      if (r && r.ok) {
+        refSave({ used: code, sent: false });
+        box.value = "";
+        memberSay("ref-msg", "Code accepted. Subscribe and your free month appears straight after.");
+        drawReferral();
+        return;
+      }
+      var why = r && r.reason;
+      memberSay("ref-msg", why === "own" ? "That is your own code. Share it with a friend instead."
+        : why === "done" ? "Your subscription has already been counted for a code."
+        : "That code was not found. Check it and try again.");
+    }).catch(function (err) {
+      btn.disabled = false;
+      memberSay("ref-msg", err && err.missing ? "Referrals are not switched on yet." : "Could not reach the server. Check the connection and try again.");
+    });
+  }
+
+  function shareReferral() {
+    var mine = refSeen.mine;
+    if (!mine || !mine.code) return;
+    var code = showInviteCode(mine.code);
+    var link = WEB_URL + "#ref=" + code;
+    var text = "I use Do. for my to-dos and calendar. Use my code " + code + " when you subscribe and we both get a free month.";
+    if (navigator.share) {
+      navigator.share({ title: "Do.", text: text, url: link }).catch(function () {});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text + "\n" + link).then(function () { flashStatus("Referral code copied."); },
+        function () { flashStatus("Copy the code shown above."); });
+    } else flashStatus("Copy the code shown above.");
+  }
+
+  // A friend who entered a code has just subscribed: pass Apple's signed
+  // purchase to the server, which checks the signature itself.
+  function refSend(jws) {
+    var st = refState();
+    if (!st.used || st.sent || !st.t || !jws) return Promise.resolve(false);
+    return sha256Hex(st.t).then(function (h) {
+      return fetch(REF_FN, {
+        method: "POST", cache: "no-store",
+        headers: { apikey: CLOUD_KEY, Authorization: "Bearer " + CLOUD_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ jws: jws, t: h })
+      });
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (r) {
+        // counted, or already counted: either way it is done. A refusal
+        // (refunded, a free start, shared) will not change on a retry.
+        if (res.ok || res.status === 422) {
+          refSave({ sent: true });
+          refSeen.at = 0;
+          refreshReferral(true);
+          if (res.ok) flashStatus("Your free month is on its way — see Sync.");
+          return true;
+        }
+        return false;
+      });
+    }).catch(function () { return false; });
+  }
+  var refRetrying = false;
+  function refRetrySend() {
+    var st = refState(), shop = plug("StoreBridge");
+    if (!shop || !shop.receipt || refRetrying || !st.used || st.sent) return;
+    if (refMember().state !== "subscribed") return;
+    refRetrying = true;
+    shop.receipt().then(function (r) { return r && r.jws ? refSend(r.jws) : false; })
+      .then(function () { refRetrying = false; }, function () { refRetrying = false; });
+  }
+
+  (function () {
+    function on(id, fn) { var e = document.getElementById(id); if (e) e.addEventListener("click", fn); }
+    on("ref-use-btn", useReferral);
+    on("ref-share-btn", shareReferral);
+    on("ref-friend-plans", function () { showPlans(); });
+    on("ref-forget-btn", function () {
+      var st = refState(), btn = this;
+      if (!st.k) return;
+      if (btn.getAttribute("data-sure") !== "1") {
+        btn.setAttribute("data-sure", "1");
+        btn.textContent = "Tap again to stop using it";
+        setTimeout(function () { btn.removeAttribute("data-sure"); btn.textContent = "Stop using my referral code"; }, 4000);
+        return;
+      }
+      btn.removeAttribute("data-sure"); btn.textContent = "Stop using my referral code";
+      btn.disabled = true;
+      sha256Hex(st.k).then(function (h) { return memberRpc("referral_forget", { k: h }); }).then(function () {
+        btn.disabled = false;
+        var m = loadMember();
+        // noted as gone, so a device that still holds it does not hand it back through sync
+        if (m.ref) { noteGone(m, m.ref.id); delete m.ref.k; delete m.ref.at; delete m.ref.id; }
+        saveMember(m);
+        if (vaultActive()) scheduleSyncPush();
+        refSeen.mine = null; refSeen.at = 0;
+        memberSay("ref-forget-msg", "Your referral code was deleted from the server.");
+        document.getElementById("ref-how").open = false;
+        drawReferral();
+      }).catch(function () {
+        btn.disabled = false;
+        memberSay("ref-forget-msg", "Could not reach the server. Nothing was changed.");
+      });
+    });
+    on("sync-btn", function () { refreshReferral(true); });
+    var input = document.getElementById("ref-input");
+    if (input) input.addEventListener("keydown", function (e) { if (e.key === "Enter") useReferral(); });
+    var shop = plug("StoreBridge");
+    if (shop && shop.addListener) {
+      shop.addListener("purchase", function (p) { if (p && p.jws) refSend(p.jws); });
+      // "Have a referral code?" on the plans screen: back here, at the box
+      shop.addListener("askReferral", function () {
+        openMemberBox();
+        setTimeout(function () {
+          var b = document.getElementById("ref-enter");
+          if (b && b.scrollIntoView) b.scrollIntoView({ block: "center" });
+          var i = document.getElementById("ref-input");
+          if (i) i.focus();
+        }, 420);
+      });
+    }
+    // #ref=CODE, from a friend's message. In the app the code is filled in;
+    // on the web, where there is nothing to subscribe to, it says where to
+    // take it.
+    function fromLink() {
+      var mt = /^#ref=([A-Za-z0-9-]{8,12})$/.exec(location.hash || "");
+      if (!mt) return;
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+      var code = showInviteCode(readPairCode(mt[1]));
+      if (plug("StoreBridge")) {
+        openMemberBox();
+        if (input && !refState().used) input.value = code;
+        return;
+      }
+      var b = el("div", "ref-banner");
+      b.setAttribute("role", "status");
+      b.innerHTML = "A friend shared Do. with you. On iPhone, enter <b></b> in Sync before you subscribe and you both get a free month.";
+      b.querySelector("b").textContent = code;
+      var x = el("button", null, "×");
+      x.setAttribute("aria-label", "Close");
+      x.addEventListener("click", function () { b.remove(); });
+      b.appendChild(x);
+      document.body.appendChild(b);
+    }
+    secrets.whenReady(function () {
+      drawReferral();
+      if (refState().used && !refState().sent) refreshReferral(true);
+      setTimeout(fromLink, 650);
     });
   })();
 
@@ -13951,9 +14345,11 @@
       enforced: m.enforced === true,
       trialDaysLeft: +m.trialDaysLeft || 0,
       trialDays: +m.trialDays || 14,
-      storeReady: m.storeReady === true
+      storeReady: m.storeReady === true,
+      plan: typeof m.plan === "string" ? m.plan : ""
     };
     drawMembership();
+    if (m.state === "lifetime" && founderSeat()) refreshMemberBox();
   }
 
   function drawMembership() {
@@ -13986,6 +14382,8 @@
     document.getElementById("member-plans-btn").textContent = "See the plans";
     document.getElementById("member-manage-btn").style.display = membership.state === "subscribed" ? "" : "none";
     document.getElementById("member-restore-btn").style.display = paid ? "none" : "";
+    if (typeof drawReferral === "function") drawReferral();
+    if (paid && typeof refRetrySend === "function") refRetrySend();
   }
 
   function refreshMembership() {
@@ -13998,7 +14396,9 @@
   function showPlans() {
     var shop = plug("StoreBridge");
     if (!shop) return;
-    shop.showPlans().then(freshOnly(), function () {});
+    var st = (typeof refState === "function") ? refState() : {};
+    var ref = st.used && !st.sent ? showInviteCode(st.used) : "";
+    shop.showPlans({ ref: ref }).then(freshOnly(), function () {});
   }
 
   // The one question the rest of the app asks. True in a browser, true
@@ -15178,7 +15578,15 @@
       if (!vaultActive() || localStorage.getItem(CAL_PERM_KEY) !== "1") return;
       if (meetBusy || (!force && Date.now() - meetReadAt < 5 * 60 * 1000)) return;
       meetBusy = true;
-      cb.events({ from: startOfDay(Date.now(), -MEET_BACK_DAYS), to: startOfDay(Date.now(), MEET_AHEAD_DAYS) }).then(function (res) {
+      var shareFrom = startOfDay(Date.now(), -MEET_BACK_DAYS), shareTo = startOfDay(Date.now(), MEET_AHEAD_DAYS);
+      cb.events({ from: shareFrom, to: shareTo }).then(function (res) {
+        // Calendar links added on this phone travel with the rest: the other
+        // devices follow the phone, so they see what the phone sees.
+        if (!icsFeeds().length) return [res, null];
+        return icsRead(shareFrom, shareTo).then(function (links) { return [res, links]; },
+                                                 function () { return [res, null]; });
+      }).then(function (both) {
+        var res = both[0], links = both[1];
         meetBusy = false;
         meetReadAt = Date.now();
         if (!res || !res.granted || !meetShareOn()) return;
@@ -15189,6 +15597,19 @@
           if (!calendarAllowed(ev.calendar, ev.account)) return;      // hidden here, not shared either
           events.push({ s: ev.start, e: ev.end, a: !!ev.allDay, t: ev.title || "",
                         w: ev.where || "", c: ev.calendar || "", k: ev.colour || "" });
+        });
+        if (links) links.events.forEach(function (ev) {
+          if (isCancelled(ev.subject)) return;
+          events.push({ s: ev.start, e: ev.end, a: !!ev.allDay, t: ev.subject || "",
+                        w: ev.where || "", c: ev.link || "", k: "" });
+        });
+        // The same meeting from a link and from the phone's own calendar is one meeting.
+        var seenMeet = {};
+        events = events.filter(function (m) {
+          var key = String(m.t || "").trim().toLowerCase() + "|" + m.s + "|" + m.e;
+          if (seenMeet[key]) return false;
+          seenMeet[key] = 1;
+          return true;
         });
         events = normalizeMeetings(events);
         events.sort(function (x, y) { return (x.s - y.s) || (x.t < y.t ? -1 : x.t > y.t ? 1 : 0); });

@@ -79,6 +79,52 @@ policy gets a paragraph saying exactly the table above.
 2. Founder codes loaded (unchanged plan, without the 25% codes).
 3. Build referrals, test, then submit 1.1.
 
+## Online (18 November 2026)
+
+Database part, both server functions and REFERRAL_ALLOW_SANDBOX=1 deployed
+with `scripts/deploy-referrals.sh`. Checked from outside with the public key:
+the app gets a code; it cannot record a purchase, a refund or hand out a code
+(permission denied, after taking back Supabase's default grants); the
+function refuses an unsigned purchase; the listener refuses an unsigned
+notice. Apple Root CA - G3 fingerprint checked against apple.com.
+
+Still to do, after 1.0 is approved: the notifications URL and the offer codes
+in App Store Connect (step 4 below); publish the web app with the 1.1 code
+before 1.1 is released, so shared #ref links explain themselves.
+
+## Built (18 November 2026)
+
+| Part | Where | Tested by |
+|---|---|---|
+| Database: codes, a friend's code, the 14 days, refunds, the free year, the code pool | `supabase-part-6-referrals.sql` | `t_referral_sql.mjs` (35 checks, real Postgres via PGlite) |
+| Server function: checks Apple's signature on the friend's purchase | `supabase/functions/referral-convert/` + `_shared/apple-core.js` | `t_referral_verify.mjs` (22 checks: forgeries, edits, other roots, expired, Family Sharing, free starts) |
+| Server function: Apple's refund notices | `supabase/functions/apple-notifications/` | same verifier |
+| App: Refer a friend card in Sync, Have a friend's code?, Redeem, Stop using my code | `index.html` | `t_referral_app.mjs` (37 checks, several mock iPhones) |
+| iPhone: hands Apple's signed purchase to the app; the plans screen shows the friend's code | `StoreBridge.swift` | builds; the flow is covered by the app test |
+| Privacy policy, support page, privacy label, app privacy file | `privacy/`, `support/`, `APP-STORE-LISTING.md`, `PrivacyInfo.xcprivacy` | read through |
+
+TestFlight purchases are recorded as test-only: testers see the whole flow and
+no real Apple code is spent (while `REFERRAL_ALLOW_SANDBOX=1` is set).
+
+### To put it online
+
+1. **Check Apple's root certificate.** `_shared/apple-core.js` pins Apple Root
+   CA - G3 by its SHA-256. Before deploying, download AppleRootCA-G3.cer from
+   apple.com/certificateauthority (with your OK) and compare the fingerprint.
+2. **Database:** paste `supabase-part-6-referrals.sql` into Supabase → SQL
+   Editor → Run.
+3. **Functions** (needs your access token, typed into a terminal prompt):
+   `supabase functions deploy referral-convert --no-verify-jwt` and
+   `supabase functions deploy apple-notifications --no-verify-jwt`, then
+   `supabase secrets set REFERRAL_ALLOW_SANDBOX=1` for the TestFlight period.
+4. **App Store Connect** (after 1.0 is approved): the Production Server URL
+   for notifications is
+   `https://mxlbafuzdbnypexhgptw.supabase.co/functions/v1/apple-notifications`;
+   create the offer codes and load them (instructions at the end of the SQL).
+5. **Before 1.1 goes to App Review:** set `REFERRAL_ALLOW_SANDBOX` to 0 only
+   if App Review should not see the flow; leaving it on is harmless, since
+   test purchases never get real codes.
+
 ## Also in 1.1: dated tasks in Apple Calendar (agreed 15 November 2026)
 
 - A switch, off by default: "Add my dated tasks to Apple Calendar". iPhone asks
@@ -95,3 +141,37 @@ policy gets a paragraph saying exactly the table above.
 - The permission text changes from "only read, never changed" to say Do. adds
   dated tasks to its own Do. calendar and changes no other.
 - Nothing passes through the server; the privacy label is unchanged.
+
+**Status, 15 November 2026:** built on the `v1.1` branch and tested (34
+checks with a stand-in for the phone; on the iPhone Duo simulator against the
+real calendar store, the tasks appear in Apple's Calendar app). The privacy
+page, support page, landing page and App Store notes say what it does; they go
+live with 1.1. Pictures: `brand/calendar-preview/`.
+
+## Also in 1.1: your iPhone's meetings on the web (agreed 16 November 2026)
+
+Why: the web cannot read anybody's calendar, so Do. on the laptop only had a
+calendar file imported on 12 November, which never updates. A meeting added
+later (a Wednesday coffee) was on the phone and in Apple Calendar but not on
+the web.
+
+- A second switch in the phone's calendar settings: **Show my meetings on my
+  other devices**. Off by default.
+- When on, the phone adds its meetings for 2 days back and 8 weeks ahead to
+  the private sync copy, which is sealed on the phone with the key only the
+  person's devices hold. The server keeps a copy it cannot open, exactly as
+  for the lists. Nothing goes into the GitHub mirror or any other sync.
+- Only title, time, place, calendar name and colour travel. Notes, links,
+  organiser and invitees stay on the phone. Cancelled and declined meetings,
+  and calendars hidden in Do., are left out.
+- The phone reads at most every 5 minutes while Do. is open, and uploads
+  only when something changed. The web shows them in its Calendar and Today,
+  labelled "Meetings from your iPhone". A phone never shows them (it has its
+  own), so nothing appears twice.
+- Off: the other devices delete their copy at their next sync. Stopping sync
+  on a device deletes its copy too.
+- Privacy: privacy policy, in-app "What leaves this device", support page,
+  iOS permission text and SECURITY.md updated. The App Store privacy answer
+  stays "Calendar: not collected", because it travels only end-to-end
+  encrypted, like the lists.
+- Tested: `t_meetshare` (26 checks, two devices through the mock server).

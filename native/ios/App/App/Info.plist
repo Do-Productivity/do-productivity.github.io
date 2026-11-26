@@ -27,9 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Do. shows your meetings beside your tasks, so the Calendar is your whole day rather than half of it. Your calendar is only read, never changed, and nothing leaves your phone.</string>
+	<string>Do. shows your meetings beside your tasks, so the Calendar is your whole day rather than half of it. If you turn on Show my meetings on my other devices, they also travel inside your encrypted sync, which only your devices can read. If you turn on Add my dated tasks to Apple Calendar, Do. writes them into a calendar of its own called Do. and never changes any other calendar.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>Do. shows your meetings beside your tasks, so the Calendar is your whole day rather than half of it. Your calendar is only read, never changed, and nothing leaves your phone.</string>
+	<string>Do. shows your meetings beside your tasks, so the Calendar is your whole day rather than half of it. If you turn on Show my meetings on my other devices, they also travel inside your encrypted sync, which only your devices can read. If you turn on Add my dated tasks to Apple Calendar, Do. writes them into a calendar of its own called Do. and never changes any other calendar.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

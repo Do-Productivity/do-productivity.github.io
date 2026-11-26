@@ -247,6 +247,28 @@ else {
   }
 })();
 
+/* ── 9. every calendar widget shows a meeting's start and end ─────────── */
+/* 1.1 put "2–3:45pm" on the calendar widgets, and one view, the lock
+   screen with two or more meetings, kept calling label() and showed the
+   start alone. Nobody saw it until a busy morning on the phone. So a
+   time drawn in a widget goes through span(); label() is allowed only in
+   span() itself and in the one-line widget above the clock, whose few
+   characters are the meeting's name. A new label() call fails here. */
+(function () {
+  var f = path.join(here, "native", "ios", "App", "TodoWidget", "CalendarWidget.swift");
+  if (!fs.existsSync(f)) return;
+  var lines = fs.readFileSync(f, "utf8").split("\n"), bad = [];
+  lines.forEach(function (ln, i) {
+    if (!/\blabel\(\s*\w+\s*,\s*at:/.test(ln)) return;
+    if (/static func label/.test(ln)) return;
+    if (/isAllDay \|\| it\.isTask/.test(ln)) return;          // inside span()
+    if (/allow-start-only/.test(ln)) return;                       // the inline widget
+    bad.push("CalendarWidget.swift:" + (i + 1) + "  " + ln.trim());
+  });
+  if (bad.length) fail("a calendar widget draws a meeting's start without its end (use CalStore.span)", bad.join("\n      "));
+  else note("calendar widgets", "every time is drawn with its end");
+})();
+
 var kb = Math.round(html.length / 1024);
 note("index.html", kb + " KB");
 if (kb > 900) warn("index.html is getting large", kb + " KB");

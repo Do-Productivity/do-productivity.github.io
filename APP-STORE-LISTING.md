@@ -20,6 +20,22 @@ allow it to be removed once released.
 
 ## 2. Version 1.0 page
 
+> **For 1.1 (decided 15 November 2026): Do. is for every iPhone, with iPhone
+> Duo as the highlight.** 1.0 went to review with the Duo-first wording below;
+> those fields are locked while it is in review. With 1.1, change them to:
+>
+> | Field | Text |
+> |---|---|
+> | Subtitle (27/30) | `One app for your whole day.` (chosen 22 November 2026; the earlier choice was `Every iPhone. Made for Duo.`) |
+> | Promotional text (156/170) | `Reminders, notes, to-dos, your calendar and step-by-step plans, in one place. A card for every part of your life: work, personal, family, hobbies, anything.` |
+> | Keywords (98/100) | `productivity,tasks,planner,reminders,notes,widget,checklist,agenda,foldable,duo,schedule,organizer` (26 November 2026: `productivity` added so "Do productivity" finds the app, since the seller name is Ahmed Hassaan; `private` dropped to make room) |
+>
+> The promotional text can be changed as soon as 1.0 is live, without waiting
+> for 1.1. The description below is already the 1.1 version: "everything in
+> one place" (22 November 2026). It names no other company's apps on purpose;
+> App Review can flag that in a listing. Social posts and the website may say
+> "replaces Reminders, Notes and your to-do app".
+
 | Field | Limit | Text |
 |---|---|---|
 | Subtitle | 30 | `Lists that follow the fold` |
@@ -40,23 +56,31 @@ the place for the founding-members line once the seats open:
 ### Description
 
 ```
-Do. is a to-do list that follows your phone.
+Stop jumping between a reminders app, a notes app, a to-do list and a calendar. Do. puts all of it in one place, so your whole day is on one screen.
 
-On iPhone Duo, closed shows one list at a time. Open it and your lists sit side by side, with room for your plans and your calendar. Turn it upright and every list is still on screen. Nothing to set up and nothing to drag into place. On any other iPhone it is a calm, quick list app.
+ONE APP INSTEAD OF FIVE
+- To-dos: tick them off, give them a date, a time, or neither.
+- Reminders: give a task a time and your iPhone reminds you when it is due.
+- Notes: the thoughts that are not tasks yet, kept beside the ones that are.
+- Calendar: every calendar on your iPhone, beside your tasks.
+- Scheduled: big jobs with a start, a deadline and the steps in between.
+
+A CARD FOR EVERY PART OF YOUR LIFE
+Each list is a card of its own colour: Work, Personal, Family, Hobbies, Groceries, Travel, whatever your life needs. Swipe between them, or tap to see them all at once. Rename any card and give it the colour you like.
+
+MADE FOR IPHONE DUO
+Closed, Do. shows one list at a time. Open it and your lists sit side by side, with room for your plans and your calendar. Turn it upright and every list is still on screen. Nothing to set up and nothing to drag into place.
 
 YOUR DAY, IN ONE TIMELINE
-The Today screen shows the tasks that have a time and the meetings in your calendar, in the order they happen. One tap hides the meetings when you only want the work.
+The Today screen puts the tasks that have a time and the meetings in your calendar in the order they happen. One tap hides the meetings when you only want the work.
 
 TYPE IT THE WAY YOU SAY IT
 Write "Call the bank tomorrow 3pm" and Do. takes the time out of the sentence and sets the reminder. It shows what it understood while you type.
 
-BIG JOBS, STEP BY STEP
-Some work is not one tick. Give it a start, a deadline and the steps in between.
+EVERY CALENDAR YOU ALREADY HAVE
+Do. shows every calendar connected to Apple Calendar on your iPhone, whether Outlook, Google, Yahoo or any other email account. It never changes them. Tap an empty hour to add a task at that time. Switch on Add my dated tasks to Apple Calendar and your tasks also appear in a calendar of their own, on your iPhone, iPad and Mac.
 
-YOUR CALENDAR, BESIDE YOUR TASKS
-Do. reads the calendar on your iPhone so you can plan around it. It never changes it. Tap an empty hour to add a task at that time.
-
-WIDGETS
+ON YOUR LOCK SCREEN AND HOME SCREEN
 What is next on your Lock Screen. Your week on your Home Screen.
 
 PRIVATE BY DESIGN
@@ -139,7 +163,10 @@ members. (The 25% discount for invited people was cancelled on 15 November 2026;
 afterwards.
 
 - **Lists, notes, calendar:** not collected. They stay on the device, or leave
-  it encrypted with a key you never receive.
+  it encrypted with a key you never receive. From 1.1 this includes meetings,
+  when the person switches on "Show my meetings on my other devices": they
+  travel only inside the same end-to-end encrypted copy, so the answer for
+  Calendar stays "not collected" and the label does not change.
 - **Founding seat or invitation:** this is collected. The server keeps a seat
   number and a code for people who take one.
 
@@ -148,6 +175,19 @@ So the honest answer is **Yes, we collect data**, with one item:
 | Data type | Used for | Linked to the user? | Tracking? |
 |---|---|---|---|
 | Identifiers → User ID | App Functionality | No | No |
+
+**From 1.1 (referrals), add one more row.** A friend who subscribes with a
+referral code sends Apple's signed record of that purchase; the server keeps
+the transaction number, plan, date and refund status (see the privacy policy,
+"Referrals"):
+
+| Data type | Used for | Linked to the user? | Tracking? |
+|---|---|---|---|
+| Purchases → Purchase History | App Functionality | No | No |
+
+The app's own privacy file (PrivacyInfo.xcprivacy) already declares it on the
+1.1 branch. With it, the label reads "Data Not Linked to You: Identifiers,
+Purchases".
 
 The store label will read "Data Not Linked to You: Identifiers" instead of
 "Data Not Collected". **This is your decision.** If the "Data Not Collected"
@@ -169,7 +209,7 @@ on export compliance walks through it.
 ```
 Do. needs no account and no sign-in. All features work on first launch.
 
-Calendar: the Calendar list asks for calendar access only when the reviewer taps the line offering it. The app reads events to show them beside tasks and never modifies them.
+Calendar: the Calendar list asks for calendar access only when the reviewer taps the line offering it. The app reads events to show them beside tasks and never modifies them. Writing happens only if the person switches on "Add my dated tasks to Apple Calendar" in the Calendar settings line; the app then writes dated tasks into a calendar it creates for itself, called "Do.", and touches no other calendar. Switching it off deletes that calendar. A second switch, "Show my meetings on my other devices", is off by default; when on, the phone adds its meetings for the next 8 weeks to the end-to-end encrypted sync copy (key only on the person's devices) so the web version can show them.
 
 Plans: the app is free for 14 days. To see the plans without waiting, open Sync, scroll to Membership, and tap "See the plans". Restore Purchases is on the same screen.
 
@@ -181,6 +221,34 @@ Sync: optional. "Start syncing from this device" needs no account. Data is encry
 ```
 
 Contact details for review: your name and phone number, and `hello.doproductivity@gmail.com` as the email.
+
+## 7b. Version 1.1: What's New and review notes (drafted 26 November 2026)
+
+**What's New in This Version**
+
+```
+Refer a friend: give a month, get a month. Open Sync for your code. When a friend subscribes with it, you both get a free month, and every 10 friends earns you a free year.
+
+Your tasks in Apple Calendar: one switch puts every dated task in a calendar of its own, called Do., so it shows on your Mac and iPad too. Alerts still ring only once.
+
+Your meetings on your other devices: turn it on and Do. on the web shows your iPhone's meetings, encrypted like your lists.
+
+Calendar links now add to your iPhone's calendars instead of replacing them.
+
+Rename any list, the built-in ones too. On iPhone Duo, choose which lists show as columns.
+
+Calendar widgets show when each meeting ends, not only when it starts.
+
+A short guide on first launch, Today and Calendar told apart, and search grouped by list with a clear way back.
+
+Pulling down no longer reloads the app while you scroll a calendar or a sheet.
+```
+
+**Notes for App Review (add to section 7's text)**
+
+```
+New in 1.1, Refer a friend (Sync, under Membership): each person can show a referral code and share it. A friend enters the code before subscribing. Rewards are App Store subscription offer codes (one month free, or one year free for every ten friends), shown in the app to redeem in the App Store; the app never unlocks anything itself. A referrer's reward appears 14 days after the friend's first payment, confirmed by App Store Server Notifications, and is withdrawn if that payment is refunded. No names, email addresses or accounts are involved. To see the card without subscribing: open Sync and scroll to "Refer a friend".
+```
 
 ## 8. What is left, in order
 

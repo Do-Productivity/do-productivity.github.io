@@ -166,6 +166,24 @@ enum CalStore {
         return it.isNow(at: now) ? "now" : clock(it.startsAt)
     }
 
+    /// A meeting's start and end, "2pm–3:45pm", wherever there is room
+    /// for both: how long it is matters as much as when it starts. One
+    /// already running reads "now–3:45pm". Tasks are a moment and all-day
+    /// events have no hours, so those keep label(). `compact` drops the
+    /// first "pm" when both ends share it, "2–3:45pm", for narrow columns.
+    static func span(_ it: CalItem, at now: Date, compact: Bool = false) -> String {
+        if it.isAllDay || it.isTask || it.end <= it.start { return label(it, at: now) }
+        let end = clock(it.endsAt)
+        if it.isNow(at: now) { return "now\u{2013}" + end }
+        var start = clock(it.startsAt)
+        if compact {
+            for half in ["am", "pm"] where start.hasSuffix(half) && end.hasSuffix(half) {
+                start = String(start.dropLast(2))
+            }
+        }
+        return start + "\u{2013}" + end
+    }
+
     /// "9am", "10:30am" — or "09:00", "15:00" on a phone set to the
     /// 24-hour clock. The first version asked for "ha" and let the system
     /// reinterpret it, which on a 24-hour phone printed a bare "09" or
@@ -191,8 +209,8 @@ enum CalStore {
     /// the longest label and no wider. "09:00" needs two-thirds of what
     /// "10:30am" does, and on a lock screen that difference is two more
     /// letters of every title.
-    static func timeWidth(_ items: [CalItem], at now: Date, perChar: CGFloat) -> CGFloat {
-        let longest = items.map { label($0, at: now).count }.max() ?? 5
+    static func timeWidth(_ items: [CalItem], at now: Date, perChar: CGFloat, ranged: Bool = false) -> CGFloat {
+        let longest = items.map { (ranged ? span($0, at: now, compact: true) : label($0, at: now)).count }.max() ?? 5
         return max(4, CGFloat(longest)) * perChar + 2
     }
 
@@ -335,7 +353,7 @@ private struct CalLine: View {
     var body: some View {
         let live = item.isNow(at: now)
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(CalStore.label(item, at: now))
+            Text(CalStore.span(item, at: now, compact: true))
                 .font(.system(size: timeSize, weight: .bold))
                 .foregroundColor(live ? rust : inkSoft)
                 .lineLimit(1).minimumScaleFactor(0.8)
@@ -411,7 +429,7 @@ struct CalTodayView: View {
             // One line, no colour, no layout. All it can do is be the
             // sentence you would have wanted to read.
             if let n = left.first {
-                Text("\(CalStore.label(n, at: now)) · \(n.text)")
+                Text("\(CalStore.label(n, at: now)) · \(n.text)") // allow-start-only: one line, the name needs the room
             } else {
                 Text(quiet.line)
             }
@@ -433,7 +451,7 @@ struct CalTodayView: View {
                         Text(quiet.head).font(.system(size: 10, weight: .bold)).widgetAccentable()
                         Text(quiet.line).font(.system(size: 13, weight: .semibold))
                         if entry.today != nil, let t = tomorrow {
-                            Text("tomorrow \(CalStore.label(t, at: now)) · \(t.text)")
+                            Text("tomorrow \(CalStore.span(t, at: now, compact: true)) · \(t.text)")
                                 .font(.system(size: 10)).lineLimit(1).opacity(0.7)
                         }
                     }
@@ -481,7 +499,7 @@ struct CalTodayView: View {
     /// The only thing left today, time and title as one run of text so
     /// every wrapped line gets the full width.
     private func lockOne(_ it: CalItem, size: CGFloat, lines: Int) -> some View {
-        (Text(CalStore.label(it, at: now) + "\u{2002}")
+        (Text(CalStore.span(it, at: now) + "\u{2002}")
             .font(.system(size: size - 1.5, weight: .heavy).width(.condensed))
          + Text(it.text)
             .font(.system(size: size, weight: .semibold).width(.condensed)))
@@ -506,7 +524,7 @@ struct CalTodayView: View {
         return VStack(alignment: .leading, spacing: shown.count >= 4 ? 0 : 1) {
             ForEach(Array(shown.enumerated()), id: \.offset) { i, it in
                 HStack(alignment: .lastTextBaseline, spacing: 2) {
-                    (Text(CalStore.label(it, at: now) + "\u{2002}")
+                    (Text(CalStore.span(it, at: now, compact: true) + "\u{2002}")
                         .font(.system(size: 10, weight: .heavy).width(.condensed))
                      + Text(it.text)
                         .font(.system(size: 11.5, weight: i == 0 ? .bold : .medium)
@@ -531,7 +549,7 @@ struct CalTodayView: View {
                 .fill(live ? rust : CalStore.tint(it.tint))
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 0) {
-                Text(CalStore.label(it, at: now))
+                Text(CalStore.span(it, at: now))
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(live ? rust : inkSoft)
                 Text(it.text)
@@ -560,7 +578,7 @@ struct CalTodayView: View {
             if left.isEmpty {
                 Text(quiet.line + ".").font(serif(14).italic()).foregroundColor(inkSoft)
                 if entry.today != nil, let t = tomorrow {
-                    Text("Tomorrow \(CalStore.label(t, at: now)) · \(t.text)")
+                    Text("Tomorrow \(CalStore.span(t, at: now, compact: true)) · \(t.text)")
                         .font(.system(size: 10)).foregroundColor(inkSoft).lineLimit(2)
                 }
             } else if family == .systemMedium {
@@ -670,8 +688,9 @@ struct CalWeekView: View {
 
             if family == .systemLarge, let left = entry.today, !left.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
+                    let w = max(46, CalStore.timeWidth(Array(left.prefix(4)), at: entry.date, perChar: 5.4, ranged: true))
                     ForEach(Array(left.prefix(4).enumerated()), id: \.offset) { _, it in
-                        CalLine(item: it, now: entry.date, timeWidth: 46, timeSize: 9, titleSize: 12)
+                        CalLine(item: it, now: entry.date, timeWidth: w, timeSize: 9, titleSize: 12)
                     }
                 }
             }
@@ -760,7 +779,7 @@ struct CalAgendaView: View {
         let budget = max(0, Int((height - fixed) / lineH))
         let take = CalStore.share(lists.map { $0.count }, budget: budget)
         let shown = zip(lists, take).flatMap { $0.prefix($1) }
-        let timeW = CalStore.timeWidth(shown, at: now, perChar: 5.2)
+        let timeW = CalStore.timeWidth(shown, at: now, perChar: 5.2, ranged: true)
         // Whatever height the rows leave over goes to long titles: the
         // first arrangement that fits wins — every title on up to three
         // lines, then as many days as it can (nearest first) on two, down
