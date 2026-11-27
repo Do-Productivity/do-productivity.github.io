@@ -7,6 +7,7 @@
 <meta name="description" content="Do. puts your reminders, notes, to-dos, calendar and step-by-step plans in one app, with a card for every part of your life: work, personal, family, hobbies, anything. For every iPhone, made for iPhone Duo.">
 <meta name="theme-color" content="#f7f3e9">
 <meta name="color-scheme" content="light">
+<meta name="apple-itunes-app" content="app-id=6834582863">
 <link rel="icon" href="apple-touch-icon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:title" content="Do. Reminders, notes, to-dos and your calendar in one app">
@@ -66,6 +67,40 @@
   .lead { font-size: clamp(17px, 2.1vw, 21px); color: var(--soft); max-width: 36em; margin: 22px auto 0; text-wrap: pretty; }
   .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; margin-top: 28px; }
   .soon { font-size: 14px; color: var(--soft); margin: 14px 0 0; }
+
+  .soon b { color: var(--ink); }
+  .cta.one { margin-top: 34px; }
+  .cta-note { font-size: 14px; color: var(--soft); margin: 12px 0 0; }
+
+  /* ── scan from a computer: shown only where a mouse is the pointer ── */
+  .scan { display: none; }
+  @media (min-width: 860px) and (hover: hover) and (pointer: fine) {
+    .scan {
+      display: inline-flex; align-items: center; gap: 16px; text-align: left; margin: 26px auto 0; padding: 12px 20px 12px 12px; text-decoration: none; color: var(--ink);
+      background: var(--card); border: 1px solid var(--rule); border-radius: 18px; box-shadow: 0 8px 22px rgba(43, 38, 32, .08);
+    }
+    .scan svg { width: 92px; height: 92px; border-radius: 8px; flex: none; }
+    .scan b { display: block; font: 700 16px/1.25 var(--sans); }
+    .scan span { display: block; font-size: 14px; color: var(--soft); margin-top: 3px; max-width: 17em; }
+  }
+
+  /* ── download bar: follows the reader once the first button has scrolled away ── */
+  .dock {
+    position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 50;
+    display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 10px; max-width: calc(100vw - 24px);
+    background: rgba(255, 253, 247, .94); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border: 1px solid var(--rule); border-radius: 999px; box-shadow: 0 12px 34px rgba(43, 38, 32, .22);
+    transform: translate(-50%, 140%); opacity: 0; visibility: hidden;
+    transition: transform .28s ease, opacity .28s ease, visibility 0s linear .28s;
+  }
+  .dock.on { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .28s ease, opacity .28s ease; }
+  .dock img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+  .dock div { font: 700 15px/1.2 var(--sans); white-space: nowrap; padding-right: 4px; }
+  .dock div span { display: block; font-weight: 500; font-size: 12.5px; color: var(--soft); margin-top: 2px; }
+  .dock .btn { min-height: 42px; padding: 0 18px; font-size: 14px; }
+  @media (max-width: 380px) { .dock div span { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .dock, .dock.on { transition: none; } }
+  @media print { .dock { display: none; } }
 
   .film { margin: clamp(26px, 5vw, 52px) auto 0; max-width: var(--wrap); padding: 0 var(--gut); }
   .film video {
@@ -218,6 +253,12 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="qr" viewBox="0 0 31 31"><rect width="31" height="31" fill="#fff"/><path d="M1 1h7v1h-7zM9 1h3v1h-3zM16 1h5v1h-5zM23 1h7v1h-7zM1 2h1v1h-1zM7 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h1v1h-1zM15 2h2v1h-2zM19 2h1v1h-1zM23 2h1v1h-1zM29 2h1v1h-1zM1 3h1v1h-1zM3 3h3v1h-3zM7 3h1v1h-1zM11 3h6v1h-6zM19 3h3v1h-3zM23 3h1v1h-1zM25 3h3v1h-3zM29 3h1v1h-1zM1 4h1v1h-1zM3 4h3v1h-3zM7 4h1v1h-1zM9 4h1v1h-1zM12 4h2v1h-2zM18 4h1v1h-1zM20 4h1v1h-1zM23 4h1v1h-1zM25 4h3v1h-3zM29 4h1v1h-1zM1 5h1v1h-1zM3 5h3v1h-3zM7 5h1v1h-1zM12 5h3v1h-3zM18 5h1v1h-1zM20 5h1v1h-1zM23 5h1v1h-1zM25 5h3v1h-3zM29 5h1v1h-1zM1 6h1v1h-1zM7 6h1v1h-1zM10 6h1v1h-1zM12 6h2v1h-2zM15 6h1v1h-1zM20 6h2v1h-2zM23 6h1v1h-1zM29 6h1v1h-1zM1 7h7v1h-7zM9 7h1v1h-1zM11 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM17 7h1v1h-1zM19 7h1v1h-1zM21 7h1v1h-1zM23 7h7v1h-7zM9 8h1v1h-1zM12 8h1v1h-1zM14 8h3v1h-3zM18 8h3v1h-3zM1 9h1v1h-1zM3 9h2v1h-2zM6 9h3v1h-3zM12 9h1v1h-1zM14 9h2v1h-2zM17 9h3v1h-3zM23 9h1v1h-1zM26 9h1v1h-1zM28 9h2v1h-2zM2 10h1v1h-1zM5 10h1v1h-1zM8 10h4v1h-4zM17 10h1v1h-1zM20 10h4v1h-4zM25 10h1v1h-1zM29 10h1v1h-1zM4 11h2v1h-2zM7 11h2v1h-2zM13 11h1v1h-1zM15 11h4v1h-4zM22 11h2v1h-2zM25 11h1v1h-1zM27 11h2v1h-2zM1 12h1v1h-1zM3 12h3v1h-3zM8 12h3v1h-3zM14 12h2v1h-2zM17 12h1v1h-1zM29 12h1v1h-1zM1 13h4v1h-4zM6 13h6v1h-6zM13 13h1v1h-1zM16 13h3v1h-3zM24 13h1v1h-1zM26 13h2v1h-2zM1 14h3v1h-3zM8 14h1v1h-1zM10 14h2v1h-2zM14 14h1v1h-1zM18 14h3v1h-3zM23 14h1v1h-1zM27 14h3v1h-3zM3 15h1v1h-1zM5 15h1v1h-1zM7 15h1v1h-1zM13 15h1v1h-1zM15 15h3v1h-3zM20 15h1v1h-1zM23 15h1v1h-1zM27 15h3v1h-3zM1 16h3v1h-3zM6 16h1v1h-1zM10 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM19 16h3v1h-3zM25 16h1v1h-1zM28 16h1v1h-1zM4 17h2v1h-2zM7 17h1v1h-1zM9 17h5v1h-5zM17 17h1v1h-1zM20 17h3v1h-3zM25 17h2v1h-2zM28 17h1v1h-1zM2 18h2v1h-2zM5 18h2v1h-2zM8 18h1v1h-1zM12 18h3v1h-3zM16 18h1v1h-1zM18 18h1v1h-1zM22 18h1v1h-1zM24 18h1v1h-1zM26 18h3v1h-3zM1 19h1v1h-1zM3 19h2v1h-2zM7 19h2v1h-2zM10 19h4v1h-4zM16 19h3v1h-3zM21 19h2v1h-2zM25 19h1v1h-1zM27 19h1v1h-1zM3 20h2v1h-2zM8 20h1v1h-1zM11 20h1v1h-1zM13 20h1v1h-1zM16 20h1v1h-1zM18 20h2v1h-2zM24 20h1v1h-1zM27 20h1v1h-1zM2 21h1v1h-1zM4 21h2v1h-2zM7 21h2v1h-2zM12 21h1v1h-1zM14 21h1v1h-1zM16 21h12v1h-12zM9 22h3v1h-3zM13 22h3v1h-3zM18 22h2v1h-2zM21 22h1v1h-1zM25 22h5v1h-5zM1 23h7v1h-7zM9 23h2v1h-2zM12 23h3v1h-3zM16 23h1v1h-1zM18 23h1v1h-1zM20 23h2v1h-2zM23 23h1v1h-1zM25 23h2v1h-2zM28 23h1v1h-1zM1 24h1v1h-1zM7 24h1v1h-1zM9 24h2v1h-2zM12 24h2v1h-2zM16 24h2v1h-2zM19 24h1v1h-1zM21 24h1v1h-1zM25 24h2v1h-2zM28 24h2v1h-2zM1 25h1v1h-1zM3 25h3v1h-3zM7 25h1v1h-1zM10 25h4v1h-4zM15 25h1v1h-1zM18 25h1v1h-1zM21 25h5v1h-5zM27 25h1v1h-1zM29 25h1v1h-1zM1 26h1v1h-1zM3 26h3v1h-3zM7 26h1v1h-1zM9 26h1v1h-1zM12 26h5v1h-5zM18 26h1v1h-1zM21 26h2v1h-2zM25 26h2v1h-2zM28 26h1v1h-1zM1 27h1v1h-1zM3 27h3v1h-3zM7 27h1v1h-1zM9 27h2v1h-2zM15 27h1v1h-1zM17 27h1v1h-1zM19 27h1v1h-1zM21 27h2v1h-2zM24 27h1v1h-1zM27 27h1v1h-1zM29 27h1v1h-1zM1 28h1v1h-1zM7 28h1v1h-1zM10 28h1v1h-1zM12 28h2v1h-2zM15 28h2v1h-2zM19 28h1v1h-1zM21 28h2v1h-2zM24 28h3v1h-3zM28 28h1v1h-1zM1 29h7v1h-7zM9 29h1v1h-1zM11 29h1v1h-1zM14 29h1v1h-1zM17 29h2v1h-2zM20 29h2v1h-2zM24 29h1v1h-1zM28 29h1v1h-1z" fill="#2b2620"/></symbol></svg>
+<aside class="dock" id="dock" aria-label="Download Do.">
+  <img src="apple-touch-icon.png" alt="" width="40" height="40">
+  <div>Do.<span>Free for 14 days</span></div>
+  <a class="btn" href="https://apps.apple.com/app/id6834582863">Download</a>
+</aside>
 
 <header class="wrap top">
   <a class="brand" href="./" aria-label="Do. home"><img src="apple-touch-icon.png" alt="Do." width="38" height="38"></a>
@@ -235,11 +276,15 @@
     <p class="eyebrow">For every iPhone &middot; Made for iPhone Duo</p>
     <h1><span>Everything you do<i class="dot">.</i></span> <span>In one place<i class="dot">.</i></span></h1>
     <p class="lead">Reminders, notes, to-dos, your calendar and step-by-step plans, in one app. A card for every part of your life: work, personal, family, hobbies, anything. On iPhone Duo it follows the fold. Closed, one list. Open, all of them.</p>
-    <div class="cta">
+    <div class="cta" id="cta-top">
       <a class="btn" href="https://apps.apple.com/app/id6834582863">Download on the App Store</a>
       <a class="btn ghost" href="app/">Open Do. in your browser</a>
     </div>
-    <p class="soon">On the App Store now, for every iPhone. Fourteen days free, then a plan of your choice. The web version is free, with no sign-up.</p>
+    <p class="soon"><b>Free for 14 days.</b> No account, no email, no ads. For every iPhone. The web version is free, with no sign-up.</p>
+    <a class="scan" href="https://apps.apple.com/app/id6834582863" aria-label="Download Do. on the App Store">
+      <svg role="img" aria-label="QR code that opens Do. on the App Store"><use href="#qr"/></svg>
+      <div><b>On a computer?</b><span>Point your iPhone camera at this code to get Do. on your phone.</span></div>
+    </a>
   </div>
 
   <div class="film">
@@ -289,6 +334,8 @@
         <li class="own">Any list you like</li>
       </ul>
     </div>
+    <div class="cta one"><a class="btn" href="https://apps.apple.com/app/id6834582863">Download on the App Store</a></div>
+    <p class="cta-note">Free for 14 days. No account needed.</p>
   </section>
 
   <!-- Shown only once the server has said how many seats are left. -->
@@ -414,7 +461,12 @@
     <img class="icon" src="apple-touch-icon.png" width="84" height="84" alt="">
     <h2>Start with one list<i class="dot">.</i></h2>
     <p class="sub" style="margin-left:auto;margin-right:auto">Get Do. on the App Store, or open it in your browser now. No sign-up. Turn on sync and your lists follow you between iPhone and computer.</p>
-    <div class="cta"><a class="btn" href="https://apps.apple.com/app/id6834582863">Download on the App Store</a><a class="btn ghost" href="app/">Open Do. in your browser</a></div>
+    <div class="cta" id="cta-end"><a class="btn" href="https://apps.apple.com/app/id6834582863">Download on the App Store</a><a class="btn ghost" href="app/">Open Do. in your browser</a></div>
+    <p class="cta-note">Free for 14 days. No account, no email, no ads.</p>
+    <a class="scan" href="https://apps.apple.com/app/id6834582863" aria-label="Download Do. on the App Store">
+      <svg role="img" aria-label="QR code that opens Do. on the App Store"><use href="#qr"/></svg>
+      <div><b>On a computer?</b><span>Point your iPhone camera at this code to get Do. on your phone.</span></div>
+    </a>
   </section>
 </main>
 
@@ -449,6 +501,23 @@
         setTimeout(function () { document.getElementById("seats-bar").style.width = Math.max(2, Math.round(100 * +s.taken / +s.seats)) + "%"; }, 60);
       })
       .catch(function () {});
+  })();
+</script>
+<script>
+  // The download bar shows only while no download buttons, and not the footer, are on screen.
+  (function () {
+    var dock = document.getElementById("dock");
+    var marks = [document.getElementById("cta-top"), document.getElementById("cta-end"), document.querySelector("footer")];
+    if (!dock || !window.IntersectionObserver) return;
+    var seen = [true, false, false];
+    var io = new IntersectionObserver(function (list) {
+      list.forEach(function (e) { seen[marks.indexOf(e.target)] = e.isIntersecting; });
+      var on = !seen[0] && !seen[1] && !seen[2];
+      dock.classList.toggle("on", on);
+      dock.inert = !on;
+    });
+    marks.forEach(function (m) { if (m) io.observe(m); });
+    dock.inert = true;
   })();
 </script>
 </body>
